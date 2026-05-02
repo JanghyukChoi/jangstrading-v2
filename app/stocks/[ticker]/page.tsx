@@ -11,35 +11,64 @@ interface StockData {
   name: string;
   market: string;
   ticker: string;
+  per?: number | null;
+  pbr?: number | null;
+  eps?: number | null;
+  bps?: number | null;
+  div_yield?: number | null;
+  market_cap?: number | null;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
 }
 
-/* ── 숫자 포맷 ────────────────────────────────── */
+/* ── 유틸 ─────────────────────────────────────── */
 function fmt(n: number) {
   return n.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
 }
+// n = 백만원 단위 → 원 단위로 변환하여 표시
+function fmtUnit(n: number) {
+  const won = n * 1_000_000;
+  const abs = Math.abs(won);
+  const sign = won > 0 ? "+" : "";
+  if (abs >= 1_000_000_000_000) return `${sign}${(won / 1_000_000_000_000).toFixed(1)}조원`;
+  if (abs >= 100_000_000) return `${sign}${Math.round(won / 100_000_000).toLocaleString()}억원`;
+  if (abs >= 10_000) return `${sign}${Math.round(won / 10_000).toLocaleString()}만원`;
+  return `${sign}${Math.round(won).toLocaleString()}원`;
+}
+function fmtCap(n: number) {
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}조`;
+  return `${n.toLocaleString()}억`;
+}
 function CNum({ v, size = "text-sm" }: { v: number; size?: string }) {
   const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
-  return <span className={`num ${cls} ${size}`}>{v > 0 ? "+" : ""}{fmt(v)}</span>;
+  return <span className={`num ${cls} ${size}`}>{fmtUnit(v)}</span>;
+}
+
+/* ── 지표 카드 ────────────────────────────────── */
+function MetricCard({ label, value, unit }: { label: string; value: string | null; unit?: string }) {
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl p-3 sm:p-4 text-center">
+      <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-1.5">{label}</div>
+      <div className="text-sm sm:text-lg font-semibold num text-white truncate">
+        {value ?? <span className="text-[var(--text-muted)]">-</span>}
+      </div>
+      {unit && value && <div className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{unit}</div>}
+    </div>
+  );
 }
 
 /* ── 수급 바 차트 ─────────────────────────────── */
-function SupplyChart({ title, data, color }: { title: string; data: Record<string, number>; color: string }) {
+function SupplyChart({ title, data }: { title: string; data: Record<string, number> }) {
   const periods = ["1d", "1w", "1m", "3m", "6m"];
   const labels: Record<string, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
-
-  const chartData = periods.map((p) => ({
-    period: labels[p],
-    value: Math.round(data[p]),
-  }));
+  const chartData = periods.map((p) => ({ period: labels[p], value: Math.round(data[p]) }));
 
   const customTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.[0]) return null;
     const v = payload[0].value;
     return (
-      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-4 py-2.5 text-xs shadow-xl">
+      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl">
         <div className="text-[var(--text-secondary)] mb-1">{label}</div>
         <div className={`num font-medium ${v > 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>
           {v > 0 ? "+" : ""}{fmt(v)} 백만원
@@ -49,12 +78,12 @@ function SupplyChart({ title, data, color }: { title: string; data: Record<strin
   };
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-6">
-      <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-5">{title}</h3>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
-          <XAxis dataKey="period" tick={{ fill: "#484f58", fontSize: 11 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#484f58", fontSize: 10 }} axisLine={false} tickLine={false}
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+          <XAxis dataKey="period" tick={{ fill: "#484f58", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#484f58", fontSize: 9 }} axisLine={false} tickLine={false}
             tickFormatter={(v) => {
               if (Math.abs(v) >= 1000000) return `${(v / 1000000).toFixed(0)}M`;
               if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(0)}K`;
@@ -114,35 +143,42 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   const tvUrl = `https://www.tradingview.com/chart/?symbol=KRX%3A${stockData.ticker}`;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* 헤더 */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href="/stocks" className="text-[var(--text-muted)] hover:text-white transition text-sm">← 목록</Link>
           <div className="w-px h-4 bg-white/10" />
-          <h1 className="text-2xl font-bold">{stockData.name}</h1>
-          <span className={`text-[11px] px-2.5 py-1 rounded-lg font-medium ${
+          <h1 className="text-xl sm:text-2xl font-bold">{stockData.name}</h1>
+          <span className={`text-[10px] px-2 py-0.5 rounded-lg font-medium ${
             stockData.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
           }`}>{stockData.market}</span>
-          <span className="text-[var(--text-muted)] text-sm num">{stockData.ticker}</span>
+          <span className="text-[var(--text-muted)] text-xs num">{stockData.ticker}</span>
         </div>
-        <a
-          href={tvUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2962FF] text-white rounded-xl text-sm font-medium hover:brightness-110 transition"
-        >
-          <svg width="16" height="16" viewBox="0 0 36 28" fill="currentColor">
+        <a href={tvUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2962FF] text-white rounded-xl text-xs sm:text-sm font-medium hover:brightness-110 transition self-start">
+          <svg width="14" height="14" viewBox="0 0 36 28" fill="currentColor">
             <path d="M14 22H7V6h7V0H0v28h21v-7h-7v1zm22-22h-7v7h-8v7h8v7h7V0z"/>
           </svg>
-          TradingView에서 차트 보기
+          TradingView 차트
         </a>
       </div>
 
-      {/* 합산 요약 카드 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-6">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-5">외국인 + 기관 합산 순매수 (백만원)</h3>
-        <div className="grid grid-cols-5 gap-4">
+      {/* 재무 지표 — 모바일 3열, 데스크톱 6열 */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
+        <MetricCard label="시가총액" value={stockData.market_cap != null ? fmtCap(stockData.market_cap) : null} />
+        <MetricCard label="PER" value={stockData.per != null ? stockData.per.toFixed(1) : null} unit="배" />
+        <MetricCard label="PBR" value={stockData.pbr != null ? stockData.pbr.toFixed(2) : null} unit="배" />
+        <MetricCard label="EPS" value={stockData.eps != null ? stockData.eps.toLocaleString() : null} unit="원" />
+        <MetricCard label="BPS" value={stockData.bps != null ? stockData.bps.toLocaleString() : null} unit="원" />
+        <MetricCard label="배당수익률" value={stockData.div_yield != null ? stockData.div_yield.toFixed(2) : null} unit="%" />
+      </div>
+
+      {/* 합산 요약 — 모바일: 리스트, 데스크톱: 5열 */}
+      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">외국인 + 기관 합산 (백만원)</h3>
+        {/* 데스크톱: 5열 그리드 */}
+        <div className="hidden sm:grid grid-cols-5 gap-4">
           {periods.map((p) => {
             const v = stockData.combined[p];
             return (
@@ -155,42 +191,52 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
             );
           })}
         </div>
+        {/* 모바일: 리스트 */}
+        <div className="sm:hidden space-y-2">
+          {periods.map((p) => {
+            const v = stockData.combined[p];
+            return (
+              <div key={p} className={`flex items-center justify-between p-3 rounded-xl ${
+                v > 0 ? "bg-red-500/[0.06]" : v < 0 ? "bg-blue-500/[0.06]" : "bg-white/[0.02]"
+              }`}>
+                <span className="text-sm text-[var(--text-secondary)]">{periodLabels[p]}</span>
+                <CNum v={v} size="text-base"/>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* 외국인 / 기관 차트 */}
+      {/* 수급 차트 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SupplyChart title="외국인 순매수 추이" data={stockData.foreign} color="#f85149" />
-        <SupplyChart title="기관 순매수 추이" data={stockData.institution} color="#58a6ff" />
+        <SupplyChart title="외국인 순매수 추이" data={stockData.foreign} />
+        <SupplyChart title="기관 순매수 추이" data={stockData.institution} />
       </div>
-
-      {/* 합산 차트 */}
-      <SupplyChart title="외국인 + 기관 합산 순매수" data={stockData.combined} color="#a371f7" />
+      <SupplyChart title="외국인 + 기관 합산 순매수" data={stockData.combined} />
 
       {/* 상세 테이블 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-6">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-4">기간별 상세 (백만원)</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[var(--text-muted)] text-[11px] border-b border-white/[0.06]">
-                <th className="text-left py-3 font-normal">기간</th>
-                <th className="text-right py-3 font-normal">외국인</th>
-                <th className="text-right py-3 font-normal">기관</th>
-                <th className="text-right py-3 font-normal font-medium">합계</th>
+      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">기간별 상세 (백만원)</h3>
+        <table className="w-full text-[12px] sm:text-[13px]">
+          <thead>
+            <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
+              <th className="text-left py-2 font-normal">기간</th>
+              <th className="text-right py-2 font-normal">외국인</th>
+              <th className="text-right py-2 font-normal">기관</th>
+              <th className="text-right py-2 font-normal">합계</th>
+            </tr>
+          </thead>
+          <tbody>
+            {periods.map((p) => (
+              <tr key={p} className="border-t border-white/[0.03]">
+                <td className="py-2.5 text-[var(--text-secondary)]">{periodLabels[p]}</td>
+                <td className="py-2.5 text-right"><CNum v={stockData.foreign[p]}/></td>
+                <td className="py-2.5 text-right"><CNum v={stockData.institution[p]}/></td>
+                <td className="py-2.5 text-right font-medium"><CNum v={stockData.combined[p]}/></td>
               </tr>
-            </thead>
-            <tbody>
-              {periods.map((p) => (
-                <tr key={p} className="border-t border-white/[0.03]">
-                  <td className="py-3 text-[var(--text-secondary)]">{periodLabels[p]}</td>
-                  <td className="py-3 text-right"><CNum v={stockData.foreign[p]} /></td>
-                  <td className="py-3 text-right"><CNum v={stockData.institution[p]} /></td>
-                  <td className="py-3 text-right font-medium"><CNum v={stockData.combined[p]} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

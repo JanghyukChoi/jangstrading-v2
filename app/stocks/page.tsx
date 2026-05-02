@@ -10,6 +10,7 @@ interface StockRanking {
   ticker?: string;
   per?: number | null;
   pbr?: number | null;
+  market_cap?: number | null; // 억원
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -18,20 +19,33 @@ type Investor = "combined" | "foreign" | "institution";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
 
 /* ── 유틸 ─────────────────────────────────────── */
-function fmt(n: number) {
-  return n.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+// n = 백만원 단위 → 원 단위로 변환하여 표시
+function fmtUnit(n: number) {
+  const won = n * 1_000_000;
+  const abs = Math.abs(won);
+  const sign = won > 0 ? "+" : "";
+  if (abs >= 1_000_000_000_000) return `${sign}${(won / 1_000_000_000_000).toFixed(1)}조원`;
+  if (abs >= 100_000_000) return `${sign}${Math.round(won / 100_000_000).toLocaleString()}억원`;
+  if (abs >= 10_000) return `${sign}${Math.round(won / 10_000).toLocaleString()}만원`;
+  return `${sign}${Math.round(won).toLocaleString()}원`;
 }
 function CNum({ v }: { v: number }) {
   const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
-  return <span className={`num ${cls}`}>{v > 0 ? "+" : ""}{fmt(v)}</span>;
+  return <span className={`num ${cls}`}>{fmtUnit(v)}</span>;
 }
+// 시총대비 비율: (순매수_백만원 / 시총_억원) = %
+function calcRatio(combined: number, marketCap: number | null | undefined): number | null {
+  if (!marketCap || marketCap <= 0) return null;
+  return combined / marketCap;
+}
+
 function PurchaseBar({ value, max }: { value: number; max: number }) {
   const pct = max === 0 ? 0 : Math.min(Math.abs(value) / max * 100, 100);
   const bg = value >= 0
     ? "bg-gradient-to-r from-red-500/70 to-red-500/10"
     : "bg-gradient-to-l from-blue-400/70 to-blue-400/10";
   return (
-    <div className="w-20 h-[5px] rounded-full bg-white/[0.04] overflow-hidden">
+    <div className="w-16 h-[5px] rounded-full bg-white/[0.04] overflow-hidden">
       <div className={`h-full rounded-full ${bg}`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -47,7 +61,7 @@ function FilterGroup<T extends string>({
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`px-3.5 py-[7px] text-[12px] transition-all ${
+          className={`px-3 py-[7px] text-[11px] sm:text-[12px] transition-all ${
             value === o.key
               ? "bg-[var(--accent-blue)] text-white font-medium"
               : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"
@@ -70,6 +84,7 @@ export default function StocksPage() {
   const [investor, setInvestor] = useState<Investor>("combined");
   const [period, setPeriod] = useState<Period>("1m");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const [sortBy, setSortBy] = useState<"amount" | "ratio">("amount");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -89,19 +104,28 @@ export default function StocksPage() {
       const q = search.trim().toLowerCase();
       r = r.filter((s) => s.name.toLowerCase().includes(q));
     }
+    // 시총대비 정렬 시: 시총 1000억 이상 + 스팩 제외
+    if (sortBy === "ratio") {
+      r = r.filter((s) => (s.market_cap ?? 0) >= 1000 && !s.name.includes("스팩") && !s.name.includes("SPAC"));
+    }
     return [...r].sort((a, b) => {
+      if (sortBy === "ratio") {
+        const ar = calcRatio(a[investor][period], a.market_cap) ?? 0;
+        const br = calcRatio(b[investor][period], b.market_cap) ?? 0;
+        return sortDir === "desc" ? br - ar : ar - br;
+      }
       const av = a[investor][period] ?? 0;
       const bv = b[investor][period] ?? 0;
       return sortDir === "desc" ? bv - av : av - bv;
     });
-  }, [allStocks, marketFilter, search, investor, period, sortDir]);
+  }, [allStocks, marketFilter, search, investor, period, sortDir, sortBy]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(s[investor][period])), 1) : 1;
   const hasPer = allStocks.some((s) => s.per != null);
 
-  useEffect(() => setPage(0), [search, marketFilter, investor, period, sortDir]);
+  useEffect(() => setPage(0), [search, marketFilter, investor, period, sortDir, sortBy]);
 
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관" };
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
@@ -116,16 +140,16 @@ export default function StocksPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">종목별 순매수 랭킹</h1>
-          {meta && <p className="text-[11px] text-[var(--text-muted)] mt-1">기준일 {meta.business_date} · 단위: 백만원</p>}
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">종목별 순매수 랭킹</h1>
+          {meta && <p className="text-[11px] text-[var(--text-muted)] mt-1">기준일 {meta.business_date}</p>}
         </div>
         <div className="text-xs text-[var(--text-muted)] num">{filtered.length}개 종목</div>
       </div>
 
       {/* 필터 바 */}
-      <div className="flex flex-wrap gap-2.5 items-center">
+      <div className="flex flex-wrap gap-2 items-center">
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/>
@@ -135,7 +159,7 @@ export default function StocksPage() {
             placeholder="종목 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl pl-9 pr-3 py-[7px] text-[13px] text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-blue)] w-52 transition"
+            className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl pl-9 pr-3 py-[7px] text-[13px] text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-blue)] w-44 sm:w-52 transition"
           />
         </div>
         <FilterGroup
@@ -145,7 +169,7 @@ export default function StocksPage() {
         <select
           value={investor}
           onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
+          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
         >
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -155,60 +179,80 @@ export default function StocksPage() {
         />
         <button
           onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
-          className="flex items-center gap-1 bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
         >
           {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
+        </button>
+        <button
+          onClick={() => setSortBy((s) => (s === "amount" ? "ratio" : "amount"))}
+          className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
+            sortBy === "ratio"
+              ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
+              : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
+          }`}
+        >
+          {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
         </button>
       </div>
 
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[12px] sm:text-[13px]">
             <thead>
-              <tr className="text-[var(--text-muted)] text-[11px] border-b border-white/[0.06]">
-                <th className="text-left px-5 py-3 font-normal w-10">#</th>
-                <th className="text-left px-3 py-3 font-normal">종목</th>
-                <th className="text-left px-3 py-3 font-normal w-16">시장</th>
-                {hasPer && <th className="text-right px-3 py-3 font-normal">PER</th>}
-                <th className="text-right px-3 py-3 font-normal">외국인<span className="text-[9px] ml-0.5 opacity-50">백만</span></th>
-                <th className="text-right px-3 py-3 font-normal">기관<span className="text-[9px] ml-0.5 opacity-50">백만</span></th>
-                <th className="text-right px-3 py-3 font-normal">합계<span className="text-[9px] ml-0.5 opacity-50">백만</span></th>
-                <th className="px-5 py-3 w-24"></th>
+              <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
+                <th className="text-left px-3 sm:px-5 py-3 font-normal w-8">#</th>
+                <th className="text-left px-2 sm:px-3 py-3 font-normal">종목</th>
+                <th className="text-left px-2 py-3 font-normal w-14 hidden sm:table-cell">시장</th>
+                {hasPer && <th className="text-right px-2 py-3 font-normal hidden md:table-cell">PER</th>}
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">기관</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">합계</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">시총대비</th>
+                <th className="px-3 py-3 w-16 hidden sm:table-cell"></th>
               </tr>
             </thead>
             <tbody>
-              {paged.map((s, i) => (
-                <tr key={s.name} className="border-t border-white/[0.03] hover:bg-white/[0.02] transition">
-                  <td className="px-5 py-2.5 text-[var(--text-muted)] num text-xs">{page * PAGE_SIZE + i + 1}</td>
-                  <td className="px-3 py-2.5">
-                    {s.ticker ? (
-                      <Link
-                        href={`/stocks/${s.ticker}`}
-                        className="text-white font-medium hover:text-[var(--accent-blue)] transition"
-                      >
-                        {s.name}
-                      </Link>
-                    ) : (
-                      <span className="text-white font-medium">{s.name}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
-                      s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
-                    }`}>{s.market}</span>
-                  </td>
-                  {hasPer && (
-                    <td className="px-3 py-2.5 text-right num text-[var(--text-secondary)]">
-                      {s.per != null ? s.per.toFixed(1) : <span className="text-[var(--text-muted)]">-</span>}
+              {paged.map((s, i) => {
+                const ratio = calcRatio(s[investor][period], s.market_cap);
+                return (
+                  <tr key={s.name} className="border-t border-white/[0.03] hover:bg-white/[0.02] transition">
+                    <td className="px-3 sm:px-5 py-2.5 text-[var(--text-muted)] num text-xs">{page * PAGE_SIZE + i + 1}</td>
+                    <td className="px-2 sm:px-3 py-2.5">
+                      {s.ticker ? (
+                        <Link href={`/stocks/${s.ticker}`} className="text-white font-medium hover:text-[var(--accent-blue)] transition">
+                          {s.name}
+                        </Link>
+                      ) : (
+                        <span className="text-white font-medium">{s.name}</span>
+                      )}
                     </td>
-                  )}
-                  <td className="px-3 py-2.5 text-right"><CNum v={s.foreign[period]} /></td>
-                  <td className="px-3 py-2.5 text-right"><CNum v={s.institution[period]} /></td>
-                  <td className="px-3 py-2.5 text-right font-medium"><CNum v={s.combined[period]} /></td>
-                  <td className="px-5 py-2.5"><PurchaseBar value={s[investor][period]} max={maxVal} /></td>
-                </tr>
-              ))}
+                    <td className="px-2 py-2.5 hidden sm:table-cell">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
+                        s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+                      }`}>{s.market}</span>
+                    </td>
+                    {hasPer && (
+                      <td className="px-2 py-2.5 text-right num text-[var(--text-secondary)] hidden md:table-cell">
+                        {s.per != null ? s.per.toFixed(1) : "-"}
+                      </td>
+                    )}
+                    <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[period]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.institution[period]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={s.combined[period]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right">
+                      {ratio != null ? (
+                        <span className={`num text-xs ${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
+                          {ratio > 0 ? "+" : ""}{ratio.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 hidden sm:table-cell"><PurchaseBar value={s[investor][period]} max={maxVal} /></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
