@@ -1,0 +1,4 @@
+pykrx>=1.2.4
+pandas>=2.0
+python-dotenv
+requests
