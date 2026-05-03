@@ -7,6 +7,12 @@ import {
 } from "recharts";
 
 /* ── 타입 ─────────────────────────────────────── */
+interface AvgCostData {
+  price: number;
+  foreign?: { avg_cost: number; pnl_pct: number };
+  institution?: { avg_cost: number; pnl_pct: number };
+}
+
 interface StockData {
   name: string;
   market: string;
@@ -18,6 +24,7 @@ interface StockData {
   div_yield?: number | null;
   market_cap?: number | null;
   price_change?: Record<string, number>;
+  avg_cost?: AvgCostData | null;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -174,6 +181,81 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         <MetricCard label="BPS" value={stockData.bps != null ? stockData.bps.toLocaleString() : null} unit="원" />
         <MetricCard label="배당수익률" value={stockData.div_yield != null ? stockData.div_yield.toFixed(2) : null} unit="%" />
       </div>
+
+      {/* 추정 평균단가 */}
+      {stockData.avg_cost && (stockData.avg_cost.foreign || stockData.avg_cost.institution) && (
+        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+          <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">추정 평균단가</h3>
+          <p className="text-[10px] text-[var(--text-muted)] mb-4">최근 6개월 이동평균 원가법 기준 · 현재가 {stockData.avg_cost.price.toLocaleString()}원</p>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {([
+              { key: "foreign" as const, label: "외국인", color: "#f85149" },
+              { key: "institution" as const, label: "기관", color: "#58a6ff" },
+            ]).map(({ key, label, color }) => {
+              const d = stockData.avg_cost?.[key];
+              if (!d) return null;
+              const isProfit = d.pnl_pct >= 0;
+              return (
+                <div key={key} className="flex-1 rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                    <span className="text-[13px] text-[var(--text-secondary)]">{label}</span>
+                  </div>
+
+                  <div className="flex items-end justify-between mb-3">
+                    <div>
+                      <div className="text-[10px] text-[var(--text-muted)] mb-1">추정 평균단가</div>
+                      <div className="text-lg sm:text-xl font-semibold num text-white">{d.avg_cost.toLocaleString()}원</div>
+                    </div>
+                    <div className={`text-right px-3 py-1.5 rounded-lg ${
+                      isProfit ? "bg-red-500/[0.08]" : "bg-blue-500/[0.08]"
+                    }`}>
+                      <div className={`text-lg font-bold num ${isProfit ? "positive" : "negative"}`}>
+                        {isProfit ? "+" : ""}{d.pnl_pct}%
+                      </div>
+                      <div className="text-[10px] text-[var(--text-muted)]">
+                        {isProfit ? "수익 중" : "손실 중"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 현재가 대비 바 */}
+                  {(() => {
+                    const price = stockData.avg_cost!.price;
+                    const minP = Math.min(d.avg_cost, price) * 0.95;
+                    const maxP = Math.max(d.avg_cost, price) * 1.05;
+                    const range = maxP - minP;
+                    const costPos = ((d.avg_cost - minP) / range) * 100;
+                    const pricePos = ((price - minP) / range) * 100;
+                    return (
+                      <div className="relative h-6 mt-1">
+                        <div className="absolute top-2.5 left-0 right-0 h-1 rounded-full bg-white/[0.06]" />
+                        {/* 평균단가 마커 */}
+                        <div className="absolute top-0" style={{ left: `${costPos}%`, transform: "translateX(-50%)" }}>
+                          <div className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: color, background: "#0d1117" }} />
+                          <div className="text-[8px] text-[var(--text-muted)] mt-0.5 whitespace-nowrap" style={{ transform: "translateX(-30%)" }}>매수가</div>
+                        </div>
+                        {/* 현재가 마커 */}
+                        <div className="absolute top-0" style={{ left: `${pricePos}%`, transform: "translateX(-50%)" }}>
+                          <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                          <div className="text-[8px] text-[var(--text-muted)] mt-0.5 whitespace-nowrap" style={{ transform: "translateX(-30%)" }}>현재가</div>
+                        </div>
+                        {/* 영역 */}
+                        <div className="absolute top-2.5 h-1 rounded-full" style={{
+                          left: `${Math.min(costPos, pricePos)}%`,
+                          width: `${Math.abs(pricePos - costPos)}%`,
+                          background: isProfit ? "rgba(248,81,73,0.4)" : "rgba(88,166,255,0.4)",
+                        }} />
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 합산 요약 — 모바일: 리스트, 데스크톱: 5열 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
