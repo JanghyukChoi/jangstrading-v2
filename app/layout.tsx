@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import SearchBar from "./components/SearchBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,14 +12,17 @@ function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#06080d]/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-            J
-          </div>
-          <span className="text-[15px] font-semibold tracking-tight text-white">
-            JangsTrading
-          </span>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+              J
+            </div>
+            <span className="text-[15px] font-semibold tracking-tight text-white hidden sm:inline">
+              JangsTrading
+            </span>
+          </Link>
+          <SearchBar />
+        </div>
 
         <nav className="flex items-center gap-1 text-[13px]">
           <Link
