@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   verification: {
     // google: "구글서치콘솔_인증코드", // 나중에 추가
-    // other: { "naver-site-verification": "네이버_인증코드" }, // 나중에 추가
+    other: { "naver-site-verification": "279e4d3b77debaf01a1231d73f6965b7a0c3a66a" },
   },
 };
 
