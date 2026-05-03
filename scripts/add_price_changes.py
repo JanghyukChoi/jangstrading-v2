@@ -42,10 +42,10 @@ def main():
                 df_past = None
                 for offset in range(8):
                     try_date = (target - timedelta(days=offset)).strftime("%Y%m%d")
-                    df_past = stock.get_market_ohlcv(try_date, market=market)
-                    if df_past is not None and not df_past.empty:
+                    df_try = stock.get_market_ohlcv(try_date, market=market)
+                    if df_try is not None and not df_try.empty and df_try["종가"].sum() > 0:
+                        df_past = df_try
                         break
-                    df_past = None
 
                 if df_past is None:
                     continue
