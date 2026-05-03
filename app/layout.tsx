@@ -37,6 +37,12 @@ function Header() {
           >
             종목 순매수
           </Link>
+          <Link
+            href="/sectors"
+            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
+          >
+            섹터 순매수
+          </Link>
         </nav>
       </div>
     </header>

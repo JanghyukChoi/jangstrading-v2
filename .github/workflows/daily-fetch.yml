@@ -47,6 +47,15 @@ jobs:
           KRX_PW: ${{ secrets.KRX_PW }}
         run: python scripts/add_price_changes.py
 
+      - name: Add avg cost
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python scripts/add_avg_cost.py
+
+      - name: Add sectors
+        run: python scripts/add_sectors.py
+
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
