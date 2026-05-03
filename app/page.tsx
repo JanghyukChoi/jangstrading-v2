@@ -134,6 +134,17 @@ function ConsensusChart({ stocks, period = "1m" }: { stocks: StockRanking[]; per
           </div>
         </div>
       </div>
+
+      {/* 해석 */}
+      <p className="text-[11px] text-[var(--text-secondary)] mt-4 leading-relaxed border-t border-white/[0.04] pt-3">
+        💡 {(() => {
+          const buyPct = total > 0 ? bothBuy / total * 100 : 0;
+          const sellPct = total > 0 ? bothSell / total * 100 : 0;
+          if (buyPct > sellPct && buyPct > 35) return `외국인과 기관이 동시에 매수하는 종목이 ${bothBuy}개로, 시장 전반에 매수 합의가 형성되고 있습니다. 두 투자 주체가 같은 방향으로 움직일 때 추세가 강해지는 경향이 있습니다.`;
+          if (sellPct > buyPct && sellPct > 35) return `외국인과 기관이 동시에 매도하는 종목이 ${bothSell}개로, 시장 전반에 매도 압력이 강합니다. 양쪽 모두 빠져나가는 구간에서는 방어적 포지션이 유리할 수 있습니다.`;
+          return `외국인과 기관의 방향이 엇갈린 종목이 ${mixed}개(${total > 0 ? (mixed / total * 100).toFixed(0) : 0}%)로, 두 주체의 시각이 갈리고 있습니다. 이런 구간에서는 한쪽의 방향이 확정될 때까지 관망하거나, 엇갈림 속에서 기회를 찾을 수 있습니다.`;
+        })()}
+      </p>
     </div>
   );
 }
@@ -284,6 +295,16 @@ function ConcentrationCard({ title, stocks, investorKey, color }: {
           );
         })}
       </div>
+
+      {/* 해석 */}
+      <p className="text-[11px] text-[var(--text-secondary)] mt-3 leading-relaxed border-t border-white/[0.04] pt-3">
+        💡 {pct >= 70
+          ? `${pct}%는 높은 집중도입니다. ${investorKey === "foreign" ? "외국인" : "기관"}이 소수 종목에 확신을 갖고 집중 매수 중입니다.`
+          : pct >= 40
+          ? `${pct}%는 보통 수준입니다. ${investorKey === "foreign" ? "외국인" : "기관"}이 특정 종목과 시장 전체를 혼합하여 매수 중입니다.`
+          : `${pct}%는 낮은 집중도입니다. ${investorKey === "foreign" ? "외국인" : "기관"}이 시장 전체에 분산 매수 중이며, 인덱스 추종 가능성이 높습니다.`
+        }
+      </p>
     </div>
   );
 }
