@@ -35,13 +35,19 @@ def main():
                 continue
 
             for period_name, days in periods.items():
-                # 과거 날짜 계산 (영업일 기준으로 대략 추정)
                 from datetime import datetime, timedelta
-                past_date = datetime.strptime(biz_date, "%Y%m%d") - timedelta(days=int(days * 1.5))
-                past_str = past_date.strftime("%Y%m%d")
+                target = datetime.strptime(biz_date, "%Y%m%d") - timedelta(days=int(days * 1.5))
 
-                df_past = stock.get_market_ohlcv(past_str, market=market)
-                if df_past is None or df_past.empty:
+                # 타겟 날짜부터 최대 7일 뒤로 가면서 영업일 찾기
+                df_past = None
+                for offset in range(8):
+                    try_date = (target - timedelta(days=offset)).strftime("%Y%m%d")
+                    df_past = stock.get_market_ohlcv(try_date, market=market)
+                    if df_past is not None and not df_past.empty:
+                        break
+                    df_past = None
+
+                if df_past is None:
                     continue
 
                 for ticker in df_today.index:
