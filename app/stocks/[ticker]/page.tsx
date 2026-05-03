@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell,
 } from "recharts";
@@ -114,6 +115,7 @@ function SupplyChart({ title, data }: { title: string; data: Record<string, numb
 /* ── 메인 ─────────────────────────────────────── */
 export default function StockDetailPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = use(params);
+  const router = useRouter();
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -140,7 +142,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       <div className="text-center py-20 text-[var(--text-muted)]">
         종목을 찾을 수 없습니다.
         <div className="mt-4">
-          <Link href="/stocks" className="text-[var(--accent-blue)] hover:underline text-sm">← 종목 목록으로</Link>
+          <button onClick={() => router.back()} className="text-[var(--accent-blue)] hover:underline text-sm">← 뒤로가기</button>
         </div>
       </div>
     );
@@ -155,7 +157,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       {/* 헤더 */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/stocks" className="text-[var(--text-muted)] hover:text-white transition text-sm">← 목록</Link>
+          <button onClick={() => router.back()} className="text-[var(--text-muted)] hover:text-white transition text-sm">← 목록</button>
           <div className="w-px h-4 bg-white/10" />
           <h1 className="text-xl sm:text-2xl font-bold">{stockData.name}</h1>
           <span className={`text-[10px] px-2 py-0.5 rounded-lg font-medium ${

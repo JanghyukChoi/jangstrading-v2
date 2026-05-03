@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 
 /* ── 타입 ─────────────────────────────────────── */
 interface StockRanking {
@@ -104,18 +105,43 @@ function FilterGroup<T extends string>({
 
 /* ── 메인 ─────────────────────────────────────── */
 export default function StocksPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [marketFilter, setMarketFilter] = useState<"ALL" | "KOSPI" | "KOSDAQ">("ALL");
-  const [investor, setInvestor] = useState<Investor>("combined");
-  const [period, setPeriod] = useState<Period>("1m");
-  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
-  const [sortBy, setSortBy] = useState<"amount" | "ratio">("amount");
-  const [signalFilter, setSignalFilter] = useState<Signal>("all");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
+
+  // URL에서 필터 상태 읽기
+  const signalFilter = (searchParams.get("signal") as Signal) || "all";
+  const period = (searchParams.get("period") as Period) || "1m";
+  const marketFilter = (searchParams.get("market") as "ALL" | "KOSPI" | "KOSDAQ") || "ALL";
+  const investor = (searchParams.get("investor") as Investor) || "combined";
+  const sortDir = (searchParams.get("dir") as "desc" | "asc") || "desc";
+  const sortBy = (searchParams.get("sort") as "amount" | "ratio") || "amount";
+
+  // URL 파라미터 업데이트 (필터 변경 시)
+  function updateParams(updates: Record<string, string>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === "all" || v === "1m" || v === "ALL" || v === "combined" || v === "desc" || v === "amount") {
+        params.delete(k); // 기본값이면 URL에서 제거
+      } else {
+        params.set(k, v);
+      }
+    }
+    const qs = params.toString();
+    router.push(`/stocks${qs ? `?${qs}` : ""}`, { scroll: false });
+  }
+
+  function setSignalFilter(v: Signal) { updateParams({ signal: v }); }
+  function setPeriod(v: Period) { updateParams({ period: v }); }
+  function setMarketFilter(v: "ALL" | "KOSPI" | "KOSDAQ") { updateParams({ market: v }); }
+  function setInvestor(v: Investor) { updateParams({ investor: v }); }
+  function setSortDir(v: "desc" | "asc") { updateParams({ dir: v }); }
+  function setSortBy(v: "amount" | "ratio") { updateParams({ sort: v }); }
 
   useEffect(() => {
     Promise.all([
@@ -274,13 +300,13 @@ export default function StocksPage() {
               value={period} onChange={setPeriod}
             />
             <button
-              onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+              onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
               className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
             >
               {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
             </button>
             <button
-              onClick={() => setSortBy((s) => (s === "amount" ? "ratio" : "amount"))}
+              onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
               className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
                 sortBy === "ratio"
                   ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 
 /* ── 타입 ─────────────────────────────────────── */
 interface StockRanking {
@@ -81,14 +82,20 @@ function SectorBar({ value, max }: { value: number; max: number }) {
 
 /* ── 메인 ─────────────────────────────────────── */
 export default function SectorsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
   const [themeMap, setThemeMap] = useState<Record<string, string[]>>({});
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<View>("large");
+  const view = (searchParams.get("view") as View) || "large";
   const [investor, setInvestor] = useState<Investor>("combined");
   const [period, setPeriod] = useState<Period>("1m");
   const [sortBy, setSortBy] = useState<"amount" | "ratio">("amount");
+
+  function setView(v: View) {
+    router.push(`/sectors?view=${v}`, { scroll: false });
+  }
 
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관" };
