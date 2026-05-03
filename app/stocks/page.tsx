@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -104,7 +104,7 @@ function FilterGroup<T extends string>({
 }
 
 /* ── 메인 ─────────────────────────────────────── */
-export default function StocksPage() {
+function StocksPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
@@ -122,21 +122,26 @@ export default function StocksPage() {
   const sortDir = (searchParams.get("dir") as "desc" | "asc") || "desc";
   const sortBy = (searchParams.get("sort") as "amount" | "ratio") || "amount";
 
-  // URL 파라미터 업데이트 (필터 변경 시)
-  function updateParams(updates: Record<string, string>) {
+  // URL 파라미터 업데이트
+  function updateParams(updates: Record<string, string>, addHistory = false) {
     const params = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(updates)) {
       if (v === "all" || v === "1m" || v === "ALL" || v === "combined" || v === "desc" || v === "amount") {
-        params.delete(k); // 기본값이면 URL에서 제거
+        params.delete(k);
       } else {
         params.set(k, v);
       }
     }
     const qs = params.toString();
-    router.push(`/stocks${qs ? `?${qs}` : ""}`, { scroll: false });
+    const url = `/stocks${qs ? `?${qs}` : ""}`;
+    if (addHistory) {
+      router.push(url, { scroll: false });
+    } else {
+      router.replace(url, { scroll: false });
+    }
   }
 
-  function setSignalFilter(v: Signal) { updateParams({ signal: v }); }
+  function setSignalFilter(v: Signal) { updateParams({ signal: v }, true); } // 탭 → 히스토리 O
   function setPeriod(v: Period) { updateParams({ period: v }); }
   function setMarketFilter(v: "ALL" | "KOSPI" | "KOSDAQ") { updateParams({ market: v }); }
   function setInvestor(v: Investor) { updateParams({ investor: v }); }
@@ -410,5 +415,13 @@ export default function StocksPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function StocksPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" /></div>}>
+      <StocksPageInner />
+    </Suspense>
   );
 }

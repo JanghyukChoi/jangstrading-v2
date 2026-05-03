@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -81,7 +81,7 @@ function SectorBar({ value, max }: { value: number; max: number }) {
 }
 
 /* ── 메인 ─────────────────────────────────────── */
-export default function SectorsPage() {
+function SectorsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
@@ -94,7 +94,7 @@ export default function SectorsPage() {
   const [sortBy, setSortBy] = useState<"amount" | "ratio">("amount");
 
   function setView(v: View) {
-    router.push(`/sectors?view=${v}`, { scroll: false });
+    router.push(`/sectors?view=${v}`, { scroll: false }); // 탭 → 히스토리 O
   }
 
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
@@ -298,5 +298,13 @@ export default function SectorsPage() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function SectorsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" /></div>}>
+      <SectorsPageInner />
+    </Suspense>
   );
 }
