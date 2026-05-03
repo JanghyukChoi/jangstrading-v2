@@ -223,6 +223,71 @@ function FlowChart({ title, data }: { title: string; data: MarketData | null }) 
   );
 }
 
+/* ── 수급 집중도 ──────────────────────────────── */
+function ConcentrationCard({ title, stocks, investorKey, color }: {
+  title: string;
+  stocks: StockRanking[];
+  investorKey: "foreign" | "institution";
+  color: string;
+}) {
+  // 순매수 양수인 종목만 대상
+  const buyers = stocks
+    .filter((s) => s[investorKey]["1m"] > 0)
+    .sort((a, b) => b[investorKey]["1m"] - a[investorKey]["1m"]);
+
+  const totalBuy = buyers.reduce((sum, s) => sum + s[investorKey]["1m"], 0);
+  const top5 = buyers.slice(0, 5);
+  const top5Sum = top5.reduce((sum, s) => sum + s[investorKey]["1m"], 0);
+  const pct = totalBuy > 0 ? Math.round(top5Sum / totalBuy * 1000) / 10 : 0;
+
+  const badgeLabel = pct >= 70 ? "집중 매수" : pct >= 40 ? "보통" : "분산 매수";
+  const badgeColor = pct >= 70
+    ? "bg-red-500/[0.12] text-[#f85149]"
+    : pct >= 40
+    ? "bg-amber-500/[0.12] text-[#d29922]"
+    : "bg-green-500/[0.12] text-[#3fb950]";
+
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 flex-1 min-w-0">
+      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mb-1">{title}</p>
+      <div className="flex items-baseline gap-2 mb-1">
+        <span className="text-2xl sm:text-3xl font-semibold num">{pct}%</span>
+        <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md font-medium ${badgeColor}`}>{badgeLabel}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)] mb-3">상위 5종목이 전체 순매수의 {pct}%</p>
+
+      {/* 바 */}
+      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden flex mb-3">
+        <div className="h-full rounded-l-full" style={{ width: `${pct}%`, background: color }} />
+        <div className="h-full" style={{ width: `${100 - pct}%`, background: "rgba(255,255,255,0.06)" }} />
+      </div>
+
+      {/* 상위 5 종목 */}
+      <div className="space-y-0">
+        {top5.map((s, i) => {
+          const stockPct = totalBuy > 0 ? (s[investorKey]["1m"] / totalBuy * 100).toFixed(1) : "0";
+          return (
+            <div key={s.name} className="flex items-center justify-between py-1.5 border-t border-white/[0.03] first:border-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[var(--text-muted)] num text-[10px] w-4 shrink-0">{i + 1}</span>
+                {s.ticker ? (
+                  <Link href={`/stocks/${s.ticker}`} className="text-[12px] sm:text-[13px] text-white font-medium hover:text-[var(--accent-blue)] transition truncate">
+                    {s.name}
+                  </Link>
+                ) : (
+                  <span className="text-[12px] sm:text-[13px] text-white font-medium truncate">{s.name}</span>
+                )}
+                <span className="text-[10px] text-[var(--text-muted)] shrink-0">{fmtUnit(s[investorKey]["1m"])}</span>
+              </div>
+              <span className="num text-[12px] font-medium shrink-0" style={{ color }}>{stockPct}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ── TOP 10 테이블 ────────────────────────────── */
 function TopTable({ title, desc, stocks, type }: { title: string; desc: string; stocks: StockRanking[]; type: "buy" | "sell" }) {
   const sorted = [...stocks]
@@ -297,6 +362,10 @@ export default function Dashboard() {
         <FlowChart title="KOSDAQ 투자자별 자금흐름" data={market?.KOSDAQ ?? null} />
       </div>
       <ConsensusChart stocks={stocks} />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <ConcentrationCard title="외국인 1개월 수급 집중도" stocks={stocks} investorKey="foreign" color="#f85149" />
+        <ConcentrationCard title="기관 1개월 수급 집중도" stocks={stocks} investorKey="institution" color="#58a6ff" />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopTable title="1개월 순매수 TOP 10" desc="외국인+기관 합산 순매수 금액 기준" stocks={stocks} type="buy" />
         <TopTable title="1개월 순매도 TOP 10" desc="외국인+기관 합산 순매도 금액 기준" stocks={stocks} type="sell" />
