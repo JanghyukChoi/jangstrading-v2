@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
+  PieChart, Pie, Cell,
 } from "recharts";
 
 /* ── 타입 ─────────────────────────────────────── */
@@ -17,6 +18,8 @@ interface StockRanking {
   name: string;
   market: string;
   ticker?: string;
+  market_cap?: number | null;
+  price_change?: Record<string, number>;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -41,6 +44,98 @@ function CNum({ v, suffix = "" }: { v: number | null; suffix?: string }) {
   if (v == null) return <span className="num text-[var(--text-muted)]">-</span>;
   const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
   return <span className={`num ${cls}`}>{fmtUnit(v)}{suffix}</span>;
+}
+
+/* ── 외국인 vs 기관 방향 일치 ─────────────────── */
+function ConsensusChart({ stocks, period = "1m" }: { stocks: StockRanking[]; period?: string }) {
+  // 시총 1000억 이상만
+  const filtered = stocks.filter((s) => (s.market_cap ?? 0) >= 1000);
+
+  let bothBuy = 0, bothSell = 0, mixed = 0;
+  for (const s of filtered) {
+    const f = s.foreign[period] ?? 0;
+    const i = s.institution[period] ?? 0;
+    if (f > 0 && i > 0) bothBuy++;
+    else if (f < 0 && i < 0) bothSell++;
+    else mixed++;
+  }
+
+  const data = [
+    { name: "동시 순매수", value: bothBuy, color: "#f85149" },
+    { name: "엇갈림", value: mixed, color: "#484f58" },
+    { name: "동시 순매도", value: bothSell, color: "#58a6ff" },
+  ];
+
+  const total = bothBuy + bothSell + mixed;
+
+  const customTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.[0]) return null;
+    const d = payload[0].payload;
+    const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
+    return (
+      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl">
+        <span style={{ color: d.color }}>{d.name}</span>
+        <span className="text-white ml-2 num">{d.value}종목 ({pct}%)</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">외국인 vs 기관 방향 일치</h3>
+      <p className="text-[10px] text-[var(--text-muted)] mb-4">1개월 기준 · 시총 1천억 이상</p>
+
+      <div className="flex items-center gap-6">
+        {/* 도넛 차트 */}
+        <div className="w-32 h-32 sm:w-40 sm:h-40 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius="55%"
+                outerRadius="85%"
+                paddingAngle={3}
+                dataKey="value"
+                stroke="none"
+              >
+                {data.map((d, i) => (
+                  <Cell key={i} fill={d.color} />
+                ))}
+              </Pie>
+              <Tooltip content={customTooltip} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 범례 */}
+        <div className="flex-1 space-y-3">
+          {data.map((d) => {
+            const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
+            return (
+              <div key={d.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: d.color }} />
+                  <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)]">{d.name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[13px] sm:text-sm text-white font-semibold num">{d.value}</span>
+                  <span className="text-[11px] text-[var(--text-muted)] ml-1">({pct}%)</span>
+                </div>
+              </div>
+            );
+          })}
+          <div className="pt-2 border-t border-white/[0.04]">
+            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+              <span>전체</span>
+              <span className="num">{total}종목</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* ── 인덱스 카드 ──────────────────────────────── */
@@ -201,6 +296,7 @@ export default function Dashboard() {
         <FlowChart title="KOSPI 투자자별 자금흐름" data={market?.KOSPI ?? null} />
         <FlowChart title="KOSDAQ 투자자별 자금흐름" data={market?.KOSDAQ ?? null} />
       </div>
+      <ConsensusChart stocks={stocks} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopTable title="1개월 순매수 TOP 10" desc="외국인+기관 합산 순매수 금액 기준" stocks={stocks} type="buy" />
         <TopTable title="1개월 순매도 TOP 10" desc="외국인+기관 합산 순매도 금액 기준" stocks={stocks} type="sell" />

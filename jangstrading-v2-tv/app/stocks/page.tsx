@@ -56,23 +56,23 @@ function getSignals(s: StockRanking): { key: Signal; label: string; color: strin
   const c = s.combined;
   const pc = s.price_change;
 
-  // 매수전환: 3개월 50억+ 순매도 → 1주 5억+ 순매수 전환
-  if (c["3m"] < -5000 && c["1w"] > 500) {
+  // 매수 전환: 3개월 순매도 → 1주일 순매수 전환
+  if (c["3m"] < 0 && c["1w"] > 0 && c["1w"] > Math.abs(c["1d"]) * 0.3) {
     signals.push({ key: "buy_reversal", label: "매수전환", color: "bg-emerald-500/15 text-emerald-400" });
   }
 
-  // 매도전환: 3개월 50억+ 순매수 → 1주 5억+ 순매도 전환
-  if (c["3m"] > 5000 && c["1w"] < -500) {
+  // 매도 전환: 3개월 순매수 → 1주일 순매도 전환
+  if (c["3m"] > 0 && c["1w"] < 0 && Math.abs(c["1w"]) > Math.abs(c["1d"]) * 0.3) {
     signals.push({ key: "sell_reversal", label: "매도전환", color: "bg-orange-500/15 text-orange-400" });
   }
 
-  // 괴리: 1개월 50억+ 순매수인데 주가 5%+ 하락
-  if (pc && c["1m"] > 5000 && (pc["1m"] ?? 0) < -5) {
+  // 수급+주가 괴리: 1개월 순매수인데 주가 하락 (저가매수 기회)
+  if (pc && c["1m"] > 0 && (pc["1m"] ?? 0) < -3) {
     signals.push({ key: "divergence", label: "괴리", color: "bg-amber-500/15 text-amber-400" });
   }
 
-  // 집중매수: 1일/1주/1개월 전부 양수 + 1개월 50억+ + 규모 증가세
-  if (c["1d"] > 50 && c["1w"] > 500 && c["1m"] > 5000 && c["1w"] > c["1d"] * 3) {
+  // 집중 매수: 1일/1주/1개월 전부 양수 + 점점 증가
+  if (c["1d"] > 0 && c["1w"] > 0 && c["1m"] > 0 && c["1w"] > c["1d"] * 3) {
     signals.push({ key: "accumulation", label: "집중매수", color: "bg-rose-500/15 text-rose-400" });
   }
 
@@ -133,25 +133,13 @@ export default function StocksPage() {
       const q = search.trim().toLowerCase();
       r = r.filter((s) => s.name.toLowerCase().includes(q));
     }
-
-    // 신호 필터 → 자동 정렬
-    if (signalFilter !== "all") {
-      r = r.filter((s) => getSignals(s).some((sig) => sig.key === signalFilter));
-      // 신호별 최적 정렬
-      return [...r].sort((a, b) => {
-        switch (signalFilter) {
-          case "buy_reversal": return b.combined["1w"] - a.combined["1w"]; // 1주 순매수 큰 순
-          case "sell_reversal": return a.combined["1w"] - b.combined["1w"]; // 1주 순매도 큰 순
-          case "divergence": return b.combined["1m"] - a.combined["1m"]; // 1개월 순매수 큰 순
-          case "accumulation": return b.combined["1m"] - a.combined["1m"]; // 1개월 순매수 큰 순
-          default: return 0;
-        }
-      });
-    }
-
     // 시총대비 정렬 시: 시총 1000억 이상 + 스팩 제외
     if (sortBy === "ratio") {
       r = r.filter((s) => (s.market_cap ?? 0) >= 1000 && !s.name.includes("스팩") && !s.name.includes("SPAC"));
+    }
+    // 신호 필터
+    if (signalFilter !== "all") {
+      r = r.filter((s) => getSignals(s).some((sig) => sig.key === signalFilter));
     }
     return [...r].sort((a, b) => {
       if (sortBy === "ratio") {
@@ -176,13 +164,9 @@ export default function StocksPage() {
     };
   }, [allStocks]);
 
-  // 신호 활성 시 표시 기간 자동 결정
-  const displayPeriod: Period = signalFilter === "all" ? period :
-    (signalFilter === "buy_reversal" || signalFilter === "sell_reversal") ? "1w" : "1m";
-
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(s[investor][displayPeriod])), 1) : 1;
+  const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(s[investor][period])), 1) : 1;
   const hasPer = allStocks.some((s) => s.per != null);
 
   useEffect(() => setPage(0), [search, marketFilter, investor, period, sortDir, sortBy, signalFilter]);
@@ -234,11 +218,11 @@ export default function StocksPage() {
 
       {/* 신호 설명 (필터 선택 시) */}
       {signalFilter !== "all" && (
-        <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
-          {signalFilter === "buy_reversal" && "3개월간 50억원 이상 순매도했으나, 최근 1주일 5억원 이상 순매수로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "sell_reversal" && "3개월간 50억원 이상 순매수했으나, 최근 1주일 5억원 이상 순매도로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "divergence" && "1개월간 50억원 이상 순매수인데 주가는 5% 이상 하락한 종목 — 수급과 가격의 괴리"}
-          {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며, 1개월 50억원 이상 + 매수 규모가 증가하는 종목"}
+        <div className="text-[11px] text-[var(--text-muted)] bg-white/[0.02] rounded-xl px-4 py-2.5 border border-white/[0.04]">
+          {signalFilter === "buy_reversal" && "3개월간 순매도했으나, 최근 1주일 순매수로 전환된 종목 (시총 1천억 이상)"}
+          {signalFilter === "sell_reversal" && "3개월간 순매수했으나, 최근 1주일 순매도로 전환된 종목 (시총 1천억 이상)"}
+          {signalFilter === "divergence" && "1개월간 외국인+기관 순매수인데 주가는 3% 이상 하락한 종목 — 수급과 가격의 괴리"}
+          {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며 매수 규모가 증가하는 종목"}
         </div>
       )}
 
@@ -260,37 +244,33 @@ export default function StocksPage() {
           options={[{ key: "ALL" as const, label: "전체" }, { key: "KOSPI" as const, label: "KOSPI" }, { key: "KOSDAQ" as const, label: "KOSDAQ" }]}
           value={marketFilter} onChange={setMarketFilter}
         />
-        {signalFilter === "all" && (
-          <>
-            <select
-              value={investor}
-              onChange={(e) => setInvestor(e.target.value as Investor)}
-              className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
-            >
-              {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <FilterGroup
-              options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
-              value={period} onChange={setPeriod}
-            />
-            <button
-              onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
-              className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
-            >
-              {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
-            </button>
-            <button
-              onClick={() => setSortBy((s) => (s === "amount" ? "ratio" : "amount"))}
-              className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
-                sortBy === "ratio"
-                  ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
-                  : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
-              }`}
-            >
-              {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
-            </button>
-          </>
-        )}
+        <select
+          value={investor}
+          onChange={(e) => setInvestor(e.target.value as Investor)}
+          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
+        >
+          {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <FilterGroup
+          options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
+          value={period} onChange={setPeriod}
+        />
+        <button
+          onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+        >
+          {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
+        </button>
+        <button
+          onClick={() => setSortBy((s) => (s === "amount" ? "ratio" : "amount"))}
+          className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
+            sortBy === "ratio"
+              ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
+              : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
+          }`}
+        >
+          {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
+        </button>
       </div>
 
       {/* 테이블 */}
@@ -303,16 +283,16 @@ export default function StocksPage() {
                 <th className="text-left px-2 sm:px-3 py-3 font-normal">종목</th>
                 <th className="text-left px-2 py-3 font-normal w-14 hidden sm:table-cell">시장</th>
                 {hasPer && <th className="text-right px-2 py-3 font-normal hidden md:table-cell">PER</th>}
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">합계{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">기관</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">합계</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">시총대비</th>
                 <th className="px-3 py-3 w-16 hidden sm:table-cell"></th>
               </tr>
             </thead>
             <tbody>
               {paged.map((s, i) => {
-                const ratio = calcRatio(s[investor][displayPeriod], s.market_cap);
+                const ratio = calcRatio(s[investor][period], s.market_cap);
                 const signals = getSignals(s);
                 return (
                   <tr key={s.name} className="border-t border-white/[0.03] hover:bg-white/[0.02] transition">
@@ -343,9 +323,9 @@ export default function StocksPage() {
                         {s.per != null ? s.per.toFixed(1) : "-"}
                       </td>
                     )}
-                    <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[displayPeriod]} /></td>
-                    <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.institution[displayPeriod]} /></td>
-                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={s.combined[displayPeriod]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[period]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.institution[period]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={s.combined[period]} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right">
                       {ratio != null ? (
                         <span className={`num text-xs ${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
@@ -355,7 +335,7 @@ export default function StocksPage() {
                         <span className="text-[var(--text-muted)]">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 hidden sm:table-cell"><PurchaseBar value={s[investor][displayPeriod]} max={maxVal} /></td>
+                    <td className="px-3 py-2.5 hidden sm:table-cell"><PurchaseBar value={s[investor][period]} max={maxVal} /></td>
                   </tr>
                 );
               })}
