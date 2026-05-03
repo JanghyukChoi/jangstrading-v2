@@ -1,11 +1,6 @@
 """
-stock-rankings.json에 업종(sector) 필드를 추가하는 스크립트
-public/data/sector-map.json (티커→업종 매핑)을 읽어서 적용
-
-CSV를 갱신하려면:
-  1. data.krx.co.kr → 기본통계 → 주식 → 업종분류 현황
-  2. KOSPI/KOSDAQ 각각 CSV 다운로드
-  3. 이 스크립트 상단의 CSV 파싱 코드로 sector-map.json 재생성
+stock-rankings.json에 WICS 업종(대분류/중분류) 필드를 추가하는 스크립트
+sector-map.json에서 매핑 데이터를 읽어 적용
 
 실행: python scripts/add_sectors.py
 """
@@ -21,7 +16,7 @@ def main():
     sector_map_path = DATA_DIR / "sector-map.json"
 
     if not sector_map_path.exists():
-        print("❌ sector-map.json이 없습니다. public/data/에 넣어주세요.")
+        print("❌ sector-map.json이 없습니다. 먼저 python scripts/fetch_wics.py를 실행하세요.")
         return
 
     with open(rankings_path, "r", encoding="utf-8") as f:
@@ -37,10 +32,13 @@ def main():
     for item in data["data"]:
         ticker = item.get("ticker", "")
         if ticker and ticker in sector_map:
-            item["sector"] = sector_map[ticker]
+            s = sector_map[ticker]
+            item["sector"] = s.get("large", "기타")
+            item["sector_mid"] = s.get("mid", "기타")
             matched += 1
         else:
-            item.setdefault("sector", "기타")
+            item["sector"] = "기타"
+            item["sector_mid"] = "기타"
 
     print(f"✅ {matched}/{len(data['data'])} 종목 섹터 매칭 완료")
 

@@ -10,6 +10,7 @@ interface StockRanking {
   market: string;
   ticker?: string;
   sector?: string;
+  sector_mid?: string;
   market_cap?: number | null;
   per?: number | null;
   foreign: Record<string, number>;
@@ -63,6 +64,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
   const router = useRouter();
 
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
+  const [themeMap, setThemeMap] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [investor, setInvestor] = useState<Investor>("combined");
   const [period, setPeriod] = useState<Period>("1m");
@@ -71,21 +73,33 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관" };
 
   useEffect(() => {
-    fetch("/data/stock-rankings.json")
-      .then((r) => r.json())
-      .then((d) => setAllStocks(d.data))
+    Promise.all([
+      fetch("/data/stock-rankings.json").then((r) => r.json()),
+      fetch("/data/theme-map.json").then((r) => r.json()).catch(() => ({})),
+    ])
+      .then(([s, t]) => { setAllStocks(s.data); setThemeMap(t); })
       .finally(() => setLoading(false));
   }, []);
 
   const sectorStocks = useMemo(() => {
-    return allStocks
-      .filter((s) => (s.sector || "기타") === sectorName)
-      .sort((a, b) => {
-        const av = a[investor][period] ?? 0;
-        const bv = b[investor][period] ?? 0;
-        return bv - av;
-      });
-  }, [allStocks, sectorName, investor, period]);
+    // 테마 매핑에 있으면 테마 기준, 아니면 섹터 기준
+    const themeTickers = themeMap[sectorName];
+    let filtered: StockRanking[];
+    if (themeTickers) {
+      const tickerSet = new Set(themeTickers);
+      filtered = allStocks.filter((s) => s.ticker && tickerSet.has(s.ticker));
+    } else {
+      filtered = allStocks.filter((s) =>
+        (s.sector_mid || s.sector || "기타") === sectorName ||
+        (s.sector || "기타") === sectorName
+      );
+    }
+    return filtered.sort((a, b) => {
+      const av = a[investor][period] ?? 0;
+      const bv = b[investor][period] ?? 0;
+      return bv - av;
+    });
+  }, [allStocks, themeMap, sectorName, investor, period]);
 
   // 섹터 합계
   const totals = useMemo(() => {

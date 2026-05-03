@@ -1,0 +1,127 @@
+"""
+WICS 업종분류 데이터를 wiseindex.com에서 자동 수집하는 스크립트
+대분류(10개) + 중분류(25개)를 가져와서 sector-map.json으로 저장
+
+실행: python scripts/fetch_wics.py
+자동화: GitHub Actions에서 매일 실행 (업종분류 변경 자동 반영)
+"""
+
+import json
+import time
+import requests
+from pathlib import Path
+from datetime import datetime, timedelta
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "public" / "data"
+
+# WICS 대분류 (10개)
+LARGE_SECTORS = {
+    "G10": "에너지",
+    "G15": "소재",
+    "G20": "산업재",
+    "G25": "경기관련소비재",
+    "G30": "필수소비재",
+    "G35": "건강관리",
+    "G40": "금융",
+    "G45": "IT",
+    "G50": "커뮤니케이션서비스",
+    "G55": "유틸리티",
+}
+
+# WICS 중분류 (25개)
+MID_SECTORS = {
+    "G1010": ("에너지", "에너지"),
+    "G1510": ("소재", "소재"),
+    "G2010": ("산업재", "자본재"),
+    "G2020": ("산업재", "상업서비스와공급품"),
+    "G2030": ("산업재", "운송"),
+    "G2510": ("경기관련소비재", "자동차와부품"),
+    "G2520": ("경기관련소비재", "내구소비재와의류"),
+    "G2530": ("경기관련소비재", "소비자서비스"),
+    "G2550": ("경기관련소비재", "소매(유통)"),
+    "G3010": ("필수소비재", "식품과기본식료품소매"),
+    "G3020": ("필수소비재", "식품·음료·담배"),
+    "G3030": ("필수소비재", "가정용품과개인용품"),
+    "G3510": ("건강관리", "건강관리장비와서비스"),
+    "G3520": ("건강관리", "제약과생물공학"),
+    "G4010": ("금융", "은행"),
+    "G4020": ("금융", "증권"),
+    "G4030": ("금융", "다각화된금융"),
+    "G4040": ("금융", "보험"),
+    "G4510": ("IT", "소프트웨어와서비스"),
+    "G4520": ("IT", "기술하드웨어와장비"),
+    "G4530": ("IT", "반도체와반도체장비"),
+    "G5010": ("커뮤니케이션서비스", "전기통신서비스"),
+    "G5020": ("커뮤니케이션서비스", "미디어와엔터테인먼트"),
+    "G5510": ("유틸리티", "유틸리티"),
+}
+
+BASE_URL = "https://www.wiseindex.com/Index/GetIndexComponets"
+
+
+def get_latest_date():
+    """stock-rankings.json에서 기준일을 읽는다"""
+    rankings_path = DATA_DIR / "stock-rankings.json"
+    if rankings_path.exists():
+        with open(rankings_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data["date"].replace("-", "")
+    # 없으면 최근 영업일 추정
+    today = datetime.today()
+    for i in range(7):
+        d = today - timedelta(days=i)
+        if d.weekday() < 5:
+            return d.strftime("%Y%m%d")
+    return today.strftime("%Y%m%d")
+
+
+def fetch_sector_stocks(sec_cd, date):
+    """특정 섹터 코드의 구성종목을 가져온다"""
+    try:
+        r = requests.get(
+            BASE_URL,
+            params={"ceil_yn": 0, "dt": date, "sec_cd": sec_cd},
+            timeout=15,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("list", [])
+    except Exception as e:
+        print(f"  ❌ {sec_cd} 실패: {e}")
+    return []
+
+
+def main():
+    date = get_latest_date()
+    print(f"📅 기준일: {date}")
+    print(f"📊 WICS 업종분류 수집 시작...")
+
+    mapping = {}  # ticker -> { large, mid }
+
+    # 중분류 기준으로 수집 (대분류는 중분류에서 자동 매핑)
+    for mid_cd, (large_name, mid_name) in MID_SECTORS.items():
+        stocks = fetch_sector_stocks(mid_cd, date)
+        for s in stocks:
+            ticker = s.get("CMP_CD", "")
+            if ticker:
+                mapping[ticker] = {
+                    "large": large_name,
+                    "mid": mid_name,
+                }
+        print(f"  ✅ {mid_name} ({large_name}): {len(stocks)}종목")
+        time.sleep(0.5)  # API 부하 방지
+
+    print(f"\n📋 총 {len(mapping)}개 종목 매핑 완료")
+
+    # 저장
+    sector_map_path = DATA_DIR / "sector-map.json"
+    with open(sector_map_path, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, ensure_ascii=False, indent=None)
+
+    size_kb = sector_map_path.stat().st_size / 1024
+    print(f"✅ sector-map.json 저장 완료 ({size_kb:.1f} KB)")
+
+
+if __name__ == "__main__":
+    main()

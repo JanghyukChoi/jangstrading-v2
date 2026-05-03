@@ -54,7 +54,12 @@ jobs:
         run: python scripts/add_avg_cost.py
 
       - name: Add sectors
-        run: python scripts/add_sectors.py
+        run: |
+          python scripts/fetch_wics.py
+          python scripts/add_sectors.py
+
+      - name: Fetch themes
+        run: python scripts/fetch_themes.py
 
       - name: Commit & Push
         run: |
