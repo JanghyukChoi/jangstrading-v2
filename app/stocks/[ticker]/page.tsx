@@ -17,6 +17,7 @@ interface StockData {
   bps?: number | null;
   div_yield?: number | null;
   market_cap?: number | null;
+  price_change?: Record<string, number>;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -216,7 +217,8 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
       {/* 상세 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">기간별 상세 (백만원)</h3>
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기간별 수급 vs 주가</h3>
+        <p className="text-[10px] text-[var(--text-muted)] mb-3">같은 기간 수급 금액과 주가 변동률을 비교하여 수급 대비 주가 반응을 확인</p>
         <table className="w-full text-[12px] sm:text-[13px]">
           <thead>
             <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
@@ -224,17 +226,33 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
               <th className="text-right py-2 font-normal">외국인</th>
               <th className="text-right py-2 font-normal">기관</th>
               <th className="text-right py-2 font-normal">합계</th>
+              <th className="text-right py-2 font-normal">주가 변동</th>
             </tr>
           </thead>
           <tbody>
-            {periods.map((p) => (
-              <tr key={p} className="border-t border-white/[0.03]">
-                <td className="py-2.5 text-[var(--text-secondary)]">{periodLabels[p]}</td>
-                <td className="py-2.5 text-right"><CNum v={stockData.foreign[p]}/></td>
-                <td className="py-2.5 text-right"><CNum v={stockData.institution[p]}/></td>
-                <td className="py-2.5 text-right font-medium"><CNum v={stockData.combined[p]}/></td>
-              </tr>
-            ))}
+            {periods.map((p) => {
+              const pc = stockData.price_change?.[p];
+              const combined = stockData.combined[p];
+              // 수급은 매수인데 주가가 하락 = 괴리 (하이라이트)
+              const isDivergence = combined > 0 && pc != null && pc < -3;
+              return (
+                <tr key={p} className={`border-t border-white/[0.03] ${isDivergence ? "bg-amber-500/[0.04]" : ""}`}>
+                  <td className="py-2.5 text-[var(--text-secondary)]">{periodLabels[p]}</td>
+                  <td className="py-2.5 text-right"><CNum v={stockData.foreign[p]}/></td>
+                  <td className="py-2.5 text-right"><CNum v={stockData.institution[p]}/></td>
+                  <td className="py-2.5 text-right font-medium"><CNum v={combined}/></td>
+                  <td className="py-2.5 text-right">
+                    {pc != null ? (
+                      <span className={`num ${pc > 0 ? "positive" : pc < 0 ? "negative" : "text-[var(--text-secondary)]"}`}>
+                        {pc > 0 ? "+" : ""}{pc.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="text-[var(--text-muted)]">-</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
