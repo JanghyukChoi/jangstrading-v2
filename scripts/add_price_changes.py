@@ -25,7 +25,7 @@ def main():
 
     # 각 종목의 기간별 수익률 수집
     price_changes = {}
-    periods = {"1w": 5, "1m": 20, "3m": 60}
+    periods = {"1d": 1, "1w": 5, "1m": 20, "3m": 60, "6m": 120}
 
     for market in ["KOSPI", "KOSDAQ"]:
         try:
