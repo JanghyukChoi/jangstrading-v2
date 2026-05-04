@@ -270,11 +270,13 @@ def main():
 
     # 4. 저장
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    from datetime import timezone, timedelta as td
+    kst = timezone(td(hours=9))
     report_data = {
         "date": date,
         "title": report["title"],
         "body": report["body"],
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.now(kst).strftime("%Y-%m-%d %H:%M KST"),
         "news_count": len(news),
     }
 
