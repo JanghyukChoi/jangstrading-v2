@@ -381,7 +381,20 @@ export default function Dashboard() {
     <div className="space-y-4">
       {meta && (
         <p className="text-[11px] text-[var(--text-muted)]">
-          기준일 {meta.business_date} {meta.last_updated} 업데이트
+          기준일 {meta.business_date} {(() => {
+            const t = meta.last_updated;
+            if (t.includes("시")) return t; // 이미 한국어 형식
+            // ISO 형식 → 한국어 변환
+            try {
+              const d = new Date(t);
+              if (isNaN(d.getTime())) return "";
+              d.setHours(d.getHours() + 9); // UTC → KST
+              const h = d.getHours();
+              const ampm = h < 12 ? "오전" : "오후";
+              const h12 = h <= 12 ? h : h - 12;
+              return `${ampm} ${h12 || 12}시 ${String(d.getMinutes()).padStart(2, "0")}분`;
+            } catch { return ""; }
+          })()} 업데이트
         </p>
       )}
 
