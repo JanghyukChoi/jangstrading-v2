@@ -11,11 +11,8 @@ interface StockRanking {
 }
 type Investor = "combined" | "foreign" | "institution";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-interface RSScore {
-  priceRS: number;  // 가격 상대강도 (종목 수익률 - 섹터 중앙값)
-  flowRS: number;   // 수급 상대강도 (종목 시총대비 수급 - 섹터 중앙값)
-  flowIntensity: number; // 시총대비 수급 (%)
-  tag: "leader" | "emerging" | "weakening" | "laggard";
+interface LeaderScore {
+  cls: number; tag: "leader" | "emerging" | "follower" | "laggard";
   tagLabel: string; tagColor: string; tagBg: string;
 }
 
@@ -40,70 +37,60 @@ function FilterGroup<T extends string>({ options, value, onChange }: { options: 
   );
 }
 
-/* ── 상대강도 판정 (Intra-Sector Relative Strength) ── */
-function calcRelativeStrength(stocks: StockRanking[], period: Period): Map<string, RSScore> {
-  const scores = new Map<string, RSScore>();
-  if (stocks.length < 2) return scores;
+function calcLeaderScores(stocks: StockRanking[], period: Period): Map<string, LeaderScore> {
+  const scores = new Map<string, LeaderScore>();
+  if (stocks.length === 0) return scores;
 
-  // 1. 각 종목의 가격 수익률, 시총대비 수급 계산
   const rawData = stocks.map((s) => {
-    const priceReturn = s.price_change?.[period] ?? 0;
     const flow = s.combined[period] ?? 0;
     const cap = s.market_cap ?? 0;
     const flowIntensity = cap > 0 ? (flow / cap) * 100 : 0;
-    return { stock: s, priceReturn, flowIntensity };
+    const priceMom = s.price_change?.[period] ?? 0;
+    const w = s.combined["1w"] ?? 0;
+    const m = s.combined["1m"] ?? 0;
+    const dailyW = w / 5;
+    const dailyM = m / 20;
+    const accel = dailyM !== 0 ? dailyW / dailyM : (dailyW > 0 ? 2 : 0);
+    return { stock: s, flow, flowIntensity, priceMom, accel };
   });
 
-  // 2. 섹터 중앙값 + 75분위수 계산
-  function percentile(arr: number[], p: number): number {
-    if (arr.length === 0) return 0;
-    const sorted = [...arr].sort((a, b) => a - b);
-    const idx = (p / 100) * (sorted.length - 1);
-    const lo = Math.floor(idx);
-    const hi = Math.ceil(idx);
-    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  const totalPosFlow = rawData.reduce((sum, d) => sum + Math.max(d.flow, 0), 0);
+
+  function pctRank(values: number[], val: number): number {
+    const below = values.filter((v) => v < val).length;
+    return values.length > 1 ? (below / (values.length - 1)) * 100 : 50;
+  }
+  const allInt = rawData.map((d) => d.flowIntensity);
+  const allMom = rawData.map((d) => d.priceMom);
+
+  const clsArr: { name: string; cls: number; d: typeof rawData[0] }[] = [];
+  for (const d of rawData) {
+    const share = totalPosFlow > 0 ? (Math.max(d.flow, 0) / totalPosFlow) * 100 : 0;
+    const nShare = Math.min(share * 5, 100);
+    const nInt = pctRank(allInt, d.flowIntensity);
+    const nMom = pctRank(allMom, d.priceMom);
+    const nAccel = Math.min(Math.max(d.accel, 0) * 50, 100);
+    const cls = d.flow > 0 ? 0.25 * nShare + 0.20 * nInt + 0.35 * nMom + 0.20 * nAccel : 0;
+    clsArr.push({ name: d.stock.name, cls, d });
   }
 
-  const medianPrice = percentile(rawData.map((d) => d.priceReturn), 50);
-  const medianFlow = percentile(rawData.map((d) => d.flowIntensity), 50);
-  const p75Price = percentile(rawData.map((d) => d.priceReturn), 75);
-  const p75Flow = percentile(rawData.map((d) => d.flowIntensity), 75);
+  const posCls = clsArr.filter((c) => c.cls > 0).map((c) => c.cls).sort((a, b) => a - b);
+  const p75 = posCls.length > 0 ? posCls[Math.floor(posCls.length * 0.75)] ?? 50 : 50;
+  const p50 = posCls.length > 0 ? posCls[Math.floor(posCls.length * 0.50)] ?? 30 : 30;
 
-  // 3. 상대강도 판정
-  for (const d of rawData) {
-    const priceRS = d.priceReturn - medianPrice;
-    const flowRS = d.flowIntensity - medianFlow;
-
-    let tag: RSScore["tag"], tagLabel: string, tagColor: string, tagBg: string;
-
-    if (d.priceReturn >= p75Price && d.flowIntensity >= p75Flow) {
-      // 주도주: 가격 AND 수급 둘 다 상위 25%
-      tag = "leader"; tagLabel = "주도주"; tagColor = "text-amber-400"; tagBg = "bg-amber-500/[0.1]";
-    } else if (flowRS >= 0 && priceRS < 0 && d.flowIntensity > 0) {
-      // 급부상: 수급 상위 50% + 가격 하위 50% + 실제 수급 양수
-      tag = "emerging"; tagLabel = "급부상"; tagColor = "text-emerald-400"; tagBg = "bg-emerald-500/[0.1]";
-    } else if (priceRS >= 0 && flowRS < 0) {
-      // 약화중: 가격 상위 50% + 수급 하위 50%
-      tag = "weakening"; tagLabel = "약화중"; tagColor = "text-orange-400"; tagBg = "bg-orange-500/[0.1]";
-    } else if (priceRS < 0 && flowRS < 0) {
-      // 소외: 둘 다 하위 50%
-      tag = "laggard"; tagLabel = "소외"; tagColor = "text-[var(--text-muted)]"; tagBg = "bg-white/[0.03]";
-    } else {
-      // 나머지: 태그 없음
-      tag = "laggard"; tagLabel = ""; tagColor = ""; tagBg = "";
-    }
-
-    scores.set(d.stock.name, {
-      priceRS: Math.round(priceRS * 100) / 100,
-      flowRS: Math.round(flowRS * 100) / 100,
-      flowIntensity: Math.round(d.flowIntensity * 100) / 100,
-      tag, tagLabel, tagColor, tagBg,
-    });
+  for (const c of clsArr) {
+    const d = c.d;
+    const share = totalPosFlow > 0 ? (Math.max(d.flow, 0) / totalPosFlow) * 100 : 0;
+    let tag: LeaderScore["tag"], tagLabel: string, tagColor: string, tagBg: string;
+    if (d.flow <= 0) { tag = "laggard"; tagLabel = "소외"; tagColor = "text-[var(--text-muted)]"; tagBg = "bg-white/[0.03]"; }
+    else if (c.cls >= p75 && share >= 3) { tag = "leader"; tagLabel = "주도주"; tagColor = "text-amber-400"; tagBg = "bg-amber-500/[0.1]"; }
+    else if (c.cls >= p50 && d.accel > 1.2) { tag = "emerging"; tagLabel = "급부상"; tagColor = "text-emerald-400"; tagBg = "bg-emerald-500/[0.1]"; }
+    else { tag = "follower"; tagLabel = ""; tagColor = ""; tagBg = ""; }
+    scores.set(d.stock.name, { cls: Math.round(c.cls * 10) / 10, tag, tagLabel, tagColor, tagBg });
   }
   return scores;
 }
 
-/* ── 메인 ── */
 export default function SectorDetailPage({ params }: { params: Promise<{ name: string }> }) {
   const { name } = use(params);
   const sectorName = decodeURIComponent(name);
@@ -131,7 +118,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
     return filtered.sort((a, b) => (b[investor][period] ?? 0) - (a[investor][period] ?? 0));
   }, [allStocks, themeMap, sectorName, investor, period]);
 
-  const rsScores = useMemo(() => calcRelativeStrength(sectorStocks, period), [sectorStocks, period]);
+  const leaderScores = useMemo(() => calcLeaderScores(sectorStocks, period), [sectorStocks, period]);
 
   const totals = useMemo(() => ({
     foreign: sectorStocks.reduce((sum, s) => sum + (s.foreign[period] ?? 0), 0),
@@ -140,15 +127,14 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
   }), [sectorStocks, period]);
 
   const tagCounts = useMemo(() => {
-    let leader = 0, emerging = 0, weakening = 0, laggard = 0;
-    rsScores.forEach((s) => {
-      if (s.tag === "leader" && s.tagLabel) leader++;
+    let leader = 0, emerging = 0, laggard = 0;
+    leaderScores.forEach((s) => {
+      if (s.tag === "leader") leader++;
       else if (s.tag === "emerging") emerging++;
-      else if (s.tag === "weakening") weakening++;
-      else if (s.tagLabel === "소외") laggard++;
+      else if (s.tag === "laggard" && s.tagLabel) laggard++;
     });
-    return { leader, emerging, weakening, laggard };
-  }, [rsScores]);
+    return { leader, emerging, laggard };
+  }, [leaderScores]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -170,21 +156,18 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
         </div>
       </div>
 
-      {/* 상대강도 분석 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
         <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">섹터 내 포지션 분석</h3>
         <div className="flex flex-wrap gap-3">
           {[
-            { l: "주도주", c: "bg-amber-400", tc: "text-amber-400", n: tagCounts.leader, desc: "가격↑ 수급↑" },
-            { l: "급부상", c: "bg-emerald-400", tc: "text-emerald-400", n: tagCounts.emerging, desc: "가격↓ 수급↑" },
-            { l: "약화중", c: "bg-orange-400", tc: "text-orange-400", n: tagCounts.weakening, desc: "가격↑ 수급↓" },
-            { l: "소외", c: "bg-white/10", tc: "text-[var(--text-muted)]", n: tagCounts.laggard, desc: "가격↓ 수급↓" },
+            { l: "주도주", c: "bg-amber-400", tc: "text-amber-400", n: tagCounts.leader },
+            { l: "급부상", c: "bg-emerald-400", tc: "text-emerald-400", n: tagCounts.emerging },
+            { l: "소외", c: "bg-white/10", tc: "text-[var(--text-muted)]", n: tagCounts.laggard },
           ].map((d) => (
             <div key={d.l} className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${d.c}`} />
               <span className={`text-[12px] ${d.tc}`}>{d.l}</span>
               <span className="text-[12px] text-white font-semibold num">{d.n}</span>
-              <span className="text-[9px] text-[var(--text-muted)]">{d.desc}</span>
             </div>
           ))}
         </div>
@@ -198,7 +181,6 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
         <FilterGroup options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))} value={period} onChange={setPeriod} />
       </div>
 
-      {/* 종목 리스트 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
@@ -210,7 +192,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
           <span className="w-14 text-right shrink-0 hidden sm:block">주가</span>
         </div>
         {sectorStocks.map((s, i) => {
-          const score = rsScores.get(s.name);
+          const score = leaderScores.get(s.name);
           const pc = s.price_change?.[period];
           return (
             <div key={s.name} className="flex items-center px-3 sm:px-5 py-2.5 border-t border-white/[0.03] hover:bg-white/[0.02] transition">
@@ -236,7 +218,6 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
           );
         })}
       </div>
-
     </div>
   );
 }
