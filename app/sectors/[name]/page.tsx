@@ -166,29 +166,29 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
 
       {/* 종목 리스트 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-4 sm:px-5 py-3">
-          <span className="w-8 shrink-0">#</span>
+        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
+          <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="flex-1 min-w-0">종목</span>
           <span className="w-14 text-left hidden sm:block">시장</span>
-          <span className="w-20 sm:w-24 text-right shrink-0">외국인</span>
-          <span className="w-20 sm:w-24 text-right shrink-0">기관</span>
-          <span className="w-20 sm:w-24 text-right shrink-0">합계</span>
-          <span className="w-16 text-right shrink-0">시총대비</span>
+          <span className="w-16 sm:w-24 text-right shrink-0">외국인</span>
+          <span className="w-16 sm:w-24 text-right shrink-0">기관</span>
+          <span className="w-16 sm:w-24 text-right shrink-0">합계</span>
+          <span className="w-16 text-right shrink-0 hidden sm:block">시총대비</span>
         </div>
 
         {sectorStocks.map((s, i) => {
           const netVal = investor === "foreign" ? s.foreign[period] : investor === "institution" ? s.institution[period] : s.combined[period];
           const ratio = s.market_cap && s.market_cap > 0 ? Math.round(netVal / s.market_cap * 1000) / 10 : null;
           return (
-          <div key={s.name} className="flex items-center px-4 sm:px-5 py-2.5 border-t border-white/[0.03] hover:bg-white/[0.02] transition">
-            <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs">{i + 1}</span>
+          <div key={s.name} className="flex items-center px-3 sm:px-5 py-2.5 border-t border-white/[0.03] hover:bg-white/[0.02] transition">
+            <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs hidden sm:block">{i + 1}</span>
             <div className="flex-1 min-w-0">
               {s.ticker ? (
-                <Link href={`/stocks/${s.ticker}`} className="text-white text-[12px] sm:text-[13px] font-medium hover:text-[var(--accent-blue)] transition truncate block">
+                <Link href={`/stocks/${s.ticker}`} className="text-white text-[11px] sm:text-[13px] font-medium hover:text-[var(--accent-blue)] transition truncate block">
                   {s.name}
                 </Link>
               ) : (
-                <span className="text-white text-[12px] sm:text-[13px] font-medium truncate block">{s.name}</span>
+                <span className="text-white text-[11px] sm:text-[13px] font-medium truncate block">{s.name}</span>
               )}
             </div>
             <span className="w-14 hidden sm:block">
@@ -196,10 +196,10 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
                 s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
               }`}>{s.market}</span>
             </span>
-            <span className="w-20 sm:w-24 text-right shrink-0 text-[12px] sm:text-[13px]"><CNum v={s.foreign[period]} /></span>
-            <span className="w-20 sm:w-24 text-right shrink-0 text-[12px] sm:text-[13px]"><CNum v={s.institution[period]} /></span>
-            <span className="w-20 sm:w-24 text-right shrink-0 text-[12px] sm:text-[13px] font-medium"><CNum v={s.combined[period]} /></span>
-            <span className="w-16 text-right shrink-0">
+            <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.foreign[period]} /></span>
+            <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.institution[period]} /></span>
+            <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={s.combined[period]} /></span>
+            <span className="w-16 text-right shrink-0 hidden sm:block">
               {ratio != null ? (
                 <span className={`num text-xs ${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
                   {ratio > 0 ? "+" : ""}{ratio.toFixed(1)}%
