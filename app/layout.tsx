@@ -43,28 +43,28 @@ function Header() {
           <SearchBar />
         </div>
 
-        <nav className="flex items-center gap-1 text-[13px]">
+        <nav className="flex items-center gap-0.5 sm:gap-1 text-[11px] sm:text-[13px]">
           <Link
             href="/"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
+            className="px-1.5 sm:px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
           >
             대시보드
           </Link>
           <Link
             href="/stocks"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
+            className="px-1.5 sm:px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
           >
-            종목 순매수
+            종목
           </Link>
           <Link
             href="/sectors"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
+            className="px-1.5 sm:px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
           >
-            섹터 순매수
+            섹터
           </Link>
           <Link
             href="/reports"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
+            className="px-1.5 sm:px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
           >
             AI 시황
           </Link>

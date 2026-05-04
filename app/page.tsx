@@ -348,14 +348,24 @@ export default function Dashboard() {
   const [stocks, setStocks] = useState<StockRanking[]>([]);
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [latestReport, setLatestReport] = useState<{ date: string; title: string; body: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
       fetch("/data/market-overview.json").then((r) => r.json()),
       fetch("/data/stock-rankings.json").then((r) => r.json()),
       fetch("/data/meta.json").then((r) => r.json()),
+      fetch("/data/reports/index.json").then((r) => r.json()).catch(() => []),
     ])
-      .then(([m, s, mt]) => { setMarket(m.data); setStocks(s.data); setMeta(mt); })
+      .then(([m, s, mt, idx]) => {
+        setMarket(m.data); setStocks(s.data); setMeta(mt);
+        if (idx.length > 0) {
+          fetch(`/data/reports/${idx[0].date}.json`)
+            .then((r) => r.json())
+            .then((r) => setLatestReport(r))
+            .catch(() => {});
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -371,8 +381,25 @@ export default function Dashboard() {
     <div className="space-y-4">
       {meta && (
         <p className="text-[11px] text-[var(--text-muted)]">
-          기준일 {meta.business_date} · {new Date(meta.last_updated).toLocaleString("ko-KR")} 업데이트
+          기준일 {meta.business_date} · {meta.last_updated} 업데이트
         </p>
+      )}
+
+      {/* AI 시황 미리보기 */}
+      {latestReport && (
+        <Link href={`/reports/${latestReport.date}`}
+          className="block bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5 hover:border-white/[0.12] transition"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
+            <span className="text-[10px] text-[var(--text-muted)] num">{latestReport.date}</span>
+          </div>
+          <h3 className="text-[14px] sm:text-[15px] text-white font-medium mb-1.5">{latestReport.title}</h3>
+          <p className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
+            {latestReport.body.slice(0, 150)}...
+          </p>
+          <span className="text-[11px] text-[var(--accent-blue)] mt-2 inline-block">자세히 보기 →</span>
+        </Link>
       )}
       <div className="flex flex-col sm:flex-row gap-4">
         <IndexCard name="KOSPI" data={market?.KOSPI ?? null} />
