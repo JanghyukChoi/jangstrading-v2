@@ -62,6 +62,12 @@ function Header() {
           >
             섹터 순매수
           </Link>
+          <Link
+            href="/reports"
+            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
+          >
+            AI 시황
+          </Link>
         </nav>
       </div>
     </header>
