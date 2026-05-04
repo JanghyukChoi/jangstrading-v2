@@ -381,7 +381,7 @@ export default function Dashboard() {
     <div className="space-y-4">
       {meta && (
         <p className="text-[11px] text-[var(--text-muted)]">
-          기준일 {meta.business_date} · {meta.last_updated} 업데이트
+          기준일 {meta.business_date} {meta.last_updated} 업데이트
         </p>
       )}
 

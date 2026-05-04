@@ -316,10 +316,19 @@ def fetch_market_overview(biz_date, biz_days):
 
 # ─── 4. 메타 정보 ──────────────────────────────────────
 def save_meta(biz_date):
-    """마지막 업데이트 시간 기록"""
+    """마지막 업데이트 시간 기록 (KST)"""
     print("\n📊 [4/4] 메타 정보 저장...")
+    from datetime import timezone, timedelta as td
+    kst = timezone(td(hours=9))
+    now = datetime.now(kst)
+    hour = now.hour
+    ampm = "오전" if hour < 12 else "오후"
+    h12 = hour if hour <= 12 else hour - 12
+    if h12 == 0:
+        h12 = 12
+    time_str = f"{ampm} {h12}시 {now.minute:02d}분"
     save_json("meta.json", {
-        "last_updated": datetime.now().isoformat(),
+        "last_updated": time_str,
         "business_date": str(biz_date),
         "version": "2.0",
     })
