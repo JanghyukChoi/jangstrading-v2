@@ -54,32 +54,43 @@ function calcRelativeStrength(stocks: StockRanking[], period: Period): Map<strin
     return { stock: s, priceReturn, flowIntensity };
   });
 
-  // 2. 섹터 중앙값 계산 (평균보다 이상치에 강건)
-  function median(arr: number[]): number {
+  // 2. 섹터 중앙값 + 75분위수 계산
+  function percentile(arr: number[], p: number): number {
     if (arr.length === 0) return 0;
     const sorted = [...arr].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    const idx = (p / 100) * (sorted.length - 1);
+    const lo = Math.floor(idx);
+    const hi = Math.ceil(idx);
+    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
   }
 
-  const medianPrice = median(rawData.map((d) => d.priceReturn));
-  const medianFlow = median(rawData.map((d) => d.flowIntensity));
+  const medianPrice = percentile(rawData.map((d) => d.priceReturn), 50);
+  const medianFlow = percentile(rawData.map((d) => d.flowIntensity), 50);
+  const p75Price = percentile(rawData.map((d) => d.priceReturn), 75);
+  const p75Flow = percentile(rawData.map((d) => d.flowIntensity), 75);
 
-  // 3. 상대강도 = 종목값 - 섹터 중앙값
+  // 3. 상대강도 판정
   for (const d of rawData) {
     const priceRS = d.priceReturn - medianPrice;
     const flowRS = d.flowIntensity - medianFlow;
 
     let tag: RSScore["tag"], tagLabel: string, tagColor: string, tagBg: string;
 
-    if (priceRS >= 0 && flowRS >= 0) {
+    if (d.priceReturn >= p75Price && d.flowIntensity >= p75Flow) {
+      // 주도주: 가격 AND 수급 둘 다 상위 25%
       tag = "leader"; tagLabel = "주도주"; tagColor = "text-amber-400"; tagBg = "bg-amber-500/[0.1]";
-    } else if (priceRS < 0 && flowRS >= 0) {
+    } else if (flowRS >= 0 && priceRS < 0 && d.flowIntensity > 0) {
+      // 급부상: 수급 상위 50% + 가격 하위 50% + 실제 수급 양수
       tag = "emerging"; tagLabel = "급부상"; tagColor = "text-emerald-400"; tagBg = "bg-emerald-500/[0.1]";
     } else if (priceRS >= 0 && flowRS < 0) {
+      // 약화중: 가격 상위 50% + 수급 하위 50%
       tag = "weakening"; tagLabel = "약화중"; tagColor = "text-orange-400"; tagBg = "bg-orange-500/[0.1]";
-    } else {
+    } else if (priceRS < 0 && flowRS < 0) {
+      // 소외: 둘 다 하위 50%
       tag = "laggard"; tagLabel = "소외"; tagColor = "text-[var(--text-muted)]"; tagBg = "bg-white/[0.03]";
+    } else {
+      // 나머지: 태그 없음
+      tag = "laggard"; tagLabel = ""; tagColor = ""; tagBg = "";
     }
 
     scores.set(d.stock.name, {
@@ -129,9 +140,14 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
   }), [sectorStocks, period]);
 
   const tagCounts = useMemo(() => {
-    const c = { leader: 0, emerging: 0, weakening: 0, laggard: 0 };
-    rsScores.forEach((s) => c[s.tag]++);
-    return c;
+    let leader = 0, emerging = 0, weakening = 0, laggard = 0;
+    rsScores.forEach((s) => {
+      if (s.tag === "leader" && s.tagLabel) leader++;
+      else if (s.tag === "emerging") emerging++;
+      else if (s.tag === "weakening") weakening++;
+      else if (s.tagLabel === "소외") laggard++;
+    });
+    return { leader, emerging, weakening, laggard };
   }, [rsScores]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" /></div>;
@@ -203,7 +219,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
                 {s.ticker ? (
                   <Link href={`/stocks/${s.ticker}`} className="text-white text-[11px] sm:text-[13px] font-medium hover:text-[var(--accent-blue)] transition truncate">{s.name}</Link>
                 ) : <span className="text-white text-[11px] sm:text-[13px] font-medium truncate">{s.name}</span>}
-                {score && (
+                {score && score.tagLabel && (
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-md shrink-0 ${score.tagBg} ${score.tagColor}`}>{score.tagLabel}</span>
                 )}
               </div>
