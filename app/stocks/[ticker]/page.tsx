@@ -28,7 +28,7 @@ interface StockData {
   avg_cost?: AvgCostData | null;
   sector?: string;
   sector_mid?: string;
-  inst_detail?: Record<string, number>;
+  inst_detail?: Record<string, any>;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -358,7 +358,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         const instPeriodData = stockData.inst_detail![instPeriod] ?? stockData.inst_detail!;
         // 기간별 데이터인지 플랫 데이터인지 체크
         const isNested = typeof Object.values(stockData.inst_detail!)[0] === "object";
-        const detail = isNested ? (instPeriodData as Record<string, number>) : (stockData.inst_detail! as Record<string, number>);
+        const detail: Record<string, number> = isNested ? instPeriodData : stockData.inst_detail!;
         if (!detail || typeof detail !== "object") return null;
         const entries = Object.entries(detail)
           .filter(([, v]) => typeof v === "number")
