@@ -1,9 +1,6 @@
 """
-종목별 기관 세부 주체 데이터를 수집하는 스크립트
-연기금/금융투자/보험/투신/사모/은행 6개 주체의 1개월 순매수
-
-시장 전체 조회 방식: 6주체 × 2시장 = 12번 API 호출로 전체 종목 커버
-소요 시간: ~30초
+종목별 기관 세부 주체 데이터를 기간별로 수집하는 스크립트
+5개 기간 × 6주체 × 2시장 = 60번 API 호출, ~2분
 
 실행: python scripts/add_inst_detail.py
 """
@@ -20,6 +17,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "public" / "data"
 
 INVESTORS = ["금융투자", "보험", "투신", "사모", "은행", "연기금"]
+PERIODS = {
+    "1d": 1,
+    "1w": 7,
+    "1m": 30,
+    "3m": 90,
+    "6m": 180,
+}
 
 
 def main():
@@ -29,41 +33,41 @@ def main():
 
     biz_date = data["date"].replace("-", "")
     end_dt = datetime.strptime(biz_date, "%Y%m%d")
-    start_dt = end_dt - timedelta(days=30)
-    start_str = start_dt.strftime("%Y%m%d")
 
     print(f"📅 기준일: {data['date']}")
-    print(f"📅 조회 범위: {start_str} ~ {biz_date} (1개월)")
-    print(f"📊 기관 세부 6개 주체 × 2개 시장 = 12번 API 호출")
+    print(f"📊 기관 세부: 5기간 × 6주체 × 2시장 = 60번 API 호출")
 
-    # 티커 → {주체: 순매수대금} 매핑
+    # 티커 → { "1d": {주체: 금액}, "1w": {...}, ... }
     inst_data = {}
 
-    for market in ["KOSPI", "KOSDAQ"]:
-        for inv in INVESTORS:
-            try:
-                df = stock.get_market_net_purchases_of_equities_by_ticker(
-                    start_str, biz_date, market, inv
-                )
-                if df is None or df.empty:
-                    print(f"  ⚠️ {market}/{inv}: 데이터 없음")
-                    continue
+    for period_name, days in PERIODS.items():
+        start_dt = end_dt - timedelta(days=days)
+        start_str = start_dt.strftime("%Y%m%d")
+        print(f"\n  📅 {period_name} ({start_str} ~ {biz_date})")
 
-                count = 0
-                for ticker in df.index:
-                    val = float(df.loc[ticker, "순매수거래대금"])
-                    # 백만원 단위로 변환
-                    val_m = round(val / 1_000_000, 1)
+        for market in ["KOSPI", "KOSDAQ"]:
+            for inv in INVESTORS:
+                try:
+                    df = stock.get_market_net_purchases_of_equities_by_ticker(
+                        start_str, biz_date, market, inv
+                    )
+                    if df is None or df.empty:
+                        continue
 
-                    if ticker not in inst_data:
-                        inst_data[ticker] = {}
-                    inst_data[ticker][inv] = val_m
-                    count += 1
+                    for ticker in df.index:
+                        val = float(df.loc[ticker, "순매수거래대금"])
+                        val_m = round(val / 1_000_000, 1)
 
-                print(f"  ✅ {market}/{inv}: {count}종목")
+                        if ticker not in inst_data:
+                            inst_data[ticker] = {}
+                        if period_name not in inst_data[ticker]:
+                            inst_data[ticker][period_name] = {}
+                        inst_data[ticker][period_name][inv] = val_m
 
-            except Exception as e:
-                print(f"  ❌ {market}/{inv} 실패: {e}")
+                except Exception as e:
+                    print(f"    ❌ {market}/{inv} 실패: {e}")
+
+        print(f"    ✅ {period_name} 완료")
 
     print(f"\n📋 총 {len(inst_data)}개 종목 기관 세부 수집 완료")
 

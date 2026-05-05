@@ -126,6 +126,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [stockThemes, setStockThemes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [instPeriod, setInstPeriod] = useState<"1d"|"1w"|"1m"|"3m"|"6m">("1m");
 
   useEffect(() => {
     Promise.all([
@@ -354,15 +355,32 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
       {/* 기관 세부 */}
       {stockData.inst_detail && Object.keys(stockData.inst_detail).length > 0 && (() => {
-        const entries = Object.entries(stockData.inst_detail!)
+        const instPeriodData = stockData.inst_detail![instPeriod] ?? stockData.inst_detail!;
+        // 기간별 데이터인지 플랫 데이터인지 체크
+        const isNested = typeof Object.values(stockData.inst_detail!)[0] === "object";
+        const detail = isNested ? (instPeriodData as Record<string, number>) : (stockData.inst_detail! as Record<string, number>);
+        if (!detail || typeof detail !== "object") return null;
+        const entries = Object.entries(detail)
+          .filter(([, v]) => typeof v === "number")
           .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+        if (entries.length === 0) return null;
         const maxVal = Math.max(...entries.map(([, v]) => Math.abs(v)), 1);
         const total = entries.reduce((sum, [, v]) => sum + v, 0);
 
         return (
           <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
             <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기관 세부 주체별 순매수</h3>
-            <p className="text-[10px] text-[var(--text-muted)] mb-4">최근 1개월 · 기관 합계 {fmtUnit(total)}</p>
+            <p className="text-[10px] text-[var(--text-muted)] mb-3">기관 합계 {fmtUnit(total)}</p>
+            {isNested && (
+              <div className="flex rounded-xl overflow-hidden border border-white/[0.06] bg-[var(--bg-card)] mb-4 w-fit">
+                {(["1d","1w","1m","3m","6m"] as const).map((p) => (
+                  <button key={p} onClick={() => setInstPeriod(p)}
+                    className={`px-3 py-[6px] text-[11px] transition-all ${instPeriod === p ? "bg-[var(--accent-blue)] text-white font-medium" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"}`}>
+                    {periodLabels[p]}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="space-y-2.5">
               {entries.map(([name, value]) => {
                 const pct = maxVal > 0 ? Math.abs(value) / maxVal * 100 : 0;
