@@ -16,12 +16,17 @@ interface StockRanking {
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
+  pension?: Record<string, number>;
 }
-type Investor = "combined" | "foreign" | "institution";
+type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
 type Signal = "all" | "buy_reversal" | "sell_reversal" | "divergence" | "accumulation";
 
 /* ── 유틸 ─────────────────────────────────────── */
+function getInvVal(s: StockRanking, inv: Investor, p: string): number {
+  if (inv === "pension") return s.pension?.[p] ?? 0;
+  return s[inv][p] ?? 0;
+}
 function fmtUnit(n: number) {
   const won = n * 1_000_000;
   const abs = Math.abs(won);
@@ -186,12 +191,12 @@ function StocksPageInner() {
     }
     return [...r].sort((a, b) => {
       if (sortBy === "ratio") {
-        const ar = calcRatio(a[investor][period], a.market_cap) ?? 0;
-        const br = calcRatio(b[investor][period], b.market_cap) ?? 0;
+        const ar = calcRatio(getInvVal(a, investor, period), a.market_cap) ?? 0;
+        const br = calcRatio(getInvVal(b, investor, period), b.market_cap) ?? 0;
         return sortDir === "desc" ? br - ar : ar - br;
       }
-      const av = a[investor][period] ?? 0;
-      const bv = b[investor][period] ?? 0;
+      const av = getInvVal(a, investor, period);
+      const bv = getInvVal(b, investor, period);
       return sortDir === "desc" ? bv - av : av - bv;
     });
   }, [allStocks, marketFilter, search, investor, period, sortDir, sortBy, signalFilter]);
@@ -213,12 +218,12 @@ function StocksPageInner() {
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(s[investor][displayPeriod])), 1) : 1;
+  const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(getInvVal(s, investor, displayPeriod))), 1) : 1;
   const hasPer = allStocks.some((s) => s.per != null);
 
   useEffect(() => setPage(0), [search, marketFilter, investor, period, sortDir, sortBy, signalFilter]);
 
-  const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관" };
+  const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
 
   if (loading) {
@@ -336,14 +341,14 @@ function StocksPageInner() {
                 {hasPer && <th className="text-right px-2 py-3 font-normal hidden md:table-cell">PER</th>}
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">합계{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">{investor === "pension" ? "연기금" : "합계"}{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">시총대비</th>
                 <th className="px-3 py-3 w-16 hidden sm:table-cell"></th>
               </tr>
             </thead>
             <tbody>
               {paged.map((s, i) => {
-                const ratio = calcRatio(s[investor][displayPeriod], s.market_cap);
+                const ratio = calcRatio(getInvVal(s, investor, displayPeriod), s.market_cap);
                 const signals = getSignals(s);
                 return (
                   <tr key={s.name} className="border-t border-white/[0.03] hover:bg-white/[0.02] transition">
@@ -376,7 +381,7 @@ function StocksPageInner() {
                     )}
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[displayPeriod]} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.institution[displayPeriod]} /></td>
-                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={s.combined[displayPeriod]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={investor === "pension" ? (s.pension?.[displayPeriod] ?? 0) : s.combined[displayPeriod]} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right">
                       {ratio != null ? (
                         <span className={`num text-xs ${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
@@ -386,7 +391,7 @@ function StocksPageInner() {
                         <span className="text-[var(--text-muted)]">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 hidden sm:table-cell"><PurchaseBar value={s[investor][displayPeriod]} max={maxVal} /></td>
+                    <td className="px-3 py-2.5 hidden sm:table-cell"><PurchaseBar value={getInvVal(s, investor, displayPeriod)} max={maxVal} /></td>
                   </tr>
                 );
               })}

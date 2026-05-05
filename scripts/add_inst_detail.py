@@ -77,6 +77,13 @@ def main():
         ticker = item.get("ticker", "")
         if ticker and ticker in inst_data:
             item["inst_detail"] = inst_data[ticker]
+            # 연기금 데이터를 별도 필드로 추출 (종목 순매수 페이지용)
+            pension = {}
+            for p in PERIODS:
+                if p in inst_data[ticker] and "연기금" in inst_data[ticker][p]:
+                    pension[p] = inst_data[ticker][p]["연기금"]
+            if pension:
+                item["pension"] = pension
             matched += 1
 
     print(f"✅ {matched}/{len(data['data'])} 종목 매칭 완료")
