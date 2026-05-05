@@ -12,9 +12,11 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-              J
-            </div>
+            <svg width="28" height="28" viewBox="0 0 100 100" className="rounded-lg">
+              <rect width="100" height="100" rx="22" fill="#2563eb"/>
+              <path d="M57 30 L57 73 Q57 85 45 85 L35 85" stroke="white" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <circle cx="57" cy="26" r="5" fill="white"/>
+            </svg>
             <span className="text-[15px] font-semibold tracking-tight text-white hidden sm:inline">
               JangsTrading
             </span>
