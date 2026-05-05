@@ -28,6 +28,7 @@ interface StockData {
   avg_cost?: AvgCostData | null;
   sector?: string;
   sector_mid?: string;
+  inst_detail?: Record<string, number>;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -350,6 +351,41 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         <SupplyChart title="외국인 순매수 추이" data={stockData.foreign} />
         <SupplyChart title="기관 순매수 추이" data={stockData.institution} />
       </div>
+
+      {/* 기관 세부 */}
+      {stockData.inst_detail && Object.keys(stockData.inst_detail).length > 0 && (() => {
+        const entries = Object.entries(stockData.inst_detail!)
+          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+        const maxVal = Math.max(...entries.map(([, v]) => Math.abs(v)), 1);
+        const total = entries.reduce((sum, [, v]) => sum + v, 0);
+
+        return (
+          <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+            <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기관 세부 주체별 순매수</h3>
+            <p className="text-[10px] text-[var(--text-muted)] mb-4">최근 1개월 · 기관 합계 {fmtUnit(total)}</p>
+            <div className="space-y-2.5">
+              {entries.map(([name, value]) => {
+                const pct = maxVal > 0 ? Math.abs(value) / maxVal * 100 : 0;
+                const isPos = value > 0;
+                return (
+                  <div key={name} className="flex items-center gap-3">
+                    <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] w-16 sm:w-20 shrink-0">{name}</span>
+                    <div className="flex-1 h-4 rounded-full bg-white/[0.04] overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isPos ? "bg-gradient-to-r from-red-500/60 to-red-500/20" : "bg-gradient-to-r from-blue-400/60 to-blue-400/20"}`}
+                        style={{ width: `${Math.max(pct, 2)}%` }}
+                      />
+                    </div>
+                    <span className={`text-[12px] sm:text-[13px] num font-medium w-24 text-right shrink-0 ${isPos ? "positive" : value < 0 ? "negative" : ""}`}>
+                      {fmtUnit(value)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 상세 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
