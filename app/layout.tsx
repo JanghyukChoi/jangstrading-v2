@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     siteName: "JangsTrading",
+    images: [{ url: "https://www.jangstrading.com/og-image.png", width: 1200, height: 630 }],
   },
   robots: {
     index: true,
