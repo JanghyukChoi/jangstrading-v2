@@ -109,6 +109,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
       fetch("/data/stock-rankings.json").then((r) => r.json()),
       fetch("/data/theme-map.json").then((r) => r.json()).catch(() => ({})),
     ]).then(([s, t]) => { setAllStocks(s.data); setThemeMap(t); }).finally(() => setLoading(false));
+    document.title = `${sectorName} 섹터 수급 분석 - 주도주 현황 | JangsTrading`;
   }, []);
 
   const sectorStocks = useMemo(() => {

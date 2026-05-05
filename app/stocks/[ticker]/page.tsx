@@ -136,6 +136,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       .then(([d, themeMap]) => {
         const found = d.data.find((s: StockData) => s.ticker === ticker);
         setStockData(found || null);
+        if (found) document.title = `${found.name}(${ticker}) 외국인 기관 수급 분석 | JangsTrading`;
         // 이 종목이 속한 테마 찾기
         const themes: string[] = [];
         for (const [name, tickers] of Object.entries(themeMap as Record<string, string[]>)) {

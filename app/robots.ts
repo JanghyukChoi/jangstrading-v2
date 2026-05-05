@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://jangstrading.com/sitemap.xml", // 도메인 구매 후 변경
+    sitemap: "https://www.jangstrading.com/sitemap.xml",
   };
 }
