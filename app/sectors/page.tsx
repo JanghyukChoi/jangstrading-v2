@@ -91,13 +91,31 @@ function SectorsPageInner() {
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const view = (searchParams.get("view") as View) || "large";
-  const [investor, setInvestor] = useState<Investor>("combined");
-  const [period, setPeriod] = useState<Period>("1m");
-  const [sortBy, setSortBy] = useState<"amount" | "ratio">("amount");
+  const investor = (searchParams.get("investor") as Investor) || "combined";
+  const period = (searchParams.get("period") as Period) || "1m";
+  const sortBy = (searchParams.get("sort") as "amount" | "ratio") || "amount";
 
-  function setView(v: View) {
-    router.push(`/sectors?view=${v}`, { scroll: false }); // 탭 → 히스토리 O
+  function updateParams(updates: Record<string, string>, addHistory = false) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      // 기본값이면 URL에서 제거
+      if ((k === "view" && v === "large") || (k === "investor" && v === "combined") ||
+          (k === "period" && v === "1m") || (k === "sort" && v === "amount")) {
+        params.delete(k);
+      } else {
+        params.set(k, v);
+      }
+    }
+    const qs = params.toString();
+    const url = `/sectors${qs ? `?${qs}` : ""}`;
+    if (addHistory) router.push(url, { scroll: false });
+    else router.replace(url, { scroll: false });
   }
+
+  function setView(v: View) { updateParams({ view: v }, true); }
+  function setInvestor(v: Investor) { updateParams({ investor: v }); }
+  function setPeriod(v: Period) { updateParams({ period: v }); }
+  function setSortBy(v: "amount" | "ratio") { updateParams({ sort: v }); }
 
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };
@@ -243,7 +261,7 @@ function SectorsPageInner() {
           value={period} onChange={setPeriod}
         />
         <button
-          onClick={() => setSortBy((s) => (s === "amount" ? "ratio" : "amount"))}
+          onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
           className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
             sortBy === "ratio"
               ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
