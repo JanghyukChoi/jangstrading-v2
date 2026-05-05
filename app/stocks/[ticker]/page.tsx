@@ -189,6 +189,44 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         </a>
       </div>
 
+      {/* 업종 · 테마 */}
+      {(stockData.sector || stockThemes.length > 0) && (
+        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+          <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">업종 · 테마 분류</h3>
+
+          <div className="flex flex-wrap gap-2">
+            {stockData.sector && stockData.sector !== "기타" && (
+              <Link
+                href={`/sectors/${encodeURIComponent(stockData.sector)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.15] hover:border-blue-500/[0.3] transition text-[12px]"
+              >
+                <span className="text-[10px] text-blue-400/60">대분류</span>
+                <span className="text-blue-400 font-medium">{stockData.sector}</span>
+              </Link>
+            )}
+            {stockData.sector_mid && stockData.sector_mid !== "기타" && (
+              <Link
+                href={`/sectors/${encodeURIComponent(stockData.sector_mid)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/[0.08] border border-purple-500/[0.15] hover:border-purple-500/[0.3] transition text-[12px]"
+              >
+                <span className="text-[10px] text-purple-400/60">중분류</span>
+                <span className="text-purple-400 font-medium">{stockData.sector_mid}</span>
+              </Link>
+            )}
+            {stockThemes.map((theme) => (
+              <Link
+                key={theme}
+                href={`/sectors/${encodeURIComponent(theme)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] transition text-[12px]"
+              >
+                <span className="text-[10px] text-[var(--text-muted)]">테마</span>
+                <span className="text-[var(--text-secondary)] font-medium">{theme}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 재무 지표 — 모바일 3열, 데스크톱 6열 */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
         <MetricCard label="시가총액" value={stockData.market_cap != null ? fmtCap(stockData.market_cap) : null} />
@@ -312,7 +350,6 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         <SupplyChart title="외국인 순매수 추이" data={stockData.foreign} />
         <SupplyChart title="기관 순매수 추이" data={stockData.institution} />
       </div>
-      <SupplyChart title="외국인 + 기관 합산 순매수" data={stockData.combined} />
 
       {/* 상세 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
@@ -356,48 +393,6 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         </table>
       </div>
 
-      {/* 업종 · 테마 */}
-      {(stockData.sector || stockThemes.length > 0) && (
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-          <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">업종 · 테마 분류</h3>
-
-          <div className="flex flex-wrap gap-2">
-            {/* 대분류 */}
-            {stockData.sector && stockData.sector !== "기타" && (
-              <Link
-                href={`/sectors/${encodeURIComponent(stockData.sector)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.15] hover:border-blue-500/[0.3] transition text-[12px]"
-              >
-                <span className="text-[10px] text-blue-400/60">대분류</span>
-                <span className="text-blue-400 font-medium">{stockData.sector}</span>
-              </Link>
-            )}
-
-            {/* 중분류 */}
-            {stockData.sector_mid && stockData.sector_mid !== "기타" && (
-              <Link
-                href={`/sectors/${encodeURIComponent(stockData.sector_mid)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/[0.08] border border-purple-500/[0.15] hover:border-purple-500/[0.3] transition text-[12px]"
-              >
-                <span className="text-[10px] text-purple-400/60">중분류</span>
-                <span className="text-purple-400 font-medium">{stockData.sector_mid}</span>
-              </Link>
-            )}
-
-            {/* 테마 */}
-            {stockThemes.map((theme) => (
-              <Link
-                key={theme}
-                href={`/sectors/${encodeURIComponent(theme)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] transition text-[12px]"
-              >
-                <span className="text-[10px] text-[var(--text-muted)]">테마</span>
-                <span className="text-[var(--text-secondary)] font-medium">{theme}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
