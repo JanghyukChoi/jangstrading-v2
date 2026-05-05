@@ -314,39 +314,6 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         </div>
       )}
 
-      {/* 합산 요약 — 모바일: 리스트, 데스크톱: 5열 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">외국인 + 기관 합산</h3>
-        {/* 데스크톱: 5열 그리드 */}
-        <div className="hidden sm:grid grid-cols-5 gap-4">
-          {periods.map((p) => {
-            const v = stockData.combined[p];
-            return (
-              <div key={p} className={`text-center p-4 rounded-xl ${
-                v > 0 ? "bg-red-500/[0.06]" : v < 0 ? "bg-blue-500/[0.06]" : "bg-white/[0.02]"
-              }`}>
-                <div className="text-[11px] text-[var(--text-muted)] mb-2">{periodLabels[p]}</div>
-                <CNum v={v} size="text-lg" />
-              </div>
-            );
-          })}
-        </div>
-        {/* 모바일: 리스트 */}
-        <div className="sm:hidden space-y-2">
-          {periods.map((p) => {
-            const v = stockData.combined[p];
-            return (
-              <div key={p} className={`flex items-center justify-between p-3 rounded-xl ${
-                v > 0 ? "bg-red-500/[0.06]" : v < 0 ? "bg-blue-500/[0.06]" : "bg-white/[0.02]"
-              }`}>
-                <span className="text-sm text-[var(--text-secondary)]">{periodLabels[p]}</span>
-                <CNum v={v} size="text-base"/>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* 수급 차트 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SupplyChart title="외국인 순매수 추이" data={stockData.foreign} />

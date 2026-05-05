@@ -381,7 +381,7 @@ function SectorLeaders({ stocks }: { stocks: StockRanking[] }) {
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]"> 섹터별 주도주</h3>
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">🏆 섹터별 주도주</h3>
         <Link href="/sectors?view=mid" className="text-[11px] text-[var(--accent-blue)] hover:underline">전체 보기 →</Link>
       </div>
       <div className="space-y-4">
@@ -486,9 +486,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      {meta && (
-        <p className="text-[11px] text-[var(--text-muted)]">
-          기준일 {meta.business_date} {(() => {
+      <div>
+        <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)]">외국인·기관이 어디에 돈을 넣고 있는지, 어떤 종목이 주도하는지 한눈에</p>
+        {meta && (
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+            기준일 {meta.business_date} {(() => {
             const t = meta.last_updated;
             if (t.includes("시")) return t; // 이미 한국어 형식
             // ISO 형식 → 한국어 변환
@@ -502,8 +504,9 @@ export default function Dashboard() {
               return `${ampm} ${h12 || 12}시 ${String(d.getMinutes()).padStart(2, "0")}분`;
             } catch { return ""; }
           })()} 업데이트
-        </p>
-      )}
+          </p>
+        )}
+      </div>
 
       {/* AI 시황 미리보기 */}
       {latestReport && (
