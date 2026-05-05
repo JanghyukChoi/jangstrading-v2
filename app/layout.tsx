@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import SearchBar from "./components/SearchBar";
+import Header from "./components/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,62 +15,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     siteName: "JangsTrading",
+    images: [{ url: "https://www.jangstrading.com/og-image.png", width: 1200, height: 630 }],
   },
   robots: {
     index: true,
     follow: true,
   },
   verification: {
-    // google: "구글서치콘솔_인증코드", // 나중에 추가
-    // other: { "naver-site-verification": "네이버_인증코드" }, // 나중에 추가
+    other: { "naver-site-verification": "279e4d3b77debaf01a1231d73f6965b7a0c3a66a" },
   },
 };
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#06080d]/90 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-              J
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-white hidden sm:inline">
-              JangsTrading
-            </span>
-          </Link>
-          <SearchBar />
-        </div>
-
-        <nav className="flex items-center gap-1 text-[13px]">
-          <Link
-            href="/"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
-          >
-            대시보드
-          </Link>
-          <Link
-            href="/stocks"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
-          >
-            종목 순매수
-          </Link>
-          <Link
-            href="/sectors"
-            className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition"
-          >
-            섹터 순매수
-          </Link>
-        </nav>
-      </div>
-    </header>
-  );
-}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
