@@ -8,8 +8,9 @@ interface StockRanking {
   name: string; market: string; ticker?: string; sector?: string; sector_mid?: string;
   market_cap?: number | null; per?: number | null; price_change?: Record<string, number>;
   foreign: Record<string, number>; institution: Record<string, number>; combined: Record<string, number>;
+  pension?: Record<string, number>;
 }
-type Investor = "combined" | "foreign" | "institution";
+type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
 interface LeaderScore {
   cls: number; tag: "leader" | "emerging" | "follower" | "laggard";
@@ -101,7 +102,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
   const [investor, setInvestor] = useState<Investor>("combined");
   const [period, setPeriod] = useState<Period>("1m");
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
-  const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관" };
+  const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };
 
   useEffect(() => {
     Promise.all([
@@ -115,7 +116,8 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
     let filtered: StockRanking[];
     if (themeTickers) { const set = new Set(themeTickers); filtered = allStocks.filter((s) => s.ticker && set.has(s.ticker)); }
     else { filtered = allStocks.filter((s) => (s.sector_mid || s.sector || "기타") === sectorName || (s.sector || "기타") === sectorName); }
-    return filtered.sort((a, b) => (b[investor][period] ?? 0) - (a[investor][period] ?? 0));
+    const getVal = (s: StockRanking) => investor === "pension" ? (s.pension?.[period] ?? 0) : (s[investor][period] ?? 0);
+    return filtered.sort((a, b) => getVal(b) - getVal(a));
   }, [allStocks, themeMap, sectorName, investor, period]);
 
   const leaderScores = useMemo(() => calcLeaderScores(sectorStocks, period), [sectorStocks, period]);
@@ -188,7 +190,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
           <span className="w-14 text-left hidden sm:block">시장</span>
           <span className="w-16 sm:w-24 text-right shrink-0">외국인</span>
           <span className="w-16 sm:w-24 text-right shrink-0">기관</span>
-          <span className="w-16 sm:w-24 text-right shrink-0">합계</span>
+          <span className="w-16 sm:w-24 text-right shrink-0">{investor === "pension" ? "연기금" : "합계"}</span>
           <span className="w-14 text-right shrink-0 hidden sm:block">주가</span>
         </div>
         {sectorStocks.map((s, i) => {
@@ -210,7 +212,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
               </span>
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.foreign[period]} /></span>
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.institution[period]} /></span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={s.combined[period]} /></span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={investor === "pension" ? (s.pension?.[period] ?? 0) : s.combined[period]} /></span>
               <span className="w-14 text-right shrink-0 hidden sm:block">
                 {pc != null ? <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>{pc > 0 ? "+" : ""}{pc.toFixed(1)}%</span> : <span className="text-[var(--text-muted)]">-</span>}
               </span>
