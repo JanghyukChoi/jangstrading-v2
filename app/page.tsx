@@ -416,6 +416,61 @@ function SectorLeaders({ stocks }: { stocks: StockRanking[] }) {
   );
 }
 
+/* ── 시장 수급 요약 (방향 일치 + 집중도 압축) ── */
+function MarketSummary({ stocks }: { stocks: StockRanking[] }) {
+  const filtered = stocks.filter((s) => (s.market_cap ?? 0) >= 1000);
+
+  // 방향 일치
+  let bothBuy = 0, bothSell = 0, mixed = 0;
+  for (const s of filtered) {
+    const f = s.foreign["1m"] ?? 0;
+    const i = s.institution["1m"] ?? 0;
+    if (f > 0 && i > 0) bothBuy++;
+    else if (f < 0 && i < 0) bothSell++;
+    else mixed++;
+  }
+
+  // 외국인 집중도
+  const fBuyers = stocks.filter((s) => s.foreign["1m"] > 0).sort((a, b) => b.foreign["1m"] - a.foreign["1m"]);
+  const fTotal = fBuyers.reduce((sum, s) => sum + s.foreign["1m"], 0);
+  const fTop5 = fBuyers.slice(0, 5).reduce((sum, s) => sum + s.foreign["1m"], 0);
+  const fPct = fTotal > 0 ? Math.round(fTop5 / fTotal * 1000) / 10 : 0;
+
+  // 기관 집중도
+  const iBuyers = stocks.filter((s) => s.institution["1m"] > 0).sort((a, b) => b.institution["1m"] - a.institution["1m"]);
+  const iTotal = iBuyers.reduce((sum, s) => sum + s.institution["1m"], 0);
+  const iTop5 = iBuyers.slice(0, 5).reduce((sum, s) => sum + s.institution["1m"], 0);
+  const iPct = iTotal > 0 ? Math.round(iTop5 / iTotal * 1000) / 10 : 0;
+
+  const consensus = bothBuy > bothSell ? "매수 합의" : bothSell > bothBuy ? "매도 압력" : "방향 엇갈림";
+  const consensusColor = bothBuy > bothSell ? "text-[#f85149]" : bothSell > bothBuy ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
+
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">시장 수급 요약</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
+          <span className="text-[11px] text-[var(--text-muted)]">외국인·기관 방향</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-[14px] sm:text-[16px] font-semibold ${consensusColor}`}>{consensus}</span>
+          </div>
+          <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">동시매수 {bothBuy} · 엇갈림 {mixed} · 동시매도 {bothSell}</span>
+        </div>
+        <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
+          <span className="text-[11px] text-[var(--text-muted)]">외국인 집중도</span>
+          <span className="text-[14px] sm:text-[16px] font-semibold num">{fPct}%</span>
+          <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
+        </div>
+        <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
+          <span className="text-[11px] text-[var(--text-muted)]">기관 집중도</span>
+          <span className="text-[14px] sm:text-[16px] font-semibold num">{iPct}%</span>
+          <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── TOP 10 테이블 ────────────────────────────── */
 function TopTable({ title, desc, stocks, type }: { title: string; desc: string; stocks: StockRanking[]; type: "buy" | "sell" }) {
   const sorted = [...stocks]
@@ -492,12 +547,11 @@ export default function Dashboard() {
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
             기준일 {meta.business_date} {(() => {
             const t = meta.last_updated;
-            if (t.includes("시")) return t; // 이미 한국어 형식
-            // ISO 형식 → 한국어 변환
+            if (t.includes("시")) return t;
             try {
               const d = new Date(t);
               if (isNaN(d.getTime())) return "";
-              d.setHours(d.getHours() + 9); // UTC → KST
+              d.setHours(d.getHours() + 9);
               const h = d.getHours();
               const ampm = h < 12 ? "오전" : "오후";
               const h12 = h <= 12 ? h : h - 12;
@@ -508,36 +562,36 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* AI 시황 미리보기 */}
-      {latestReport && (
-        <Link href={`/reports/${latestReport.date}`}
-          className="block bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5 hover:border-white/[0.12] transition"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
-            <span className="text-[10px] text-[var(--text-muted)] num">{latestReport.date}</span>
-          </div>
-          <h3 className="text-[14px] sm:text-[15px] text-white font-medium mb-1.5">{latestReport.title}</h3>
-          <p className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
-            {latestReport.body.slice(0, 150)}...
-          </p>
-          <span className="text-[11px] text-[var(--accent-blue)] mt-2 inline-block">자세히 보기 →</span>
-        </Link>
-      )}
+      {/* 1. KOSPI / KOSDAQ */}
       <div className="flex flex-col sm:flex-row gap-4">
         <IndexCard name="KOSPI" data={market?.KOSPI ?? null} />
         <IndexCard name="KOSDAQ" data={market?.KOSDAQ ?? null} />
       </div>
+
+      {/* 2. 섹터별 주도주 */}
       <SectorLeaders stocks={stocks} />
-      <ConsensusChart stocks={stocks} />
-      <div className="flex flex-col sm:flex-row gap-4">
-        <ConcentrationCard title="외국인 1개월 수급 집중도" stocks={stocks} investorKey="foreign" color="#f85149" />
-        <ConcentrationCard title="기관 1개월 수급 집중도" stocks={stocks} investorKey="institution" color="#58a6ff" />
-      </div>
+
+      {/* 3. TOP 10 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopTable title="1개월 순매수 TOP 10" desc="외국인+기관 합산 순매수 금액 기준" stocks={stocks} type="buy" />
         <TopTable title="1개월 순매도 TOP 10" desc="외국인+기관 합산 순매도 금액 기준" stocks={stocks} type="sell" />
       </div>
+
+      {/* 4. 시장 수급 요약 (방향 일치 + 집중도 압축) */}
+      <MarketSummary stocks={stocks} />
+
+      {/* 5. AI 시황 한 줄 */}
+      {latestReport && (
+        <Link href={`/reports/${latestReport.date}`}
+          className="flex items-center gap-3 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-4 sm:px-5 py-3.5 hover:border-white/[0.12] transition"
+        >
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium shrink-0">AI 시황</span>
+          <span className="text-[13px] sm:text-[14px] text-white font-medium truncate">{latestReport.title}</span>
+          <span className="text-[11px] text-[var(--accent-blue)] shrink-0 ml-auto">→</span>
+        </Link>
+      )}
+
+      {/* 6. 자금흐름 차트 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <FlowChart title="KOSPI 투자자별 자금흐름" data={market?.KOSPI ?? null} />
         <FlowChart title="KOSDAQ 투자자별 자금흐름" data={market?.KOSDAQ ?? null} />
