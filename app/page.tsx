@@ -445,6 +445,11 @@ function MarketSummary({ stocks }: { stocks: StockRanking[] }) {
   const consensus = bothBuy > bothSell ? "매수 합의" : bothSell > bothBuy ? "매도 압력" : "방향 엇갈림";
   const consensusColor = bothBuy > bothSell ? "text-[#f85149]" : bothSell > bothBuy ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
 
+  // 자동 해석
+  const fLabel = fPct >= 70 ? "소수 종목 집중 매수" : fPct >= 40 ? "중간 집중도 매수" : "분산 매수";
+  const iLabel = iPct >= 70 ? "소수 종목 집중 매수" : iPct >= 40 ? "중간 집중도 매수" : "분산 매수";
+  const dirLabel = bothBuy > bothSell ? "동시 매수 종목이 많아 수급 우호적" : bothSell > bothBuy ? "동시 매도 종목이 많아 수급 약세" : "방향이 엇갈려 관망 구간";
+
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
       <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">시장 수급 요약</h3>
@@ -467,6 +472,9 @@ function MarketSummary({ stocks }: { stocks: StockRanking[] }) {
           <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
         </div>
       </div>
+      <p className="text-[11px] text-[var(--text-secondary)] mt-3 pt-3 border-t border-white/[0.04] leading-relaxed">
+        💡 외국인 {fLabel}, 기관 {iLabel}. {dirLabel}.
+      </p>
     </div>
   );
 }
