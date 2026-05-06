@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   },
   description: "KOSPI·KOSDAQ 외국인·기관 투자자 순매수 데이터를 실시간 분석합니다. 수급 전환 신호, 시총대비 비율, 추정 평균단가, 섹터·테마별 수급 현황을 무료로 제공합니다.",
   keywords: ["외국인 순매수", "기관 순매수", "수급 분석", "KOSPI", "KOSDAQ", "주식 수급", "투자자별 매매동향", "섹터 수급", "테마 수급"],
+  alternates: {
+    canonical: "https://www.jangstrading.com",
+  },
   openGraph: {
     title: "JangsTrading — 외국인·기관 수급 분석",
     description: "외국인·기관 투자자의 순매수 데이터를 실시간 분석하는 무료 플랫폼",
