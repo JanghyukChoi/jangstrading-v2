@@ -3,7 +3,6 @@ WICS 업종분류 데이터를 wiseindex.com에서 자동 수집하는 스크립
 대분류(10개) + 중분류(25개)를 가져와서 sector-map.json으로 저장
 
 실행: python scripts/fetch_wics.py
-자동화: GitHub Actions에서 매일 실행 (업종분류 변경 자동 반영)
 """
 
 import json
@@ -15,21 +14,6 @@ from datetime import datetime, timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "public" / "data"
 
-# WICS 대분류 (10개)
-LARGE_SECTORS = {
-    "G10": "에너지",
-    "G15": "소재",
-    "G20": "산업재",
-    "G25": "경기관련소비재",
-    "G30": "필수소비재",
-    "G35": "건강관리",
-    "G40": "금융",
-    "G45": "IT",
-    "G50": "커뮤니케이션서비스",
-    "G55": "유틸리티",
-}
-
-# WICS 중분류 (25개)
 MID_SECTORS = {
     "G1010": ("에너지", "에너지"),
     "G1510": ("소재", "소재"),
@@ -60,20 +44,30 @@ MID_SECTORS = {
 BASE_URL = "https://www.wiseindex.com/Index/GetIndexComponets"
 
 
-def get_latest_date():
-    """stock-rankings.json에서 기준일을 읽는다"""
+def get_dates_to_try():
+    """stock-rankings.json 기준일 + 이전 영업일 5개를 시도 목록으로 반환"""
+    dates = []
+
+    # stock-rankings.json에서 기준일
     rankings_path = DATA_DIR / "stock-rankings.json"
     if rankings_path.exists():
         with open(rankings_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data["date"].replace("-", "")
-    # 없으면 최근 영업일 추정
+        base_date = data["date"].replace("-", "")
+        dates.append(base_date)
+
+    # 오늘부터 7일 뒤로 영업일 찾기
     today = datetime.today()
-    for i in range(7):
+    for i in range(10):
         d = today - timedelta(days=i)
         if d.weekday() < 5:
-            return d.strftime("%Y%m%d")
-    return today.strftime("%Y%m%d")
+            ds = d.strftime("%Y%m%d")
+            if ds not in dates:
+                dates.append(ds)
+        if len(dates) >= 6:
+            break
+
+    return dates
 
 
 def fetch_sector_stocks(sec_cd, date):
@@ -88,20 +82,35 @@ def fetch_sector_stocks(sec_cd, date):
             data = r.json()
             return data.get("list", [])
     except Exception as e:
-        print(f"  ❌ {sec_cd} 실패: {e}")
+        pass
     return []
 
 
 def main():
-    date = get_latest_date()
-    print(f"📅 기준일: {date}")
-    print(f"📊 WICS 업종분류 수집 시작...")
+    dates_to_try = get_dates_to_try()
+    print(f"📅 시도할 날짜: {dates_to_try}")
 
-    mapping = {}  # ticker -> { large, mid }
+    # 첫 번째 섹터로 날짜 테스트
+    working_date = None
+    for date in dates_to_try:
+        test = fetch_sector_stocks("G4530", date)  # 반도체 섹터로 테스트
+        if len(test) > 0:
+            working_date = date
+            print(f"📅 유효한 날짜 발견: {working_date} ({len(test)}종목)")
+            break
+        print(f"  ⚠️ {date}: 데이터 없음, 이전 날짜 시도...")
+        time.sleep(0.3)
 
-    # 중분류 기준으로 수집 (대분류는 중분류에서 자동 매핑)
+    if not working_date:
+        print("❌ 유효한 날짜를 찾을 수 없습니다.")
+        return
+
+    print(f"📊 WICS 업종분류 수집 시작 (기준일: {working_date})...")
+
+    mapping = {}
+
     for mid_cd, (large_name, mid_name) in MID_SECTORS.items():
-        stocks = fetch_sector_stocks(mid_cd, date)
+        stocks = fetch_sector_stocks(mid_cd, working_date)
         for s in stocks:
             ticker = s.get("CMP_CD", "")
             if ticker:
@@ -110,11 +119,10 @@ def main():
                     "mid": mid_name,
                 }
         print(f"  ✅ {mid_name} ({large_name}): {len(stocks)}종목")
-        time.sleep(0.5)  # API 부하 방지
+        time.sleep(0.5)
 
     print(f"\n📋 총 {len(mapping)}개 종목 매핑 완료")
 
-    # 저장
     sector_map_path = DATA_DIR / "sector-map.json"
     with open(sector_map_path, "w", encoding="utf-8") as f:
         json.dump(mapping, f, ensure_ascii=False, indent=None)

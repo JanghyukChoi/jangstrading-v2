@@ -90,15 +90,14 @@ function SectorsPageInner() {
   const [themeMap, setThemeMap] = useState<Record<string, string[]>>({});
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const view = (searchParams.get("view") as View) || "large";
-  const investor = (searchParams.get("investor") as Investor) || "combined";
-  const period = (searchParams.get("period") as Period) || "1m";
-  const sortBy = (searchParams.get("sort") as "amount" | "ratio") || "amount";
+  const [view, setViewState] = useState<View>((searchParams.get("view") as View) || "large");
+  const [investor, setInvestorState] = useState<Investor>((searchParams.get("investor") as Investor) || "combined");
+  const [period, setPeriodState] = useState<Period>((searchParams.get("period") as Period) || "1m");
+  const [sortBy, setSortByState] = useState<"amount" | "ratio">((searchParams.get("sort") as any) || "amount");
 
-  function updateParams(updates: Record<string, string>, addHistory = false) {
-    const params = new URLSearchParams(searchParams.toString());
+  function syncUrl(updates: Record<string, string>, addHistory = false) {
+    const params = new URLSearchParams(window.location.search);
     for (const [k, v] of Object.entries(updates)) {
-      // 기본값이면 URL에서 제거
       if ((k === "view" && v === "large") || (k === "investor" && v === "combined") ||
           (k === "period" && v === "1m") || (k === "sort" && v === "amount")) {
         params.delete(k);
@@ -108,14 +107,14 @@ function SectorsPageInner() {
     }
     const qs = params.toString();
     const url = `/sectors${qs ? `?${qs}` : ""}`;
-    if (addHistory) router.push(url, { scroll: false });
-    else router.replace(url, { scroll: false });
+    if (addHistory) window.history.pushState(null, "", url);
+    else window.history.replaceState(null, "", url);
   }
 
-  function setView(v: View) { updateParams({ view: v }, true); }
-  function setInvestor(v: Investor) { updateParams({ investor: v }); }
-  function setPeriod(v: Period) { updateParams({ period: v }); }
-  function setSortBy(v: "amount" | "ratio") { updateParams({ sort: v }); }
+  function setView(v: View) { setViewState(v); syncUrl({ view: v }, true); }
+  function setInvestor(v: Investor) { setInvestorState(v); syncUrl({ investor: v }); }
+  function setPeriod(v: Period) { setPeriodState(v); syncUrl({ period: v }); }
+  function setSortBy(v: "amount" | "ratio") { setSortByState(v); syncUrl({ sort: v }); }
 
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };

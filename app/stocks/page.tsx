@@ -119,17 +119,17 @@ function StocksPageInner() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
-  // URL에서 필터 상태 읽기
-  const signalFilter = (searchParams.get("signal") as Signal) || "all";
-  const period = (searchParams.get("period") as Period) || "1m";
-  const marketFilter = (searchParams.get("market") as "ALL" | "KOSPI" | "KOSDAQ") || "ALL";
-  const investor = (searchParams.get("investor") as Investor) || "combined";
-  const sortDir = (searchParams.get("dir") as "desc" | "asc") || "desc";
-  const sortBy = (searchParams.get("sort") as "amount" | "ratio") || "amount";
+  // URL에서 초기값 읽기 + 로컬 상태로 관리 (router.replace freeze 방지)
+  const [signalFilter, setSignalFilterState] = useState<Signal>((searchParams.get("signal") as Signal) || "all");
+  const [period, setPeriodState] = useState<Period>((searchParams.get("period") as Period) || "1m");
+  const [marketFilter, setMarketFilterState] = useState<"ALL" | "KOSPI" | "KOSDAQ">((searchParams.get("market") as any) || "ALL");
+  const [investor, setInvestorState] = useState<Investor>((searchParams.get("investor") as Investor) || "combined");
+  const [sortDir, setSortDirState] = useState<"desc" | "asc">((searchParams.get("dir") as any) || "desc");
+  const [sortBy, setSortByState] = useState<"amount" | "ratio">((searchParams.get("sort") as any) || "amount");
 
-  // URL 파라미터 업데이트
-  function updateParams(updates: Record<string, string>, addHistory = false) {
-    const params = new URLSearchParams(searchParams.toString());
+  // URL 동기화 (freeze 없이)
+  function syncUrl(updates: Record<string, string>, addHistory = false) {
+    const params = new URLSearchParams(window.location.search);
     for (const [k, v] of Object.entries(updates)) {
       if (v === "all" || v === "1m" || v === "ALL" || v === "combined" || v === "desc" || v === "amount") {
         params.delete(k);
@@ -140,18 +140,18 @@ function StocksPageInner() {
     const qs = params.toString();
     const url = `/stocks${qs ? `?${qs}` : ""}`;
     if (addHistory) {
-      router.push(url, { scroll: false });
+      window.history.pushState(null, "", url);
     } else {
-      router.replace(url, { scroll: false });
+      window.history.replaceState(null, "", url);
     }
   }
 
-  function setSignalFilter(v: Signal) { updateParams({ signal: v }, true); } // 탭 → 히스토리 O
-  function setPeriod(v: Period) { updateParams({ period: v }); }
-  function setMarketFilter(v: "ALL" | "KOSPI" | "KOSDAQ") { updateParams({ market: v }); }
-  function setInvestor(v: Investor) { updateParams({ investor: v }); }
-  function setSortDir(v: "desc" | "asc") { updateParams({ dir: v }); }
-  function setSortBy(v: "amount" | "ratio") { updateParams({ sort: v }); }
+  function setSignalFilter(v: Signal) { setSignalFilterState(v); syncUrl({ signal: v }, true); }
+  function setPeriod(v: Period) { setPeriodState(v); syncUrl({ period: v }); }
+  function setMarketFilter(v: "ALL" | "KOSPI" | "KOSDAQ") { setMarketFilterState(v); syncUrl({ market: v }); }
+  function setInvestor(v: Investor) { setInvestorState(v); syncUrl({ investor: v }); }
+  function setSortDir(v: "desc" | "asc") { setSortDirState(v); syncUrl({ dir: v }); }
+  function setSortBy(v: "amount" | "ratio") { setSortByState(v); syncUrl({ sort: v }); }
 
   useEffect(() => {
     Promise.all([
