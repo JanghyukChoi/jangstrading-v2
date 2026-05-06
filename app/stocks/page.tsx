@@ -13,6 +13,7 @@ interface StockRanking {
   pbr?: number | null;
   market_cap?: number | null;
   price_change?: Record<string, number>;
+  sector_mid?: string;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -20,7 +21,7 @@ interface StockRanking {
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-type Signal = "all" | "buy_reversal" | "sell_reversal" | "divergence" | "accumulation";
+type Signal = "all" | "buy_reversal" | "sell_reversal" | "leaders" | "accumulation";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function getInvVal(s: StockRanking, inv: Investor, p: string): number {
@@ -60,7 +61,6 @@ function PurchaseBar({ value, max }: { value: number; max: number }) {
 function getSignals(s: StockRanking): { key: Signal; label: string; color: string }[] {
   const signals: { key: Signal; label: string; color: string }[] = [];
   const c = s.combined;
-  const pc = s.price_change;
 
   // 매수전환: 3개월 50억+ 순매도 → 1주 5억+ 순매수 전환
   if (c["3m"] < -5000 && c["1w"] > 500) {
@@ -72,17 +72,70 @@ function getSignals(s: StockRanking): { key: Signal; label: string; color: strin
     signals.push({ key: "sell_reversal", label: "매도전환", color: "bg-orange-500/15 text-orange-400" });
   }
 
-  // 괴리: 1개월 50억+ 순매수인데 주가 5%+ 하락
-  if (pc && c["1m"] > 5000 && (pc["1m"] ?? 0) < -5) {
-    signals.push({ key: "divergence", label: "괴리", color: "bg-amber-500/15 text-amber-400" });
-  }
-
   // 집중매수: 1일/1주/1개월 전부 양수 + 1개월 50억+ + 규모 증가세
   if (c["1d"] > 50 && c["1w"] > 500 && c["1m"] > 5000 && c["1w"] > c["1d"] * 3) {
     signals.push({ key: "accumulation", label: "집중매수", color: "bg-rose-500/15 text-rose-400" });
   }
 
   return signals;
+}
+
+/* ── 섹터별 주도주 판정 ──────────────────────── */
+function computeLeaderTickers(stocks: StockRanking[], period: string = "1m"): Set<string> {
+  const leaders = new Set<string>();
+  // 중분류별 그룹핑
+  const sectorMap: Record<string, StockRanking[]> = {};
+  for (const s of stocks) {
+    const mid = s.sector_mid;
+    if (!mid || mid === "기타") continue;
+    if (!sectorMap[mid]) sectorMap[mid] = [];
+    sectorMap[mid].push(s);
+  }
+
+  for (const [, sectorStocks] of Object.entries(sectorMap)) {
+    if (sectorStocks.length < 3) continue;
+    const totalPosFlow = sectorStocks.reduce((sum, s) => sum + Math.max(s.combined[period] ?? 0, 0), 0);
+    if (totalPosFlow <= 0) continue;
+
+    function pctRank(values: number[], val: number): number {
+      const below = values.filter((v) => v < val).length;
+      return values.length > 1 ? (below / (values.length - 1)) * 100 : 50;
+    }
+
+    const rawData = sectorStocks.map((s) => {
+      const flow = s.combined[period] ?? 0;
+      const cap = s.market_cap ?? 0;
+      const intensity = cap > 0 ? (flow / cap) * 100 : 0;
+      const mom = s.price_change?.[period] ?? 0;
+      const dw = (s.combined["1w"] ?? 0) / 5;
+      const dm = (s.combined["1m"] ?? 0) / 20;
+      const accel = dm !== 0 ? dw / dm : (dw > 0 ? 2 : 0);
+      const share = (Math.max(flow, 0) / totalPosFlow) * 100;
+      return { stock: s, flow, intensity, mom, accel, share };
+    });
+
+    const allInt = rawData.map((d) => d.intensity);
+    const allMom = rawData.map((d) => d.mom);
+
+    const scored = rawData.map((d) => {
+      const nShare = Math.min(d.share * 5, 100);
+      const nInt = pctRank(allInt, d.intensity);
+      const nMom = pctRank(allMom, d.mom);
+      const nAccel = Math.min(Math.max(d.accel, 0) * 50, 100);
+      const cls = d.flow > 0 ? 0.25 * nShare + 0.20 * nInt + 0.35 * nMom + 0.20 * nAccel : 0;
+      return { ...d, cls };
+    });
+
+    const posCls = scored.filter((s) => s.cls > 0).map((s) => s.cls).sort((a, b) => a - b);
+    const p75 = posCls.length > 0 ? posCls[Math.floor(posCls.length * 0.75)] ?? 50 : 50;
+
+    for (const s of scored) {
+      if (s.cls >= p75 && s.share >= 3 && s.stock.ticker) {
+        leaders.add(s.stock.ticker);
+      }
+    }
+  }
+  return leaders;
 }
 
 /* ── 필터 버튼 ────────────────────────────────── */
@@ -162,6 +215,9 @@ function StocksPageInner() {
       .finally(() => setLoading(false));
   }, []);
 
+  // 주도주 판정
+  const leaderTickers = useMemo(() => computeLeaderTickers(allStocks, period), [allStocks, period]);
+
   const filtered = useMemo(() => {
     let r = allStocks;
     if (marketFilter !== "ALL") r = r.filter((s) => s.market === marketFilter);
@@ -172,14 +228,17 @@ function StocksPageInner() {
 
     // 신호 필터 → 자동 정렬
     if (signalFilter !== "all") {
+      if (signalFilter === "leaders") {
+        r = r.filter((s) => s.ticker && leaderTickers.has(s.ticker));
+        return [...r].sort((a, b) => b.combined[period] - a.combined[period]);
+      }
       r = r.filter((s) => getSignals(s).some((sig) => sig.key === signalFilter));
       // 신호별 최적 정렬
       return [...r].sort((a, b) => {
         switch (signalFilter) {
-          case "buy_reversal": return b.combined["1w"] - a.combined["1w"]; // 1주 순매수 큰 순
-          case "sell_reversal": return a.combined["1w"] - b.combined["1w"]; // 1주 순매도 큰 순
-          case "divergence": return b.combined["1m"] - a.combined["1m"]; // 1개월 순매수 큰 순
-          case "accumulation": return b.combined["1m"] - a.combined["1m"]; // 1개월 순매수 큰 순
+          case "buy_reversal": return b.combined["1w"] - a.combined["1w"];
+          case "sell_reversal": return a.combined["1w"] - b.combined["1w"];
+          case "accumulation": return b.combined["1m"] - a.combined["1m"];
           default: return 0;
         }
       });
@@ -199,7 +258,7 @@ function StocksPageInner() {
       const bv = getInvVal(b, investor, period);
       return sortDir === "desc" ? bv - av : av - bv;
     });
-  }, [allStocks, marketFilter, search, investor, period, sortDir, sortBy, signalFilter]);
+  }, [allStocks, marketFilter, search, investor, period, sortDir, sortBy, signalFilter, leaderTickers]);
 
   // 신호별 종목 수 카운트
   const signalCounts = useMemo(() => {
@@ -207,13 +266,13 @@ function StocksPageInner() {
     return {
       buy_reversal: stocks.filter((s) => getSignals(s).some((sig) => sig.key === "buy_reversal")).length,
       sell_reversal: stocks.filter((s) => getSignals(s).some((sig) => sig.key === "sell_reversal")).length,
-      divergence: stocks.filter((s) => getSignals(s).some((sig) => sig.key === "divergence")).length,
+      leaders: leaderTickers.size,
       accumulation: stocks.filter((s) => getSignals(s).some((sig) => sig.key === "accumulation")).length,
     };
-  }, [allStocks]);
+  }, [allStocks, leaderTickers]);
 
   // 신호 활성 시 표시 기간 자동 결정
-  const displayPeriod: Period = signalFilter === "all" ? period :
+  const displayPeriod: Period = signalFilter === "all" || signalFilter === "leaders" ? period :
     (signalFilter === "buy_reversal" || signalFilter === "sell_reversal") ? "1w" : "1m";
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -250,7 +309,7 @@ function StocksPageInner() {
           { key: "all" as Signal, label: "전체", count: null, color: "" },
           { key: "buy_reversal" as Signal, label: "🔄 매수전환", count: signalCounts.buy_reversal, color: "text-emerald-400" },
           { key: "sell_reversal" as Signal, label: "🔄 매도전환", count: signalCounts.sell_reversal, color: "text-orange-400" },
-          { key: "divergence" as Signal, label: "⚡ 수급+주가 괴리", count: signalCounts.divergence, color: "text-amber-400" },
+          { key: "leaders" as Signal, label: "⭐ 주도주", count: signalCounts.leaders, color: "text-amber-400" },
           { key: "accumulation" as Signal, label: "🔥 집중매수", count: signalCounts.accumulation, color: "text-rose-400" },
         ]).map((s) => (
           <button
@@ -273,7 +332,7 @@ function StocksPageInner() {
         <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
           {signalFilter === "buy_reversal" && "3개월간 50억원 이상 순매도했으나, 최근 1주일 5억원 이상 순매수로 전환된 종목 (시총 1천억 이상)"}
           {signalFilter === "sell_reversal" && "3개월간 50억원 이상 순매수했으나, 최근 1주일 5억원 이상 순매도로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "divergence" && "1개월간 50억원 이상 순매수인데 주가는 5% 이상 하락한 종목 — 수급과 가격의 괴리"}
+          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목"}
           {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며, 1개월 50억원 이상 + 매수 규모가 증가하는 종목"}
         </div>
       )}
@@ -297,7 +356,6 @@ function StocksPageInner() {
           value={marketFilter} onChange={setMarketFilter}
         />
         {signalFilter === "all" && (
-          <>
             <select
               value={investor}
               onChange={(e) => setInvestor(e.target.value as Investor)}
@@ -305,10 +363,15 @@ function StocksPageInner() {
             >
               {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
+        )}
+        {(signalFilter === "all" || signalFilter === "leaders") && (
+          <>
             <FilterGroup
               options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
               value={period} onChange={setPeriod}
             />
+            {signalFilter === "all" && (
+            <>
             <button
               onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
               className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
@@ -325,6 +388,8 @@ function StocksPageInner() {
             >
               {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
             </button>
+            </>
+            )}
           </>
         )}
       </div>
