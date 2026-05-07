@@ -332,7 +332,7 @@ function StocksPageInner() {
         <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
           {signalFilter === "buy_reversal" && "3개월간 50억원 이상 순매도했으나, 최근 1주일 5억원 이상 순매수로 전환된 종목 (시총 1천억 이상)"}
           {signalFilter === "sell_reversal" && "3개월간 50억원 이상 순매수했으나, 최근 1주일 5억원 이상 순매도로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목 — 1개월 순매수 기준"}
+          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목 — 순매수 기준"}
           {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며, 1개월 50억원 이상 + 매수 규모가 증가하는 종목"}
         </div>
       )}
