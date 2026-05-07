@@ -332,7 +332,7 @@ function StocksPageInner() {
         <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
           {signalFilter === "buy_reversal" && "3개월간 50억원 이상 순매도했으나, 최근 1주일 5억원 이상 순매수로 전환된 종목 (시총 1천억 이상)"}
           {signalFilter === "sell_reversal" && "3개월간 50억원 이상 순매수했으나, 최근 1주일 5억원 이상 순매도로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목"}
+          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목 — 1개월 순매수 기준"}
           {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며, 1개월 50억원 이상 + 매수 규모가 증가하는 종목"}
         </div>
       )}
@@ -407,12 +407,13 @@ function StocksPageInner() {
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">{investor === "pension" ? "연기금" : "합계"}{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">시총대비</th>
-                <th className="px-3 py-3 w-16 hidden sm:table-cell"></th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal hidden sm:table-cell">시총대비</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">수익률</th>
               </tr>
             </thead>
             <tbody>
               {paged.map((s, i) => {
+                const pc = s.price_change?.[displayPeriod];
                 const ratio = calcRatio(getInvVal(s, investor, displayPeriod), s.market_cap);
                 const signals = getSignals(s);
                 return (
@@ -447,16 +448,22 @@ function StocksPageInner() {
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[displayPeriod]} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.institution[displayPeriod]} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={investor === "pension" ? (s.pension?.[displayPeriod] ?? 0) : s.combined[displayPeriod]} /></td>
-                    <td className="px-2 sm:px-3 py-2.5 text-right">
+                    <td className="px-2 sm:px-3 py-2.5 text-right hidden sm:table-cell">
                       {ratio != null ? (
                         <span className={`num text-xs ${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
                           {ratio > 0 ? "+" : ""}{ratio.toFixed(2)}%
+                        </span>
+                      ) : <span className="text-[var(--text-muted)]">-</span>}
+                    </td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right">
+                      {pc != null ? (
+                        <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
+                          {pc > 0 ? "+" : ""}{pc.toFixed(1)}%
                         </span>
                       ) : (
                         <span className="text-[var(--text-muted)]">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 hidden sm:table-cell"><PurchaseBar value={getInvVal(s, investor, displayPeriod)} max={maxVal} /></td>
                   </tr>
                 );
               })}
