@@ -422,28 +422,27 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
-      <h3 className="text-sm sm:text-base font-semibold text-white"> 오늘의 주목</h3>
+      <h3 className="text-sm sm:text-base font-semibold text-white">오늘의 주목</h3>
 
       {/* 주도 섹터 & 주도주 */}
       {data.sectorLeaders.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[12px] text-[var(--text-secondary)] font-medium">⭐ 주도 섹터 & 주도주</span>
+            <span className="text-[13px] sm:text-[14px] text-white font-bold">주도 섹터 & 주도주</span>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
           <div className="space-y-3">
             {data.sectorLeaders.map((s) => (
               <div key={s.name}>
                 <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 mb-1.5 group">
-                  <span className="text-[12px] sm:text-[13px] text-white font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
+                  <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
                   <span className="text-[11px] num positive">{fmtUnit(s.total)}</span>
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
                 </Link>
                 <div className="flex flex-wrap gap-1.5">
                   {s.leaders.map((st) => (
                     <Link key={st.name} href={st.ticker ? `/stocks/${st.ticker}` : "#"}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/[0.06] border border-amber-500/[0.1] hover:border-amber-500/[0.2] transition text-[11px] sm:text-[12px]">
-                      <span className="text-amber-400 text-[9px]">⭐</span>
+                      className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
                       <span className="text-white font-medium">{st.name}</span>
                     </Link>
                   ))}
@@ -458,13 +457,13 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.buyReversals.length > 0 && (
         <div className="pt-3 border-t border-white/[0.04]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[12px] text-[var(--text-secondary)] font-medium">🔄 매수전환 주목주</span>
+            <span className="text-[13px] sm:text-[14px] text-white font-bold">매수전환 주목주</span>
             <span className="text-[10px] text-[var(--text-muted)]">순매수 상위</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.buyReversals.map((s) => (
               <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/[0.1] hover:border-emerald-500/[0.2] transition text-[11px] sm:text-[12px]">
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
                 <span className="text-white font-medium">{s.name}</span>
                 <span className="text-[10px] num positive">{fmtUnit(s.combined[data.buyPeriod === "1m" ? "1w" : "1m"])}</span>
               </Link>
@@ -477,13 +476,13 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.pensionTop.length > 0 && (
         <div className="pt-3 border-t border-white/[0.04]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[12px] text-[var(--text-secondary)] font-medium">🏦 연기금 집중</span>
+            <span className="text-[13px] sm:text-[14px] text-white font-bold">연기금 집중</span>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.pensionTop.map((s) => (
               <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/[0.06] border border-blue-500/[0.1] hover:border-blue-500/[0.2] transition text-[11px] sm:text-[12px]">
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
                 <span className="text-white font-medium">{s.name}</span>
                 <span className="text-[10px] num positive">{fmtUnit(s.pension?.[data.pensionPeriod] ?? 0)}</span>
               </Link>
