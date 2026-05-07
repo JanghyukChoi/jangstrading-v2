@@ -178,7 +178,7 @@ function SectorsPageInner() {
           combined: Math.round(data.combined * 10) / 10,
           pension: Math.round(data.pension * 10) / 10,
           totalMarketCap: Math.round(data.totalCap),
-          ratio: data.totalCap > 0 ? Math.round(net / data.totalCap * 1000) / 10 : null,
+          ratio: data.totalCap > 0 ? Math.round(net / data.totalCap * 10) / 10 : null,
         };
       });
 
