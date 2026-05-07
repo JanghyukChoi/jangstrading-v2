@@ -25,6 +25,7 @@ interface StockRanking {
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
+  pension?: Record<string, number>;
 }
 
 /* ── 유틸 ─────────────────────────────────────── */
@@ -311,107 +312,185 @@ function ConcentrationCard({ title, stocks, investorKey, color }: {
   );
 }
 
-/* ── 섹터별 주도주 미리보기 ────────────────── */
-function SectorLeaders({ stocks }: { stocks: StockRanking[] }) {
-  const sectors = useMemo(() => {
-    // 1. 중분류별 그룹핑 + 합산
-    const map: Record<string, { stocks: StockRanking[]; total: number }> = {};
-    for (const s of stocks) {
-      const mid = s.sector_mid;
-      if (!mid || mid === "기타") continue;
-      if (!map[mid]) map[mid] = { stocks: [], total: 0 };
-      map[mid].stocks.push(s);
-      map[mid].total += s.combined["1m"] ?? 0;
+/* ── 오늘의 주목 ────────────────────────────── */
+function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
+  const data = useMemo(() => {
+    // 사용할 기간 결정 (1m → 3m 폴백)
+    function pickPeriod(checkFn: (p: string) => boolean): string {
+      return checkFn("1m") ? "1m" : "3m";
     }
 
-    // 2. 순매수 상위 3개 중분류
-    const top3 = Object.entries(map)
-      .sort((a, b) => b[1].total - a[1].total)
-      .slice(0, 3);
-
-    // 3. 각 섹터 내 주도주 판정 (CLS)
-    return top3.map(([name, data]) => {
-      const sectorStocks = data.stocks;
-      const totalPosFlow = sectorStocks.reduce((sum, s) => sum + Math.max(s.combined["1m"] ?? 0, 0), 0);
-
-      function pctRank(values: number[], val: number): number {
-        const below = values.filter((v) => v < val).length;
-        return values.length > 1 ? (below / (values.length - 1)) * 100 : 50;
+    // ── 1. 주도 섹터 & 주도주 ──
+    function getSectorLeaders(period: string) {
+      const map: Record<string, { stocks: StockRanking[]; total: number }> = {};
+      for (const s of stocks) {
+        const mid = s.sector_mid;
+        if (!mid || mid === "기타") continue;
+        if (!map[mid]) map[mid] = { stocks: [], total: 0 };
+        map[mid].stocks.push(s);
+        map[mid].total += s.combined[period] ?? 0;
       }
 
-      const rawData = sectorStocks.map((s) => {
-        const flow = s.combined["1m"] ?? 0;
-        const cap = s.market_cap ?? 0;
-        const intensity = cap > 0 ? (flow / cap) * 100 : 0;
-        const mom = s.price_change?.["1m"] ?? 0;
-        const dw = (s.combined["1w"] ?? 0) / 5;
-        const dm = (s.combined["1m"] ?? 0) / 20;
-        const accel = dm !== 0 ? dw / dm : (dw > 0 ? 2 : 0);
-        const share = totalPosFlow > 0 ? (Math.max(flow, 0) / totalPosFlow) * 100 : 0;
-        return { stock: s, flow, intensity, mom, accel, share };
-      });
+      const top3 = Object.entries(map)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 3);
 
-      const allInt = rawData.map((d) => d.intensity);
-      const allMom = rawData.map((d) => d.mom);
+      return top3.map(([name, d]) => {
+        const sectorStocks = d.stocks;
+        const totalPosFlow = sectorStocks.reduce((sum, s) => sum + Math.max(s.combined[period] ?? 0, 0), 0);
 
-      const scored = rawData.map((d) => {
-        const nShare = Math.min(d.share * 5, 100);
-        const nInt = pctRank(allInt, d.intensity);
-        const nMom = pctRank(allMom, d.mom);
-        const nAccel = Math.min(Math.max(d.accel, 0) * 50, 100);
-        const cls = d.flow > 0 ? 0.25 * nShare + 0.20 * nInt + 0.35 * nMom + 0.20 * nAccel : 0;
-        return { ...d, cls };
-      });
+        function pctRank(values: number[], val: number): number {
+          const below = values.filter((v) => v < val).length;
+          return values.length > 1 ? (below / (values.length - 1)) * 100 : 50;
+        }
 
-      const posCls = scored.filter((s) => s.cls > 0).map((s) => s.cls).sort((a, b) => a - b);
-      const p75 = posCls.length > 0 ? posCls[Math.floor(posCls.length * 0.75)] ?? 50 : 50;
+        const rawData = sectorStocks.map((s) => {
+          const flow = s.combined[period] ?? 0;
+          const cap = s.market_cap ?? 0;
+          const intensity = cap > 0 ? (flow / cap) * 100 : 0;
+          const mom = s.price_change?.[period] ?? 0;
+          const dw = (s.combined["1w"] ?? 0) / 5;
+          const dm = (s.combined["1m"] ?? 0) / 20;
+          const accel = dm !== 0 ? dw / dm : (dw > 0 ? 2 : 0);
+          const share = totalPosFlow > 0 ? (Math.max(flow, 0) / totalPosFlow) * 100 : 0;
+          return { stock: s, flow, intensity, mom, accel, share };
+        });
 
-      const leaders = scored
-        .filter((s) => s.cls >= p75 && s.share >= 3)
-        .sort((a, b) => b.cls - a.cls)
-        .slice(0, 5)
-        .map((s) => s.stock);
+        const allInt = rawData.map((d) => d.intensity);
+        const allMom = rawData.map((d) => d.mom);
 
-      return { name, total: data.total, leaders, stockCount: sectorStocks.length };
-    });
+        const scored = rawData.map((d) => {
+          const nShare = Math.min(d.share * 5, 100);
+          const nInt = pctRank(allInt, d.intensity);
+          const nMom = pctRank(allMom, d.mom);
+          const nAccel = Math.min(Math.max(d.accel, 0) * 50, 100);
+          const cls = d.flow > 0 ? 0.25 * nShare + 0.20 * nInt + 0.35 * nMom + 0.20 * nAccel : 0;
+          return { ...d, cls };
+        });
+
+        const posCls = scored.filter((s) => s.cls > 0).map((s) => s.cls).sort((a, b) => a - b);
+        const p75 = posCls.length > 0 ? posCls[Math.floor(posCls.length * 0.75)] ?? 50 : 50;
+
+        // 주도주 중 시총 상위 3개
+        const leaders = scored
+          .filter((s) => s.cls >= p75 && s.share >= 3)
+          .sort((a, b) => (b.stock.market_cap ?? 0) - (a.stock.market_cap ?? 0))
+          .slice(0, 3)
+          .map((s) => s.stock);
+
+        return { name, total: d.total, leaders };
+      }).filter((s) => s.leaders.length > 0);
+    }
+
+    let sectorLeaders = getSectorLeaders("1m");
+    const sectorPeriod = sectorLeaders.length > 0 ? "1m" : "3m";
+    if (sectorLeaders.length === 0) sectorLeaders = getSectorLeaders("3m");
+
+    // ── 2. 매수전환 주목주 ──
+    function getBuyReversals(period: string) {
+      const big = stocks.filter((s) => (s.market_cap ?? 0) >= 1000);
+      const longP = period === "1m" ? "3m" : "6m";
+      const shortP = period === "1m" ? "1w" : "1m";
+      return big
+        .filter((s) => (s.combined[longP] ?? 0) < -5000 && (s.combined[shortP] ?? 0) > 500)
+        .sort((a, b) => (b.combined[shortP] ?? 0) - (a.combined[shortP] ?? 0))
+        .slice(0, 3);
+    }
+
+    let buyReversals = getBuyReversals("1m");
+    const buyPeriod = buyReversals.length > 0 ? "1m" : "3m";
+    if (buyReversals.length === 0) buyReversals = getBuyReversals("3m");
+
+    // ── 3. 연기금 집중 ──
+    function getPensionTop(period: string) {
+      return stocks
+        .filter((s) => (s.pension?.[period] ?? 0) > 0)
+        .sort((a, b) => (b.pension?.[period] ?? 0) - (a.pension?.[period] ?? 0))
+        .slice(0, 3);
+    }
+
+    let pensionTop = getPensionTop("1m");
+    const pensionPeriod = pensionTop.length > 0 ? "1m" : "3m";
+    if (pensionTop.length === 0) pensionTop = getPensionTop("3m");
+
+    return { sectorLeaders, sectorPeriod, buyReversals, buyPeriod, pensionTop, pensionPeriod };
   }, [stocks]);
 
-  if (sectors.length === 0) return null;
+  if (data.sectorLeaders.length === 0 && data.buyReversals.length === 0 && data.pensionTop.length === 0) return null;
+
+  const periodLabel = (p: string) => p === "1m" ? "1개월" : "3개월";
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">🏆 섹터별 주도주</h3>
-        <Link href="/sectors?view=mid" className="text-[11px] text-[var(--accent-blue)] hover:underline">전체 보기 →</Link>
-      </div>
-      <div className="space-y-4">
-        {sectors.map((s) => (
-          <div key={s.name}>
-            <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 mb-2 group">
-              <span className="text-[13px] sm:text-[14px] text-white font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
-              <span className="text-[11px] num positive">{fmtUnit(s.total)}</span>
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]">
-                <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
-              </svg>
-            </Link>
-            <div className="flex flex-wrap gap-1.5">
-              {s.leaders.map((st) => (
-                <Link
-                  key={st.name}
-                  href={st.ticker ? `/stocks/${st.ticker}` : "#"}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/[0.06] border border-amber-500/[0.1] hover:border-amber-500/[0.2] transition text-[11px] sm:text-[12px]"
-                >
-                  <span className="text-amber-400 text-[9px]">⭐</span>
-                  <span className="text-white font-medium">{st.name}</span>
-                </Link>
-              ))}
-              {s.leaders.length === 0 && (
-                <span className="text-[11px] text-[var(--text-muted)]">주도주 없음</span>
-              )}
-            </div>
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
+      <h3 className="text-sm sm:text-base font-semibold text-white"> 오늘의 주목</h3>
+
+      {/* 주도 섹터 & 주도주 */}
+      {data.sectorLeaders.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[12px] text-[var(--text-secondary)] font-medium">⭐ 주도 섹터 & 주도주</span>
+            <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
-        ))}
-      </div>
+          <div className="space-y-3">
+            {data.sectorLeaders.map((s) => (
+              <div key={s.name}>
+                <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 mb-1.5 group">
+                  <span className="text-[12px] sm:text-[13px] text-white font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
+                  <span className="text-[11px] num positive">{fmtUnit(s.total)}</span>
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
+                </Link>
+                <div className="flex flex-wrap gap-1.5">
+                  {s.leaders.map((st) => (
+                    <Link key={st.name} href={st.ticker ? `/stocks/${st.ticker}` : "#"}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/[0.06] border border-amber-500/[0.1] hover:border-amber-500/[0.2] transition text-[11px] sm:text-[12px]">
+                      <span className="text-amber-400 text-[9px]">⭐</span>
+                      <span className="text-white font-medium">{st.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 매수전환 주목주 */}
+      {data.buyReversals.length > 0 && (
+        <div className="pt-3 border-t border-white/[0.04]">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[12px] text-[var(--text-secondary)] font-medium">🔄 매수전환 주목주</span>
+            <span className="text-[10px] text-[var(--text-muted)]">순매수 상위</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {data.buyReversals.map((s) => (
+              <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/[0.1] hover:border-emerald-500/[0.2] transition text-[11px] sm:text-[12px]">
+                <span className="text-white font-medium">{s.name}</span>
+                <span className="text-[10px] num positive">{fmtUnit(s.combined[data.buyPeriod === "1m" ? "1w" : "1m"])}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 연기금 집중 */}
+      {data.pensionTop.length > 0 && (
+        <div className="pt-3 border-t border-white/[0.04]">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[12px] text-[var(--text-secondary)] font-medium">🏦 연기금 집중</span>
+            <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {data.pensionTop.map((s) => (
+              <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/[0.06] border border-blue-500/[0.1] hover:border-blue-500/[0.2] transition text-[11px] sm:text-[12px]">
+                <span className="text-white font-medium">{s.name}</span>
+                <span className="text-[10px] num positive">{fmtUnit(s.pension?.[data.pensionPeriod] ?? 0)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -576,8 +655,8 @@ export default function Dashboard() {
         <IndexCard name="KOSDAQ" data={market?.KOSDAQ ?? null} />
       </div>
 
-      {/* 2. 섹터별 주도주 */}
-      <SectorLeaders stocks={stocks} />
+      {/* 2. 오늘의 주목 */}
+      <TodayHighlight stocks={stocks} />
 
       {/* 3. TOP 10 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
