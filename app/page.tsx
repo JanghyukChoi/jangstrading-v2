@@ -422,13 +422,13 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
-      <h3 className="text-sm sm:text-base font-semibold text-white">오늘의 주목</h3>
+      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">오늘의 주목</h3>
 
       {/* 주도 섹터 & 주도주 */}
       {data.sectorLeaders.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[13px] sm:text-[14px] text-white font-bold">주도 섹터 & 주도주</span>
+            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">주도 섹터 & 주도주</span>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
           <div className="space-y-3">
@@ -457,7 +457,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.buyReversals.length > 0 && (
         <div className="pt-3 border-t border-white/[0.04]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[13px] sm:text-[14px] text-white font-bold">매수전환 주목주</span>
+            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">매수전환 주목주</span>
             <span className="text-[10px] text-[var(--text-muted)]">순매수 상위</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -476,7 +476,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.pensionTop.length > 0 && (
         <div className="pt-3 border-t border-white/[0.04]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[13px] sm:text-[14px] text-white font-bold">연기금 집중</span>
+            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">연기금 집중</span>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
