@@ -12,6 +12,7 @@ interface StockRanking {
   sector?: string;
   sector_mid?: string;
   market_cap?: number | null;
+  price_change?: Record<string, number>;
   foreign: Record<string, number>;
   institution: Record<string, number>;
   combined: Record<string, number>;
@@ -25,7 +26,7 @@ interface SectorData {
   combined: number;
   pension: number;
   totalMarketCap: number;
-  ratio: number | null;
+  weightedReturn: number | null;
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
@@ -131,7 +132,7 @@ function SectorsPageInner() {
 
   // 섹터별 집계
   const sectors = useMemo(() => {
-    const map: Record<string, { foreign: number; institution: number; combined: number; pension: number; totalCap: number; count: number }> = {};
+    const map: Record<string, { foreign: number; institution: number; combined: number; pension: number; totalCap: number; weightedReturnSum: number; count: number }> = {};
 
     if (view === "theme") {
       const tickerIndex: Record<string, StockRanking> = {};
@@ -139,15 +140,18 @@ function SectorsPageInner() {
         if (s.ticker) tickerIndex[s.ticker] = s;
       }
       for (const [themeName, tickers] of Object.entries(themeMap)) {
-        if (!map[themeName]) map[themeName] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, count: 0 };
+        if (!map[themeName]) map[themeName] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
         for (const ticker of tickers) {
           const s = tickerIndex[ticker];
           if (!s) continue;
+          const cap = s.market_cap ?? 0;
+          const pc = s.price_change?.[period] ?? 0;
           map[themeName].foreign += s.foreign[period] ?? 0;
           map[themeName].institution += s.institution[period] ?? 0;
           map[themeName].combined += s.combined[period] ?? 0;
           map[themeName].pension += s.pension?.[period] ?? 0;
-          map[themeName].totalCap += s.market_cap ?? 0;
+          map[themeName].totalCap += cap;
+          map[themeName].weightedReturnSum += pc * cap;
           map[themeName].count++;
         }
       }
@@ -156,12 +160,15 @@ function SectorsPageInner() {
       for (const s of allStocks) {
         const key = (s as any)[groupKey] || s.sector || "기타";
         if (key === "기타") continue;
-        if (!map[key]) map[key] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, count: 0 };
+        if (!map[key]) map[key] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
+        const cap = s.market_cap ?? 0;
+        const pc = s.price_change?.[period] ?? 0;
         map[key].foreign += s.foreign[period] ?? 0;
         map[key].institution += s.institution[period] ?? 0;
         map[key].combined += s.combined[period] ?? 0;
         map[key].pension += s.pension?.[period] ?? 0;
-        map[key].totalCap += s.market_cap ?? 0;
+        map[key].totalCap += cap;
+        map[key].weightedReturnSum += pc * cap;
         map[key].count++;
       }
     }
@@ -169,7 +176,6 @@ function SectorsPageInner() {
     const result: SectorData[] = Object.entries(map)
       .filter(([, data]) => data.count > 0)
       .map(([name, data]) => {
-        const net = investor === "foreign" ? data.foreign : investor === "institution" ? data.institution : investor === "pension" ? data.pension : data.combined;
         return {
           name,
           stockCount: data.count,
@@ -178,12 +184,12 @@ function SectorsPageInner() {
           combined: Math.round(data.combined * 10) / 10,
           pension: Math.round(data.pension * 10) / 10,
           totalMarketCap: Math.round(data.totalCap),
-          ratio: data.totalCap > 0 ? Math.round(net / data.totalCap * 10) / 10 : null,
+          weightedReturn: data.totalCap > 0 ? Math.round(data.weightedReturnSum / data.totalCap * 10) / 10 : null,
         };
       });
 
     result.sort((a, b) => {
-      if (sortBy === "ratio") return (b.ratio ?? 0) - (a.ratio ?? 0);
+      if (sortBy === "ratio") return (b.weightedReturn ?? 0) - (a.weightedReturn ?? 0);
       const av = investor === "foreign" ? a.foreign : investor === "institution" ? a.institution : investor === "pension" ? a.pension : a.combined;
       const bv = investor === "foreign" ? b.foreign : investor === "institution" ? b.institution : investor === "pension" ? b.pension : b.combined;
       return bv - av;
@@ -267,13 +273,14 @@ function SectorsPageInner() {
               : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
           }`}
         >
-          {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
+          {sortBy === "ratio" ? "★ 수익률순" : "수익률순"}
         </button>
       </div>
 
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
+        <div className="overflow-x-auto">
+        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3 min-w-[600px]">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="flex-1 min-w-0">업종</span>
           <span className="w-12 text-right hidden sm:block">종목수</span>
@@ -281,17 +288,15 @@ function SectorsPageInner() {
           <span className="w-16 sm:w-24 text-right shrink-0">외국인</span>
           <span className="w-16 sm:w-24 text-right shrink-0">기관</span>
           <span className="w-16 sm:w-24 text-right shrink-0">{investor === "pension" ? "연기금" : "합계"}</span>
-          <span className="w-14 text-right shrink-0 hidden sm:block">시총대비</span>
-          <span className="w-20 hidden sm:block"></span>
+          <span className="w-16 text-right shrink-0">수익률</span>
         </div>
 
         {sectors.map((s, i) => {
-          const sortVal = investor === "foreign" ? s.foreign : investor === "institution" ? s.institution : investor === "pension" ? s.pension : s.combined;
           return (
             <Link
               key={s.name}
               href={`/sectors/${encodeURIComponent(s.name)}`}
-              className="flex items-center px-3 sm:px-5 py-3 border-t border-white/[0.03] hover:bg-white/[0.02] transition"
+              className="flex items-center px-3 sm:px-5 py-3 border-t border-white/[0.03] hover:bg-white/[0.02] transition min-w-[600px]"
             >
               <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs hidden sm:block">{i + 1}</span>
               <span className="flex-1 min-w-0 flex items-center gap-1">
@@ -305,17 +310,17 @@ function SectorsPageInner() {
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.foreign} /></span>
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.institution} /></span>
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={investor === "pension" ? s.pension : s.combined} /></span>
-              <span className="w-14 text-right shrink-0 hidden sm:block">
-                {s.ratio != null ? (
-                  <span className={`num text-xs ${s.ratio > 0 ? "positive" : s.ratio < 0 ? "negative" : ""}`}>
-                    {s.ratio > 0 ? "+" : ""}{s.ratio.toFixed(1)}%
+              <span className="w-16 text-right shrink-0">
+                {s.weightedReturn != null ? (
+                  <span className={`num text-xs ${s.weightedReturn > 0 ? "positive" : s.weightedReturn < 0 ? "negative" : ""}`}>
+                    {s.weightedReturn > 0 ? "+" : ""}{s.weightedReturn.toFixed(1)}%
                   </span>
                 ) : "-"}
               </span>
-              <span className="w-20 pl-3 hidden sm:block"><SectorBar value={sortVal} max={maxVal} /></span>
             </Link>
           );
         })}
+        </div>
       </div>
     </div>
   );
