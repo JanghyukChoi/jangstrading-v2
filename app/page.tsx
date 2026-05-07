@@ -428,7 +428,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.sectorLeaders.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">주도 섹터 & 주도주</span>
+            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">- 주도 섹터 & 주도주</span>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
           <div className="space-y-3">
@@ -457,7 +457,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.buyReversals.length > 0 && (
         <div className="pt-3 border-t border-white/[0.04]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">매수전환 주목주</span>
+            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">- 매수전환 주목주</span>
             <span className="text-[10px] text-[var(--text-muted)]">순매수 상위</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -476,7 +476,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.pensionTop.length > 0 && (
         <div className="pt-3 border-t border-white/[0.04]">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">연기금 집중</span>
+            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">- 연기금 집중</span>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
