@@ -26,6 +26,7 @@ interface SectorData {
   combined: number;
   pension: number;
   totalMarketCap: number;
+  ratio: number | null;
   weightedReturn: number | null;
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
@@ -176,6 +177,7 @@ function SectorsPageInner() {
     const result: SectorData[] = Object.entries(map)
       .filter(([, data]) => data.count > 0)
       .map(([name, data]) => {
+        const net = investor === "foreign" ? data.foreign : investor === "institution" ? data.institution : investor === "pension" ? data.pension : data.combined;
         return {
           name,
           stockCount: data.count,
@@ -184,12 +186,13 @@ function SectorsPageInner() {
           combined: Math.round(data.combined * 10) / 10,
           pension: Math.round(data.pension * 10) / 10,
           totalMarketCap: Math.round(data.totalCap),
+          ratio: data.totalCap > 0 ? Math.round(net / data.totalCap * 10) / 10 : null,
           weightedReturn: data.totalCap > 0 ? Math.round(data.weightedReturnSum / data.totalCap * 10) / 10 : null,
         };
       });
 
     result.sort((a, b) => {
-      if (sortBy === "ratio") return (b.weightedReturn ?? 0) - (a.weightedReturn ?? 0);
+      if (sortBy === "ratio") return (b.ratio ?? 0) - (a.ratio ?? 0);
       const av = investor === "foreign" ? a.foreign : investor === "institution" ? a.institution : investor === "pension" ? a.pension : a.combined;
       const bv = investor === "foreign" ? b.foreign : investor === "institution" ? b.institution : investor === "pension" ? b.pension : b.combined;
       return bv - av;
@@ -273,7 +276,7 @@ function SectorsPageInner() {
               : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
           }`}
         >
-          {sortBy === "ratio" ? "★ 수익률순" : "수익률순"}
+          {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
         </button>
       </div>
 
@@ -288,6 +291,7 @@ function SectorsPageInner() {
           <span className="w-16 sm:w-24 text-right shrink-0">외국인</span>
           <span className="w-16 sm:w-24 text-right shrink-0">기관</span>
           <span className="w-16 sm:w-24 text-right shrink-0">{investor === "pension" ? "연기금" : "합계"}</span>
+          <span className="w-16 text-right shrink-0 hidden sm:block">시총대비</span>
           <span className="w-16 text-right shrink-0">수익률</span>
         </div>
 
@@ -310,6 +314,13 @@ function SectorsPageInner() {
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.foreign} /></span>
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.institution} /></span>
               <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={investor === "pension" ? s.pension : s.combined} /></span>
+              <span className="w-16 text-right shrink-0 hidden sm:block">
+                {s.ratio != null ? (
+                  <span className={`num text-xs ${s.ratio > 0 ? "positive" : s.ratio < 0 ? "negative" : ""}`}>
+                    {s.ratio > 0 ? "+" : ""}{s.ratio.toFixed(1)}%
+                  </span>
+                ) : "-"}
+              </span>
               <span className="w-16 text-right shrink-0">
                 {s.weightedReturn != null ? (
                   <span className={`num text-xs ${s.weightedReturn > 0 ? "positive" : s.weightedReturn < 0 ? "negative" : ""}`}>
