@@ -283,16 +283,16 @@ function SectorsPageInner() {
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3 min-w-[600px]">
+        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
-          <span className="flex-1 min-w-0">업종</span>
+          <span className="min-w-[80px] sm:min-w-0 sm:flex-1">업종</span>
           <span className="w-12 text-right hidden sm:block">종목수</span>
           <span className="w-16 text-right hidden sm:block">시총</span>
           <span className="w-16 sm:w-24 text-right shrink-0">외국인</span>
           <span className="w-16 sm:w-24 text-right shrink-0">기관</span>
           <span className="w-16 sm:w-24 text-right shrink-0">{investor === "pension" ? "연기금" : "합계"}</span>
           <span className="w-16 text-right shrink-0 hidden sm:block">시총대비</span>
-          <span className="w-16 text-right shrink-0">수익률</span>
+          <span className="w-14 text-right shrink-0">수익률</span>
         </div>
 
         {sectors.map((s, i) => {
@@ -300,10 +300,10 @@ function SectorsPageInner() {
             <Link
               key={s.name}
               href={`/sectors/${encodeURIComponent(s.name)}`}
-              className="flex items-center px-3 sm:px-5 py-3 border-t border-white/[0.03] hover:bg-white/[0.02] transition min-w-[600px]"
+              className="flex items-center px-3 sm:px-5 py-3 border-t border-white/[0.03] hover:bg-white/[0.02] transition"
             >
               <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs hidden sm:block">{i + 1}</span>
-              <span className="flex-1 min-w-0 flex items-center gap-1">
+              <span className="min-w-[80px] sm:min-w-0 sm:flex-1 flex items-center gap-1">
                 <span className="text-white font-medium text-[11px] sm:text-[13px] truncate">{s.name}</span>
                 <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)] shrink-0 hidden sm:block">
                   <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
@@ -321,7 +321,7 @@ function SectorsPageInner() {
                   </span>
                 ) : "-"}
               </span>
-              <span className="w-16 text-right shrink-0">
+              <span className="w-14 text-right shrink-0">
                 {s.weightedReturn != null ? (
                   <span className={`num text-xs ${s.weightedReturn > 0 ? "positive" : s.weightedReturn < 0 ? "negative" : ""}`}>
                     {s.weightedReturn > 0 ? "+" : ""}{s.weightedReturn.toFixed(1)}%
