@@ -218,7 +218,7 @@ function FlowChart({ title, data }: { title: string; data: MarketData | null }) 
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
       <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">{title}</h3>
       <p className="text-[10px] text-[var(--text-muted)] mb-3">기간별 투자자 순매수 금액</p>
-      <ResponsiveContainer width="100%" height={180}>
+      <ResponsiveContainer width="100%" height={120}>
         <BarChart data={chartData} barGap={2} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
           <XAxis dataKey="period" tick={{ fill: "#484f58", fontSize: 10 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fill: "#484f58", fontSize: 9 }} axisLine={false} tickLine={false}
@@ -424,13 +424,11 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
-      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">오늘의 주목</h3>
-
       {/* 주도 섹터 & 주도주 */}
       {data.sectorLeaders.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">- 주도 섹터 & 주도주</span>
+          <div className="flex items-baseline gap-2 mb-3">
+            <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">주도 섹터 & 주도주</h4>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
           <div className="space-y-3">
@@ -457,9 +455,9 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
 
       {/* 매수전환 주목주 */}
       {data.buyReversals.length > 0 && (
-        <div className="pt-3 border-t border-white/[0.04]">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">- 매수전환 주목주</span>
+        <div className="pt-4 border-t border-white/[0.04]">
+          <div className="flex items-baseline gap-2 mb-3">
+            <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">매수전환 주목주</h4>
             <span className="text-[10px] text-[var(--text-muted)]">순매수 상위</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -476,9 +474,9 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
 
       {/* 연기금 집중 */}
       {data.pensionTop.length > 0 && (
-        <div className="pt-3 border-t border-white/[0.04]">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">- 연기금 집중</span>
+        <div className="pt-4 border-t border-white/[0.04]">
+          <div className="flex items-baseline gap-2 mb-3">
+            <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">연기금 집중</h4>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -535,19 +533,19 @@ function MarketSummary({ stocks }: { stocks: StockRanking[] }) {
       <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">시장 수급 요약</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
-          <span className="text-[11px] text-[var(--text-muted)]">외국인·기관 방향</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">외국인·기관 방향</span>
           <div className="flex items-center gap-2">
             <span className={`text-[14px] sm:text-[16px] font-semibold ${consensusColor}`}>{consensus}</span>
           </div>
           <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">동시매수 {bothBuy} · 엇갈림 {mixed} · 동시매도 {bothSell}</span>
         </div>
         <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
-          <span className="text-[11px] text-[var(--text-muted)]">외국인 집중도</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">외국인 집중도</span>
           <span className="text-[14px] sm:text-[16px] font-semibold num">{fPct}%</span>
           <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
         </div>
         <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
-          <span className="text-[11px] text-[var(--text-muted)]">기관 집중도</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">기관 집중도</span>
           <span className="text-[14px] sm:text-[16px] font-semibold num">{iPct}%</span>
           <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
         </div>
@@ -592,6 +590,17 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
   );
 }
 
+/* ── 섹션 헤더 ────────────────────────────────── */
+function SectionHeader({ title, desc }: { title: string; desc?: string }) {
+  return (
+    <div className="mb-4">
+      <h2 className="text-[18px] sm:text-[20px] font-semibold text-white tracking-tight leading-tight">{title}</h2>
+      {desc && <p className="text-[12px] text-[var(--text-muted)] mt-1.5">{desc}</p>}
+      <div className="h-px bg-white/[0.1] mt-3" />
+    </div>
+  );
+}
+
 /* ── 메인 ─────────────────────────────────────── */
 export default function Dashboard() {
   const [market, setMarket] = useState<Record<string, MarketData> | null>(null);
@@ -628,7 +637,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
+      {/* Intro */}
       <div>
         <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)]">외국인·기관이 어디에 돈을 넣고 있는지, 어떤 종목이 주도하는지 한눈에</p>
         {meta && (
@@ -650,40 +660,67 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* 1. KOSPI / KOSDAQ */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <IndexCard name="KOSPI" data={market?.KOSPI ?? null} />
-        <IndexCard name="KOSDAQ" data={market?.KOSDAQ ?? null} />
-      </div>
+      {/* Section 1: 오늘의 시장 */}
+      <section>
+        <SectionHeader title="오늘의 시장" desc="AI 시황과 주요 지수" />
+        <div className="space-y-4">
+          {latestReport && (
+            <Link href={`/reports/${latestReport.date}`}
+              className="block bg-gradient-to-br from-[var(--bg-card)] to-[#161b22] border border-white/[0.08] rounded-2xl p-5 sm:p-7 hover:border-white/[0.18] transition group"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
+                <span className="text-[10px] text-[var(--text-muted)] num">{latestReport.date}</span>
+              </div>
+              <h3 className="text-[17px] sm:text-[21px] font-semibold text-white leading-snug mb-2.5 tracking-tight">
+                {latestReport.title}
+              </h3>
+              {latestReport.body && (
+                <p className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
+                  {latestReport.body}
+                </p>
+              )}
+              <div className="flex items-center gap-1 mt-4 text-[12px] text-[var(--accent-blue)] group-hover:gap-2 transition-all">
+                <span>자세히 보기</span>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
+              </div>
+            </Link>
+          )}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <IndexCard name="KOSPI" data={market?.KOSPI ?? null} />
+            <IndexCard name="KOSDAQ" data={market?.KOSDAQ ?? null} />
+          </div>
+        </div>
+      </section>
 
-      {/* 2. 오늘의 주목 */}
-      <TodayHighlight stocks={stocks} />
+      {/* Section 2: 시장 수급 한눈에 */}
+      <section>
+        <SectionHeader title="시장 수급 한눈에" desc="외국인·기관 방향과 집중도" />
+        <MarketSummary stocks={stocks} />
+      </section>
 
-      {/* 3. TOP 10 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TopTable title="1개월 순매수 TOP 10" desc="외국인+기관 합산 순매수 금액 기준" stocks={stocks} type="buy" />
-        <TopTable title="1개월 순매도 TOP 10" desc="외국인+기관 합산 순매도 금액 기준" stocks={stocks} type="sell" />
-      </div>
+      {/* Section 3: 오늘의 주목 */}
+      <section>
+        <SectionHeader title="오늘의 주목" desc="주도 섹터·종목 분석" />
+        <div className="space-y-4">
+          <TodayHighlight stocks={stocks} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <TopTable title="1개월 순매수 TOP 10" desc="외국인+기관 합산 순매수 금액 기준" stocks={stocks} type="buy" />
+            <TopTable title="1개월 순매도 TOP 10" desc="외국인+기관 합산 순매도 금액 기준" stocks={stocks} type="sell" />
+          </div>
+        </div>
+      </section>
 
-      {/* 4. 시장 수급 요약 (방향 일치 + 집중도 압축) */}
-      <MarketSummary stocks={stocks} />
+      {/* Section 4: 투자자별 자금 흐름 */}
+      <section>
+        <SectionHeader title="투자자별 자금 흐름" desc="KOSPI·KOSDAQ 기간별" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <FlowChart title="KOSPI 투자자별 자금흐름" data={market?.KOSPI ?? null} />
+          <FlowChart title="KOSDAQ 투자자별 자금흐름" data={market?.KOSDAQ ?? null} />
+        </div>
+      </section>
 
-      {/* 5. AI 시황 한 줄 */}
-      {latestReport && (
-        <Link href={`/reports/${latestReport.date}`}
-          className="flex items-center gap-3 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-4 sm:px-5 py-3.5 hover:border-white/[0.12] transition"
-        >
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium shrink-0">AI 시황</span>
-          <span className="text-[13px] sm:text-[14px] text-white font-medium truncate">{latestReport.title}</span>
-          <span className="text-[11px] text-[var(--accent-blue)] shrink-0 ml-auto">→</span>
-        </Link>
-      )}
-
-      {/* 6. 자금흐름 차트 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <FlowChart title="KOSPI 투자자별 자금흐름" data={market?.KOSPI ?? null} />
-        <FlowChart title="KOSDAQ 투자자별 자금흐름" data={market?.KOSDAQ ?? null} />
-      </div>
+      {/* CTA */}
       <div className="text-center pt-2">
         <Link href="/stocks"
           className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent-blue)] text-white rounded-xl text-sm font-medium hover:brightness-110 transition">

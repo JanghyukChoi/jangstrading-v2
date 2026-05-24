@@ -308,23 +308,24 @@ function StocksPageInner() {
       {/* 신호 필터 카드 */}
       <div className="flex flex-wrap gap-2">
         {([
-          { key: "all" as Signal, label: "전체", count: null, color: "" },
-          { key: "buy_reversal" as Signal, label: "🔄 매수전환", count: signalCounts.buy_reversal, color: "text-emerald-400" },
-          { key: "sell_reversal" as Signal, label: "🔄 매도전환", count: signalCounts.sell_reversal, color: "text-orange-400" },
-          { key: "leaders" as Signal, label: "⭐ 주도주", count: signalCounts.leaders, color: "text-amber-400" },
-          { key: "accumulation" as Signal, label: "🔥 집중매수", count: signalCounts.accumulation, color: "text-rose-400" },
+          { key: "all" as Signal, label: "전체", count: null, dot: "" },
+          { key: "buy_reversal" as Signal, label: "매수전환", count: signalCounts.buy_reversal, dot: "bg-emerald-400" },
+          { key: "sell_reversal" as Signal, label: "매도전환", count: signalCounts.sell_reversal, dot: "bg-orange-400" },
+          { key: "leaders" as Signal, label: "주도주", count: signalCounts.leaders, dot: "bg-amber-400" },
+          { key: "accumulation" as Signal, label: "집중매수", count: signalCounts.accumulation, dot: "bg-rose-400" },
         ]).map((s) => (
           <button
             key={s.key}
             onClick={() => setSignalFilter(s.key)}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-[12px] border transition ${
+            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-[12px] border transition inline-flex items-center gap-1.5 ${
               signalFilter === s.key
                 ? "bg-white/[0.08] border-white/[0.15] text-white font-medium"
                 : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:border-white/[0.12]"
             }`}
           >
+            {s.dot && <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.dot}`} />}
             {s.label}
-            {s.count != null && <span className="ml-1 opacity-60">{s.count}</span>}
+            {s.count != null && <span className="opacity-60">{s.count}</span>}
           </button>
         ))}
       </div>
