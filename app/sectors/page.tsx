@@ -47,7 +47,13 @@ function fmtUnit(n: number) {
 }
 function CNum({ v }: { v: number }) {
   const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
-  return <span className={`num ${cls}`}>{fmtUnit(v)}</span>;
+  const str = fmtUnit(v);
+  const m = str.match(/^(.+?)([가-힣]+)$/);
+  return m ? (
+    <span className={cls}><span className="num">{m[1]}</span>{m[2]}</span>
+  ) : (
+    <span className={`num ${cls}`}>{str}</span>
+  );
 }
 function fmtCap(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(0)}조`;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export const dynamic = "force-static";
@@ -14,17 +15,24 @@ interface Report {
   news_count: number;
 }
 
+interface IndexEntry {
+  date: string;
+  title: string;
+}
+
 export default function ReportDetailPage({ params }: { params: Promise<{ date: string }> }) {
   const { date } = use(params);
   const router = useRouter();
   const [report, setReport] = useState<Report | null>(null);
+  const [index, setIndex] = useState<IndexEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/data/reports/${date}.json`)
-      .then((r) => r.json())
-      .then((d) => setReport(d))
-      .catch(() => setReport(null))
+    Promise.all([
+      fetch(`/data/reports/${date}.json`).then((r) => r.json()).catch(() => null),
+      fetch("/data/reports/index.json").then((r) => r.json()).catch(() => []),
+    ])
+      .then(([r, idx]) => { setReport(r); setIndex(idx); })
       .finally(() => setLoading(false));
   }, [date]);
 
@@ -44,6 +52,10 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
       </div>
     );
   }
+
+  const currentIdx = index.findIndex((r) => r.date === date);
+  const olderReport = currentIdx >= 0 && currentIdx < index.length - 1 ? index[currentIdx + 1] : null;
+  const newerReport = currentIdx > 0 ? index[currentIdx - 1] : null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -80,6 +92,32 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
           </p>
         </div>
       </div>
+
+      {/* 이전 / 다음 시황 네비 */}
+      {(olderReport || newerReport) && (
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          {olderReport ? (
+            <Link
+              href={`/reports/${olderReport.date}`}
+              className="group flex flex-col gap-1 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-4 py-3.5 hover:border-white/[0.15] transition min-w-0"
+            >
+              <span className="text-[11px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">← 이전 시황</span>
+              <span className="text-[12px] sm:text-[13px] text-white font-medium line-clamp-1">{olderReport.title}</span>
+              <span className="text-[10px] text-[var(--text-muted)] num">{olderReport.date}</span>
+            </Link>
+          ) : <div />}
+          {newerReport ? (
+            <Link
+              href={`/reports/${newerReport.date}`}
+              className="group flex flex-col gap-1 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-4 py-3.5 hover:border-white/[0.15] transition min-w-0 text-right"
+            >
+              <span className="text-[11px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">다음 시황 →</span>
+              <span className="text-[12px] sm:text-[13px] text-white font-medium line-clamp-1">{newerReport.title}</span>
+              <span className="text-[10px] text-[var(--text-muted)] num">{newerReport.date}</span>
+            </Link>
+          ) : <div />}
+        </div>
+      )}
     </div>
   );
 }

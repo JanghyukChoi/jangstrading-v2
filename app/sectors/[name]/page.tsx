@@ -28,7 +28,14 @@ function fmtUnit(n: number) {
   return `${sign}${Math.round(won).toLocaleString()}원`;
 }
 function CNum({ v }: { v: number }) {
-  return <span className={`num ${v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]"}`}>{fmtUnit(v)}</span>;
+  const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
+  const str = fmtUnit(v);
+  const m = str.match(/^(.+?)([가-힣]+)$/);
+  return m ? (
+    <span className={cls}><span className="num">{m[1]}</span>{m[2]}</span>
+  ) : (
+    <span className={`num ${cls}`}>{str}</span>
+  );
 }
 function FilterGroup<T extends string>({ options, value, onChange }: { options: { key: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (

@@ -57,16 +57,39 @@ function fmtCap(n: number) {
 }
 function CNum({ v, size = "text-sm" }: { v: number; size?: string }) {
   const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
-  return <span className={`num ${cls} ${size}`}>{fmtUnit(v)}</span>;
+  const str = fmtUnit(v);
+  const m = str.match(/^(.+?)([가-힣]+)$/);
+  return m ? (
+    <span className={`${cls} ${size}`}><span className="num">{m[1]}</span>{m[2]}</span>
+  ) : (
+    <span className={`num ${cls} ${size}`}>{str}</span>
+  );
+}
+// 한글 단위 분리 헬퍼
+function NumUnit({ v, cls = "" }: { v: number; cls?: string }) {
+  const str = fmtUnit(v);
+  const m = str.match(/^(.+?)([가-힣]+)$/);
+  return m ? (
+    <span className={cls}><span className="num">{m[1]}</span>{m[2]}</span>
+  ) : (
+    <span className={`num ${cls}`}>{str}</span>
+  );
 }
 
 /* ── 지표 카드 ────────────────────────────────── */
 function MetricCard({ label, value, unit }: { label: string; value: string | null; unit?: string }) {
+  const m = value?.match(/^(.+?)([가-힣]+)$/);
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl p-3 sm:p-4 text-center">
       <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-1.5">{label}</div>
-      <div className="text-sm sm:text-lg font-semibold num text-white truncate">
-        {value ?? <span className="text-[var(--text-muted)]">-</span>}
+      <div className="text-sm sm:text-lg font-semibold text-white truncate">
+        {value == null ? (
+          <span className="text-[var(--text-muted)]">-</span>
+        ) : m ? (
+          <><span className="num">{m[1]}</span>{m[2]}</>
+        ) : (
+          <span className="num">{value}</span>
+        )}
       </div>
       {unit && value && <div className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{unit}</div>}
     </div>
@@ -85,8 +108,8 @@ function SupplyChart({ title, data }: { title: string; data: Record<string, numb
     return (
       <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl">
         <div className="text-[var(--text-secondary)] mb-1">{label}</div>
-        <div className={`num font-medium ${v > 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>
-          {fmtUnit(v)}
+        <div className={`font-medium ${v > 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>
+          <NumUnit v={v} />
         </div>
       </div>
     );
@@ -175,24 +198,47 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
   return (
     <div className="space-y-4">
-      {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* 헤더 (3단 구조) */}
+      <div className="space-y-3 pb-4 border-b border-white/[0.08]">
+        {/* 상단: 뒤로가기 + 차트 버튼 */}
+        <div className="flex items-center justify-between gap-2">
           <button onClick={() => router.back()} className="text-[var(--text-muted)] hover:text-white transition text-sm">← 목록</button>
-          <div className="w-px h-4 bg-white/10" />
-          <h1 className="text-xl sm:text-2xl font-bold">{stockData.name}</h1>
+          <a href={tvUrl} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2962FF] text-white rounded-lg text-xs font-medium hover:brightness-110 transition">
+            <svg width="12" height="12" viewBox="0 0 36 28" fill="currentColor">
+              <path d="M14 22H7V6h7V0H0v28h21v-7h-7v1zm22-22h-7v7h-8v7h8v7h7V0z"/>
+            </svg>
+            차트
+          </a>
+        </div>
+
+        {/* 중단: 종목명 + 시장 + 티커 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{stockData.name}</h1>
           <span className={`text-[10px] px-2 py-0.5 rounded-lg font-medium ${
             stockData.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
           }`}>{stockData.market}</span>
           <span className="text-[var(--text-muted)] text-xs num">{stockData.ticker}</span>
         </div>
-        <a href={tvUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2962FF] text-white rounded-xl text-xs sm:text-sm font-medium hover:brightness-110 transition self-start">
-          <svg width="14" height="14" viewBox="0 0 36 28" fill="currentColor">
-            <path d="M14 22H7V6h7V0H0v28h21v-7h-7v1zm22-22h-7v7h-8v7h8v7h7V0z"/>
-          </svg>
-          TradingView 차트
-        </a>
+
+        {/* 하단: 큰 현재가 + 전일대비 */}
+        {stockData.avg_cost?.price != null && (
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className="text-[32px] sm:text-[42px] font-bold text-white tracking-tight leading-none">
+              <span className="num">{stockData.avg_cost.price.toLocaleString()}</span>
+              <span className="text-[18px] sm:text-[22px] font-medium text-[var(--text-secondary)] ml-1">원</span>
+            </span>
+            {stockData.price_change?.["1d"] != null && (
+              <span className={`text-[15px] sm:text-[17px] font-semibold ${
+                stockData.price_change["1d"] > 0 ? "positive" : stockData.price_change["1d"] < 0 ? "negative" : "text-[var(--text-secondary)]"
+              }`}>
+                {stockData.price_change["1d"] > 0 ? "▲ " : stockData.price_change["1d"] < 0 ? "▼ " : ""}
+                <span className="num">{stockData.price_change["1d"] > 0 ? "+" : ""}{stockData.price_change["1d"].toFixed(2)}%</span>
+              </span>
+            )}
+            <span className="text-[11px] text-[var(--text-muted)]">전일대비</span>
+          </div>
+        )}
       </div>
 
       {/* 업종 · 테마 */}
@@ -267,7 +313,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                   <div className="flex items-end justify-between mb-3">
                     <div>
                       <div className="text-[10px] text-[var(--text-muted)] mb-1">추정 평균단가</div>
-                      <div className="text-lg sm:text-xl font-semibold num text-white">{d.avg_cost.toLocaleString()}원</div>
+                      <div className="text-lg sm:text-xl font-semibold text-white"><span className="num">{d.avg_cost.toLocaleString()}</span>원</div>
                     </div>
                     <div className={`text-right px-3 py-1.5 rounded-lg ${
                       isProfit ? "bg-red-500/[0.08]" : "bg-blue-500/[0.08]"
@@ -365,9 +411,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                         style={{ width: `${Math.max(pct, 2)}%` }}
                       />
                     </div>
-                    <span className={`text-[12px] sm:text-[13px] num font-medium w-24 text-right shrink-0 ${isPos ? "positive" : value < 0 ? "negative" : ""}`}>
-                      {fmtUnit(value)}
-                    </span>
+                    <NumUnit v={value} cls={`text-[12px] sm:text-[13px] font-medium w-24 text-right shrink-0 ${isPos ? "positive" : value < 0 ? "negative" : ""}`} />
                   </div>
                 );
               })}

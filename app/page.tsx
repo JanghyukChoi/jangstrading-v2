@@ -48,7 +48,23 @@ function fmtUnit(n: number) {
 function CNum({ v, suffix = "" }: { v: number | null; suffix?: string }) {
   if (v == null) return <span className="num text-[var(--text-muted)]">-</span>;
   const cls = v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]";
-  return <span className={`num ${cls}`}>{fmtUnit(v)}{suffix}</span>;
+  const str = fmtUnit(v);
+  const m = str.match(/^(.+?)([가-힣]+)$/);
+  return m ? (
+    <span className={cls}><span className="num">{m[1]}</span>{m[2]}{suffix}</span>
+  ) : (
+    <span className={`num ${cls}`}>{str}{suffix}</span>
+  );
+}
+// 한글 단위(억원·만원·조원·원)는 .num에서 빼서 Pretendard로 렌더
+function NumUnit({ v, cls = "" }: { v: number; cls?: string }) {
+  const str = fmtUnit(v);
+  const m = str.match(/^(.+?)([가-힣]+)$/);
+  return m ? (
+    <span className={cls}><span className="num">{m[1]}</span>{m[2]}</span>
+  ) : (
+    <span className={`num ${cls}`}>{str}</span>
+  );
 }
 
 /* ── 외국인 vs 기관 방향 일치 ─────────────────── */
@@ -207,7 +223,7 @@ function FlowChart({ title, data }: { title: string; data: MarketData | null }) 
         {payload.map((p: any) => (
           <div key={p.dataKey} className="flex justify-between gap-4 mb-0.5">
             <span style={{ color: p.fill }}>{p.dataKey === "foreign" ? "외국인" : p.dataKey === "institution" ? "기관" : "개인"}</span>
-            <span className="num text-white">{fmtUnit(p.value)}</span>
+            <NumUnit v={p.value} cls="text-white" />
           </div>
         ))}
       </div>
@@ -436,7 +452,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
               <div key={s.name}>
                 <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 mb-1.5 group">
                   <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
-                  <span className="text-[11px] num positive">{fmtUnit(s.total)}</span>
+                  <NumUnit v={s.total} cls="text-[11px] positive" />
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
                 </Link>
                 <div className="flex flex-wrap gap-1.5">
@@ -465,7 +481,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
               <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
                 <span className="text-white font-medium">{s.name}</span>
-                <span className="text-[10px] num positive">{fmtUnit(s.combined[data.buyPeriod === "1m" ? "1w" : "1m"])}</span>
+                <NumUnit v={s.combined[data.buyPeriod === "1m" ? "1w" : "1m"]} cls="text-[10px] positive" />
               </Link>
             ))}
           </div>
@@ -484,7 +500,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
               <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
                 <span className="text-white font-medium">{s.name}</span>
-                <span className="text-[10px] num positive">{fmtUnit(s.pension?.[data.pensionPeriod] ?? 0)}</span>
+                <NumUnit v={s.pension?.[data.pensionPeriod] ?? 0} cls="text-[10px] positive" />
               </Link>
             ))}
           </div>
@@ -580,7 +596,7 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
                 <span className="text-white text-[13px] font-medium truncate block">{s.name}</span>
               )}
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-right shrink-0 text-[12px] sm:text-[13px]">
               <CNum v={s.combined["1m"]} />
             </div>
           </div>
