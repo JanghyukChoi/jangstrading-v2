@@ -4,6 +4,9 @@ import { useEffect, useState, useMemo, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+export const dynamic = "force-static";
+export const dynamicParams = true;
+
 interface StockRanking {
   name: string; market: string; ticker?: string; sector?: string; sector_mid?: string;
   market_cap?: number | null; per?: number | null; price_change?: Record<string, number>;

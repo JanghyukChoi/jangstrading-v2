@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
+export const dynamic = "force-static";
+
 /* ── 타입 ─────────────────────────────────────── */
 interface StockRanking {
   name: string;

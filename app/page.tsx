@@ -7,6 +7,8 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 
+export const dynamic = "force-static";
+
 /* ── 타입 ─────────────────────────────────────── */
 interface Flow { foreign: number; institution: number; individual: number }
 interface MarketData {

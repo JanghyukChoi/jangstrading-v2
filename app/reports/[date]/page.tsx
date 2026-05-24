@@ -3,6 +3,9 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 
+export const dynamic = "force-static";
+export const dynamicParams = true;
+
 interface Report {
   date: string;
   title: string;

@@ -7,6 +7,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell,
 } from "recharts";
 
+export const dynamic = "force-static";
+export const dynamicParams = true;
+
 /* ── 타입 ─────────────────────────────────────── */
 interface AvgCostData {
   price: number;
