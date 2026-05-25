@@ -92,6 +92,113 @@ function SectorBar({ value, max }: { value: number; max: number }) {
   );
 }
 
+/* ── 섹터 TOP 리스트 섹션 (재사용) ── */
+function TopListSection({ items, label, color }: {
+  items: { name: string; value: number }[];
+  label?: string;
+  color: "red" | "blue";
+}) {
+  if (items.length === 0) return null;
+  const max = Math.max(...items.map((i) => Math.abs(i.value)));
+  const gradient = color === "red"
+    ? "bg-gradient-to-r from-red-500/80 to-red-500/20"
+    : "bg-gradient-to-r from-blue-400/80 to-blue-400/20";
+  return (
+    <div>
+      {label && (
+        <div className="flex items-baseline gap-2 mb-3">
+          <h4 className="text-[12px] sm:text-[13px] font-semibold text-white">{label}</h4>
+          <span className="text-[10px] text-[var(--text-muted)]">{items.length}개</span>
+        </div>
+      )}
+      <ul className="space-y-3">
+        {items.map((s, i) => {
+          const pct = (Math.abs(s.value) / max) * 100;
+          return (
+            <li key={s.name} className="space-y-1.5">
+              <div className="flex items-baseline gap-3">
+                <span className="num text-[var(--text-muted)] text-[12px] w-5 shrink-0 text-right">{i + 1}</span>
+                <Link
+                  href={`/sectors/${encodeURIComponent(s.name)}`}
+                  className="text-white text-[13px] sm:text-[14px] font-medium flex-1 truncate hover:text-[var(--accent-blue)] transition"
+                >
+                  {s.name}
+                </Link>
+                <span className="text-[12px] sm:text-[13px] font-medium"><CNum v={s.value} /></span>
+              </div>
+              <div className="ml-8 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                <div className={`h-full ${gradient} rounded-full`} style={{ width: `${pct}%` }} />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/* ── 섹터 순매수 TOP 리스트 (모바일 친화) ── */
+function SectorTopList({ sectors, investor, periodLabel, view }: {
+  sectors: SectorData[];
+  investor: Investor;
+  periodLabel: string;
+  view: View;
+}) {
+  const { positives, negatives } = useMemo(() => {
+    const getValue = (s: SectorData) =>
+      investor === "foreign" ? s.foreign :
+      investor === "institution" ? s.institution :
+      investor === "pension" ? s.pension :
+      s.combined;
+    const pos = sectors
+      .filter((s) => getValue(s) > 0)
+      .sort((a, b) => getValue(b) - getValue(a))
+      .slice(0, 10)
+      .map((s) => ({ name: s.name, value: getValue(s) }));
+    const neg = sectors
+      .filter((s) => getValue(s) < 0)
+      .sort((a, b) => getValue(a) - getValue(b))
+      .slice(0, 10)
+      .map((s) => ({ name: s.name, value: getValue(s) }));
+    return { positives: pos, negatives: neg };
+  }, [sectors, investor]);
+
+  const groupLabel = view === "theme" ? "테마" : view === "mid" ? "중분류 섹터" : "대분류 섹터";
+  // 대분류는 10개뿐이라 매수/매도 둘 다 표시. 중분류·테마는 매수만.
+  const showNegatives = view === "large";
+
+  if (positives.length === 0 && (!showNegatives || negatives.length === 0)) {
+    return (
+      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-6 text-center">
+        <p className="text-[12px] text-[var(--text-muted)]">표시할 {groupLabel} 데이터가 없습니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <div className="flex items-baseline gap-2 mb-1">
+        <h3 className="text-[13px] sm:text-[14px] font-semibold text-white tracking-tight">
+          {showNegatives ? `${groupLabel} 수급 현황` : "순매수 상위"}
+        </h3>
+        <span className="text-[10px] text-[var(--text-muted)]">{periodLabel}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)] mb-4">
+        {showNegatives ? "매수·매도 우위 섹터 전체" : `${groupLabel} 중 가장 강한 매수 흐름`}
+      </p>
+
+      {showNegatives ? (
+        <div className="space-y-6">
+          <TopListSection items={positives} label="매수 우위" color="red" />
+          {negatives.length > 0 && <TopListSection items={negatives} label="매도 우위" color="blue" />}
+        </div>
+      ) : (
+        <TopListSection items={positives} color="red" />
+      )}
+    </div>
+  );
+}
+
 /* ── 메인 ─────────────────────────────────────── */
 function SectorsPageInner() {
   const searchParams = useSearchParams();
@@ -291,6 +398,9 @@ function SectorsPageInner() {
       </div>
       </div>
       {/* /Sticky 필터 영역 */}
+
+      {/* 섹터 순매수 TOP 리스트 */}
+      <SectorTopList sectors={sectors} investor={investor} periodLabel={periodLabels[period]} view={view} />
 
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
