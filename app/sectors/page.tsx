@@ -230,6 +230,8 @@ function SectorsPageInner() {
         <div className="text-xs text-[var(--text-muted)] num">{sectors.length}개 업종</div>
       </div>
 
+      {/* Sticky 필터 영역 */}
+      <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#06080d]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
       {/* 대분류 / 중분류 / 테마 탭 */}
       <div className="flex items-center gap-3">
         <div className="flex rounded-xl overflow-hidden border border-white/[0.08] bg-[var(--bg-card)]">
@@ -287,6 +289,8 @@ function SectorsPageInner() {
           {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
         </button>
       </div>
+      </div>
+      {/* /Sticky 필터 영역 */}
 
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">

@@ -33,8 +33,21 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4">
+        {/* 헤더 스켈레톤 */}
+        <div className="space-y-2">
+          <div className="h-6 w-32 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-3 w-48 bg-white/[0.04] rounded animate-pulse" />
+        </div>
+        {/* HERO 스켈레톤 */}
+        <div className="h-48 bg-white/[0.04] rounded-2xl animate-pulse" />
+        {/* 이전 시황 리스트 스켈레톤 */}
+        <div className="mt-6 space-y-2">
+          <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse mb-3" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-20 bg-white/[0.04] rounded-2xl animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }

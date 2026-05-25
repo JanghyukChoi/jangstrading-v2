@@ -295,8 +295,41 @@ function StocksPageInner() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4">
+        {/* 헤더 스켈레톤 */}
+        <div className="flex items-end justify-between gap-2">
+          <div className="space-y-2">
+            <div className="h-6 w-48 bg-white/[0.04] rounded animate-pulse" />
+            <div className="h-3 w-32 bg-white/[0.04] rounded animate-pulse" />
+          </div>
+          <div className="h-3 w-16 bg-white/[0.04] rounded animate-pulse" />
+        </div>
+        {/* 필터 칩 스켈레톤 */}
+        <div className="flex gap-2 flex-wrap">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-7 w-20 bg-white/[0.04] rounded-xl animate-pulse" />
+          ))}
+        </div>
+        {/* 컨트롤 스켈레톤 */}
+        <div className="flex gap-2 flex-wrap">
+          <div className="h-8 w-44 bg-white/[0.04] rounded-xl animate-pulse" />
+          <div className="h-8 w-36 bg-white/[0.04] rounded-xl animate-pulse" />
+          <div className="h-8 w-24 bg-white/[0.04] rounded-xl animate-pulse" />
+        </div>
+        {/* 테이블 스켈레톤 */}
+        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 space-y-3">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 py-1">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="h-3 w-4 bg-white/[0.04] rounded animate-pulse shrink-0" />
+                <div className="h-4 w-28 sm:w-40 bg-white/[0.04] rounded animate-pulse" />
+              </div>
+              <div className="h-4 w-16 sm:w-20 bg-white/[0.04] rounded animate-pulse shrink-0" />
+              <div className="h-4 w-16 sm:w-20 bg-white/[0.04] rounded animate-pulse shrink-0 hidden sm:block" />
+              <div className="h-4 w-20 bg-white/[0.04] rounded animate-pulse shrink-0" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -311,6 +344,8 @@ function StocksPageInner() {
         <div className="text-xs text-[var(--text-muted)] num">{filtered.length}개 종목</div>
       </div>
 
+      {/* Sticky 필터 영역 */}
+      <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#06080d]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
       {/* 신호 필터 카드 */}
       <div className="flex flex-wrap gap-2">
         {([
@@ -335,16 +370,6 @@ function StocksPageInner() {
           </button>
         ))}
       </div>
-
-      {/* 신호 설명 (필터 선택 시) */}
-      {signalFilter !== "all" && (
-        <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
-          {signalFilter === "buy_reversal" && "3개월간 50억원 이상 순매도했으나, 최근 1주일 5억원 이상 순매수로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "sell_reversal" && "3개월간 50억원 이상 순매수했으나, 최근 1주일 5억원 이상 순매도로 전환된 종목 (시총 1천억 이상)"}
-          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목 — 순매수 기준"}
-          {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며, 1개월 50억원 이상 + 매수 규모가 증가하는 종목"}
-        </div>
-      )}
 
       {/* 필터 바 */}
       <div className="flex flex-wrap gap-2 items-center">
@@ -402,10 +427,23 @@ function StocksPageInner() {
           </>
         )}
       </div>
+      </div>
+      {/* /Sticky 필터 영역 */}
 
-      {/* 테이블 */}
+      {/* 신호 설명 (필터 선택 시) */}
+      {signalFilter !== "all" && (
+        <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
+          {signalFilter === "buy_reversal" && "3개월간 50억원 이상 순매도했으나, 최근 1주일 5억원 이상 순매수로 전환된 종목 (시총 1천억 이상)"}
+          {signalFilter === "sell_reversal" && "3개월간 50억원 이상 순매수했으나, 최근 1주일 5억원 이상 순매도로 전환된 종목 (시총 1천억 이상)"}
+          {signalFilter === "leaders" && "각 중분류 섹터에서 수급과 주가 모두 상위권인 핵심 종목 — 순매수 기준"}
+          {signalFilter === "accumulation" && "1일 · 1주 · 1개월 연속 순매수 중이며, 1개월 50억원 이상 + 매수 규모가 증가하는 종목"}
+        </div>
+      )}
+
+      {/* 테이블 + 모바일 카드 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* 데스크톱 테이블 */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-[12px] sm:text-[13px]">
             <thead>
               <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
@@ -478,6 +516,74 @@ function StocksPageInner() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* 모바일 카드 리스트 */}
+        <div className="md:hidden divide-y divide-white/[0.04]">
+          {paged.map((s, i) => {
+            const pc = s.price_change?.[displayPeriod];
+            const ratio = calcRatio(getInvVal(s, investor, displayPeriod), s.market_cap);
+            const signals = getSignals(s);
+            const inner = (
+              <div className="px-4 py-3.5">
+                {/* 상단: 순위 + 종목명 + 수익률 */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[var(--text-muted)] num text-[11px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
+                  <span className="text-white font-medium text-[14px] flex-1 truncate">{s.name}</span>
+                  {pc != null && (
+                    <span className={`text-[12px] font-medium ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
+                      <span className="num">{pc > 0 ? "+" : ""}{pc.toFixed(1)}%</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* 시장/PER/신호 배지들 */}
+                <div className="flex items-center gap-1.5 ml-7 mb-3 flex-wrap">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                    s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+                  }`}>{s.market}</span>
+                  {hasPer && s.per != null && (
+                    <span className="text-[10px] text-[var(--text-muted)]">PER <span className="num">{s.per.toFixed(1)}</span></span>
+                  )}
+                  {signals.map((sig) => (
+                    <span key={sig.key} className={`text-[9px] px-1.5 py-0.5 rounded-md ${sig.color}`}>{sig.label}</span>
+                  ))}
+                </div>
+
+                {/* 구분선 */}
+                <div className="h-px bg-white/[0.04] mb-3 ml-7" />
+
+                {/* 값 영역 */}
+                <div className="ml-7 grid grid-cols-2 gap-y-1.5 gap-x-4 text-[12px]">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--text-muted)] shrink-0">외국인</span>
+                    <CNum v={s.foreign[displayPeriod]} />
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--text-muted)] shrink-0">기관</span>
+                    <CNum v={s.institution[displayPeriod]} />
+                  </div>
+                  <div className="flex justify-between gap-2 font-medium">
+                    <span className="text-[var(--text-muted)] font-normal shrink-0">합계</span>
+                    <CNum v={investor === "pension" ? (s.pension?.[displayPeriod] ?? 0) : s.combined[displayPeriod]} />
+                  </div>
+                  {ratio != null && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-[var(--text-muted)] shrink-0">시총대비</span>
+                      <span className={`${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
+                        <span className="num">{ratio > 0 ? "+" : ""}{ratio.toFixed(2)}%</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+            return s.ticker ? (
+              <Link key={s.name} href={`/stocks/${s.ticker}`} className="block hover:bg-white/[0.02] transition">{inner}</Link>
+            ) : (
+              <div key={s.name}>{inner}</div>
+            );
+          })}
         </div>
 
         {totalPages > 1 && (

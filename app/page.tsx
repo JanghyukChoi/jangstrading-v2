@@ -646,8 +646,34 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-8">
+        {/* Intro 스켈레톤 */}
+        <div className="space-y-2">
+          <div className="h-3 w-80 max-w-full bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-3 w-48 bg-white/[0.04] rounded animate-pulse" />
+        </div>
+        {/* 섹션 1: HERO + 지수 */}
+        <div className="space-y-3">
+          <div className="h-6 w-32 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-px bg-white/[0.06]" />
+          <div className="h-40 bg-white/[0.04] rounded-2xl animate-pulse" />
+          <div className="flex gap-4">
+            <div className="h-32 flex-1 bg-white/[0.04] rounded-2xl animate-pulse" />
+            <div className="h-32 flex-1 bg-white/[0.04] rounded-2xl animate-pulse" />
+          </div>
+        </div>
+        {/* 섹션 2: 시장 수급 */}
+        <div className="space-y-3">
+          <div className="h-6 w-40 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-px bg-white/[0.06]" />
+          <div className="h-28 bg-white/[0.04] rounded-2xl animate-pulse" />
+        </div>
+        {/* 섹션 3: 오늘의 주목 + TOP10 */}
+        <div className="space-y-3">
+          <div className="h-6 w-32 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-px bg-white/[0.06]" />
+          <div className="h-60 bg-white/[0.04] rounded-2xl animate-pulse" />
+        </div>
       </div>
     );
   }
