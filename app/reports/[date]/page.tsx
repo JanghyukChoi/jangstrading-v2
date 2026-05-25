@@ -20,19 +20,55 @@ interface IndexEntry {
   title: string;
 }
 
+interface StockRef {
+  name: string;
+  ticker: string;
+}
+
+// 본문 텍스트에서 종목명을 찾아 Link로 변환
+function linkifyStocks(body: string, stocks: StockRef[]): React.ReactNode[] {
+  if (stocks.length === 0) return [body];
+  // 긴 이름이 먼저 매칭되도록 정렬 (예: "삼성전자우"가 "삼성전자"보다 우선)
+  const sorted = [...stocks].sort((a, b) => b.name.length - a.name.length);
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(${sorted.map((s) => escape(s.name)).join("|")})`, "g");
+  const tokens = body.split(pattern);
+  const nameToTicker = new Map(sorted.map((s) => [s.name, s.ticker]));
+  return tokens.map((tok, i) => {
+    const ticker = nameToTicker.get(tok);
+    if (ticker) {
+      return (
+        <Link key={i} href={`/stocks/${ticker}`} className="text-[var(--accent-blue)] hover:underline">
+          {tok}
+        </Link>
+      );
+    }
+    return <span key={i}>{tok}</span>;
+  });
+}
+
 export default function ReportDetailPage({ params }: { params: Promise<{ date: string }> }) {
   const { date } = use(params);
   const router = useRouter();
   const [report, setReport] = useState<Report | null>(null);
   const [index, setIndex] = useState<IndexEntry[]>([]);
+  const [stocks, setStocks] = useState<StockRef[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch(`/data/reports/${date}.json`).then((r) => r.json()).catch(() => null),
       fetch("/data/reports/index.json").then((r) => r.json()).catch(() => []),
+      fetch("/data/stock-rankings.json").then((r) => r.json()).catch(() => ({ data: [] })),
     ])
-      .then(([r, idx]) => { setReport(r); setIndex(idx); })
+      .then(([r, idx, s]) => {
+        setReport(r);
+        setIndex(idx);
+        const refs: StockRef[] = (s.data ?? [])
+          .filter((x: any) => x.ticker && x.name)
+          .map((x: any) => ({ name: x.name, ticker: x.ticker }));
+        setStocks(refs);
+      })
       .finally(() => setLoading(false));
   }, [date]);
 
@@ -81,7 +117,7 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
 
         {/* 본문 */}
         <div className="text-[14px] sm:text-[15px] text-[var(--text-secondary)] leading-[1.85] whitespace-pre-line">
-          {report.body}
+          {linkifyStocks(report.body, stocks)}
         </div>
 
         {/* 면책 */}
