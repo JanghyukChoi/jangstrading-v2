@@ -62,7 +62,9 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: python scripts/send_telegram.py  
       - name: Save snapshot
-        run: python scripts/save_snapshot.py              
+        run: python scripts/save_snapshot.py
+      - name: Build stock timeseries
+        run: python scripts/build_timeseries.py
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"

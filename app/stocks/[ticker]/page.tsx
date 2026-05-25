@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell,
+  LineChart, Line, CartesianGrid,
 } from "recharts";
 
 export const dynamic = "force-static";
@@ -141,6 +142,176 @@ function SupplyChart({ title, data }: { title: string; data: Record<string, numb
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ── 누적 순매수 라인 차트 ─────────────────── */
+interface TimeseriesData {
+  ticker: string;
+  dates: string[];
+  foreign: number[];
+  inst: number[];
+  pension: number[];
+  prices: number[];
+}
+type FlowPeriod = "1m" | "3m" | "6m" | "1y";
+
+function CumulativeFlowChart({ ticker }: { ticker: string }) {
+  const [data, setData] = useState<TimeseriesData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<FlowPeriod>("3m");
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/data/timeseries/${ticker}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setData(d))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [ticker]);
+
+  if (loading) {
+    return (
+      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <div className="h-6 w-40 bg-white/[0.04] rounded animate-pulse mb-3" />
+        <div className="h-60 bg-white/[0.04] rounded animate-pulse" />
+      </div>
+    );
+  }
+  if (!data || data.dates.length < 5) return null;
+
+  const dayMap: Record<FlowPeriod, number> = { "1m": 20, "3m": 60, "6m": 120, "1y": 252 };
+  const startIdx = Math.max(0, data.dates.length - dayMap[period]);
+  const sd = data.dates.slice(startIdx);
+  const sf = data.foreign.slice(startIdx);
+  const si = data.inst.slice(startIdx);
+
+  let cumF = 0;
+  let cumI = 0;
+  const chartData = sd.map((date, idx) => {
+    cumF += sf[idx];
+    cumI += si[idx];
+    return {
+      idx, // 균등 간격 보장용 (X축 numeric)
+      date, // 풀 날짜 — tooltip·tick 표시용
+      foreign: Math.round(cumF * 1_000_000),
+      inst: Math.round(cumI * 1_000_000),
+    };
+  });
+
+  const formatY = (v: number) => {
+    const abs = Math.abs(v);
+    const sign = v > 0 ? "+" : v < 0 ? "-" : "";
+    if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(1)}조`;
+    if (abs >= 1e8) return `${sign}${Math.round(abs / 1e8).toLocaleString()}억`;
+    if (abs >= 1e4) return `${sign}${Math.round(abs / 1e4).toLocaleString()}만`;
+    return `${sign}${Math.round(abs)}`;
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const f = payload.find((p: any) => p.dataKey === "foreign")?.value;
+    const i = payload.find((p: any) => p.dataKey === "inst")?.value;
+    // X축이 numeric(idx)이라 label 대신 payload[0].payload.date 사용
+    const dateStr = payload[0]?.payload?.date as string | undefined;
+    const displayDate = dateStr && dateStr.length >= 10
+      ? `${dateStr.slice(0, 4)}.${dateStr.slice(5, 7)}.${dateStr.slice(8, 10)}`
+      : dateStr;
+    return (
+      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl space-y-0.5">
+        <div className="text-white mb-1">{displayDate}</div>
+        {f != null && (
+          <div className="flex justify-between gap-4">
+            <span className="text-[#d29922]">외국인</span>
+            <span className={`num ${f >= 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>{formatY(f)}원</span>
+          </div>
+        )}
+        {i != null && (
+          <div className="flex justify-between gap-4">
+            <span className="text-[#06b6d4]">기관</span>
+            <span className={`num ${i >= 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>{formatY(i)}원</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const periodOptions: { key: FlowPeriod; label: string }[] = [
+    { key: "1m", label: "1개월" },
+    { key: "3m", label: "3개월" },
+    { key: "6m", label: "6개월" },
+    { key: "1y", label: "1년" },
+  ];
+
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <div className="flex items-baseline justify-between gap-2 mb-4 flex-wrap">
+        <div>
+          <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">외국인·기관 누적 순매수</h3>
+          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+            기간 시작점 = 0, 일별 순매수 누적
+          </p>
+        </div>
+        <div className="flex rounded-xl overflow-hidden border border-white/[0.06] bg-[var(--bg-card)]">
+          {periodOptions.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={`px-2.5 py-1 text-[11px] transition ${
+                period === p.key
+                  ? "bg-[var(--accent-blue)] text-white font-medium"
+                  : "text-[var(--text-secondary)] hover:text-white"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+          <XAxis
+            dataKey="idx"
+            type="number"
+            domain={[0, chartData.length - 1]}
+            tick={{ fill: "#484f58", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            interval="preserveStartEnd"
+            minTickGap={40}
+            tickFormatter={(idx: number) => {
+              const d = chartData[idx]?.date;
+              return d && typeof d === "string" && d.length >= 10 ? d.slice(5) : "";
+            }}
+          />
+          <YAxis
+            tick={{ fill: "#484f58", fontSize: 9 }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={formatY}
+            width={50}
+          />
+          <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(255,255,255,0.1)", strokeWidth: 1 }} />
+          <Line type="monotone" dataKey="foreign" stroke="#d29922" strokeWidth={2} dot={{ r: 1.2, fill: "#d29922", stroke: "none" }} activeDot={{ r: 4 }} name="외국인" isAnimationActive={false} />
+          <Line type="monotone" dataKey="inst" stroke="#06b6d4" strokeWidth={2} dot={{ r: 1.2, fill: "#06b6d4", stroke: "none" }} activeDot={{ r: 4 }} name="기관" isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+
+      <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-[var(--text-secondary)]">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-0.5 bg-[#d29922]" />외국인
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-0.5 bg-[#06b6d4]" />기관
+        </span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)] text-center mt-2">
+        라인 위로 = 누적 매수 · 아래로 = 누적 매도 (색상은 투자자 구분)
+      </p>
     </div>
   );
 }
@@ -364,11 +535,8 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         </div>
       )}
 
-      {/* 수급 차트 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SupplyChart title="외국인 순매수 추이" data={stockData.foreign} />
-        <SupplyChart title="기관 순매수 추이" data={stockData.institution} />
-      </div>
+      {/* 외국인·기관 누적 순매수 라인 차트 */}
+      <CumulativeFlowChart ticker={stockData.ticker} />
 
       {/* 기관 세부 */}
       {stockData.inst_detail && Object.keys(stockData.inst_detail).length > 0 && (() => {
