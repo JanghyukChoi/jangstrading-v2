@@ -1,21 +1,25 @@
 """
-매일 수급 데이터 + 뉴스 기반으로 AI 시황 분석 글을 자동 생성하는 스크립트
+매일 수급 데이터 + 뉴스 본문 기반으로 AI 시황 분석 글을 자동 생성하는 스크립트
 
 1. stock-rankings.json에서 핵심 수급 데이터 추출 (토큰 절약)
-2. 네이버 증권 뉴스 헤드라인 크롤링
-3. Claude Haiku API 호출 → 시황 글 생성
+2. 네이버 금융 뉴스 최대 20건의 제목 + 본문 크롤링
+   (n.news.naver.com/mnews/... 모바일 URL → #dic_area 셀렉터)
+3. Claude Sonnet 4.6 API 호출 → 5섹션 구조 시황 글 생성
+   (TL;DR / 핵심 숫자 / 구조적 해석 / 주목할 신호 / 종합 판단)
 4. public/data/reports/YYYY-MM-DD.json 저장
 
 실행: python scripts/generate_report.py
-비용: 하루 약 $0.01~0.02 (Haiku)
+비용: 하루 약 $0.10~0.20 (Sonnet 4.6, 입력 ~20K + 출력 ~3~4K 토큰)
 """
 
 import json
 import os
 import re
+import time
 import requests
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,7 +27,44 @@ DATA_DIR = BASE_DIR / "public" / "data"
 REPORTS_DIR = DATA_DIR / "reports"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
+# 네이버 모바일 뉴스 본문 셀렉터 (검증 결과 #dic_area 단일로 100% 매칭)
+BODY_SELECTORS = ["#dic_area", "#newsct_article", "._article_content", "._article_body_contents"]
+
+
+def to_mobile_news_url(legacy_url: str):
+    """
+    finance.naver.com/news/news_read.naver?article_id=X&office_id=Y
+    → n.news.naver.com/mnews/article/Y/X (실제 본문이 있는 모바일 URL)
+    """
+    parsed = urlparse(legacy_url)
+    qs = parse_qs(parsed.query)
+    article_id = qs.get("article_id", [None])[0]
+    office_id = qs.get("office_id", [None])[0]
+    if article_id and office_id:
+        return f"https://n.news.naver.com/mnews/article/{office_id}/{article_id}"
+    return None
+
+
+def extract_article_body(html: str):
+    """모바일 뉴스 HTML에서 본문 텍스트 추출"""
+    soup = BeautifulSoup(html, "html.parser")
+    for selector in BODY_SELECTORS:
+        try:
+            elem = soup.select_one(selector)
+        except Exception:
+            continue
+        if elem:
+            for tag in elem.select("script, style, iframe, .ad, .related, .copyright"):
+                tag.decompose()
+            text = elem.get_text(separator=" ", strip=True)
+            text = re.sub(r"\s+", " ", text)
+            if len(text) > 100:
+                return text
+    return None
 
 
 def extract_key_data():
@@ -134,80 +175,145 @@ def extract_key_data():
     return date, summary
 
 
-def crawl_news():
-    """네이버 증권 뉴스 헤드라인 크롤링"""
-    headlines = []
+def crawl_news(max_items: int = 20):
+    """
+    네이버 금융 뉴스 목록에서 기사 링크를 수집한 뒤,
+    모바일 뉴스(n.news.naver.com)에서 본문까지 추출.
+    반환: [{title, body, url}, ...] (본문 추출 실패 건은 제외)
+    """
+    list_urls = [
+        "https://finance.naver.com/news/mainnews.naver",
+        "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258",
+    ]
+    # 1) 기사 링크 수집
+    articles = []
+    seen = set()
+    for list_url in list_urls:
+        try:
+            r = requests.get(list_url, headers=HEADERS, timeout=10)
+            r.encoding = "euc-kr"
+            soup = BeautifulSoup(r.content.decode("euc-kr", errors="replace"), "html.parser")
+            for a in soup.select("dd.articleSubject a"):
+                title = a.text.strip()
+                href = a.get("href", "")
+                if not title or len(title) <= 5 or not href:
+                    continue
+                if href.startswith("/"):
+                    href = "https://finance.naver.com" + href
+                elif not href.startswith("http"):
+                    continue
+                if href in seen:
+                    continue
+                seen.add(href)
+                articles.append({"title": title, "url": href})
+                if len(articles) >= max_items:
+                    break
+            if len(articles) >= max_items:
+                break
+        except Exception as e:
+            print(f"  ⚠️ 뉴스 목록 크롤링 실패: {e}")
 
-    try:
-        # 메인 뉴스
-        r = requests.get(
-            "https://finance.naver.com/news/mainnews.naver",
-            headers=HEADERS, timeout=10
-        )
-        r.encoding = "euc-kr"
-        soup = BeautifulSoup(r.content.decode("euc-kr", errors="replace"), "html.parser")
+    # 2) 각 기사 본문 추출
+    result = []
+    for item in articles:
+        time.sleep(0.3)  # 폴라이트 딜레이
+        mobile_url = to_mobile_news_url(item["url"])
+        if not mobile_url:
+            continue
+        try:
+            r = requests.get(mobile_url, headers=HEADERS, timeout=10)
+            if r.encoding == "ISO-8859-1":
+                r.encoding = r.apparent_encoding or "utf-8"
+            body = extract_article_body(r.text)
+            if body:
+                # 본문이 너무 길면 cap (토큰 절약, 핵심은 앞부분)
+                result.append({
+                    "title": item["title"],
+                    "body": body[:1800],
+                    "url": mobile_url,
+                })
+        except Exception as e:
+            print(f"  ⚠️ 본문 추출 실패 ({item['title'][:30]}): {e}")
+            continue
 
-        for a in soup.select("dd.articleSubject a"):
-            title = a.text.strip()
-            if title and len(title) > 5:
-                headlines.append(title)
-
-        # 시장 뉴스도 추가
-        r2 = requests.get(
-            "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258",
-            headers=HEADERS, timeout=10
-        )
-        r2.encoding = "euc-kr"
-        soup2 = BeautifulSoup(r2.content.decode("euc-kr", errors="replace"), "html.parser")
-
-        for a in soup2.select("dd.articleSubject a"):
-            title = a.text.strip()
-            if title and len(title) > 5 and title not in headlines:
-                headlines.append(title)
-
-    except Exception as e:
-        print(f"  ⚠️ 뉴스 크롤링 실패: {e}")
-
-    # 최대 15개만
-    return headlines[:20]
+    return result
 
 
-def generate_with_claude(date, data_summary, news_headlines):
-    """Claude Haiku API로 시황 글 생성"""
+def generate_with_claude(date, data_summary, news_items):
+    """Claude Sonnet 4.6 API로 시황 분석 글 생성 (제목+본문 뉴스 컨텍스트 활용)"""
     if not ANTHROPIC_API_KEY:
         print("  ❌ ANTHROPIC_API_KEY가 설정되지 않았습니다.")
         return None
 
-    news_text = "\n".join(f"  - {h}" for h in news_headlines) if news_headlines else "  (뉴스 없음)"
+    if news_items:
+        news_blocks = []
+        for i, n in enumerate(news_items, 1):
+            news_blocks.append(f"[뉴스 {i}] {n['title']}\n{n['body']}")
+        news_text = "\n\n".join(news_blocks)
+    else:
+        news_text = "(뉴스 없음)"
 
-    prompt = f"""당신은 한국 증시 전문 애널리스트입니다. 아래 데이터를 바탕으로 오늘의 증시 시황 분석 글을 작성해주세요.
+    prompt = f"""당신은 한국 증시 분석가입니다. 매일 KOSPI/KOSDAQ 수급 데이터와 뉴스 본문을 종합해 개인투자자용 시황 글을 작성합니다.
 
+[수급 데이터]
 {data_summary}
 
-[오늘의 주요 뉴스 헤드라인]
+[오늘의 주요 뉴스 (제목 + 본문)]
 {news_text}
 
-## 작성 규칙:
-1. 전문적이지만 개인투자자가 이해하기 쉽게 작성
-2. 핵심 흐름을 먼저 요약하고, 세부 분석으로 들어감
-3. 수급 데이터와 뉴스를 연결하여 인사이트 제공
-4. "왜 이런 수급이 나왔는지" 배경 분석
-5. 주의할 점이나 리스크도 언급
-6. 총 800~1200자 분량
-7. 마크다운 없이 순수 텍스트로 작성
-8. 투자 추천이 아닌 분석임을 명시
+# 본문 구조 (1,500~2,000자, 마크다운 없이 순수 텍스트)
 
-## 구조:
-- 제목 (한 줄)
-- 시장 개요 (2~3줄)
-- 외국인·기관 수급 핵심 (3~4줄)
-- 주목할 섹터 (3~4줄)
-- 주목할 종목 (3~4줄)
-- 수급 신호 해석 (2~3줄)
-- 종합 판단 및 유의점 (2~3줄)
+## 1. 한 줄 요약 (TL;DR, 3~4문장)
+오늘 시장의 핵심 흐름을 압축. 숫자 1~2개 포함.
 
-JSON 형식으로 응답해주세요:
-{{"title": "제목", "body": "본문 전체"}}
+## 2. 오늘의 핵심 숫자 (4~6개)
+각 숫자에 비교 맥락 한 줄 부연.
+예: "외국인 +5.2조원 (이번 주 누적 +12조, 6주 만에 최대)"
+예: "삼성전자 +1.8% (반도체 섹터 평균 +0.6% 대비 강세)"
+
+## 3. 표면 데이터의 구조적 해석 (3~4개 포인트)
+단순 paraphrase 금지. 다음 구조로:
+- 데이터 → 왜 이런 흐름인가 (뉴스 본문에서 배경 추출) → 향후 함의
+- 수급과 뉴스를 연결해 "왜 그 섹터/종목이 매수/매도됐는지" 분석
+
+## 4. 가장 주목할 신호 1개
+오늘 가장 의미있는 시그널 1개 (수급 전환, 섹터 쏠림, 특정 종목 이벤트 등).
+정량 데이터 + 메커니즘(왜 이게 중요한지).
+
+## 5. 종합 판단 + 관전 포인트
+오늘 시장을 한 문장으로 정의. 다음 영업일 관전 포인트 1~2개.
+
+# 스타일 규칙
+- 어미 다양화: "~다", "~이다" 3문장 연속 금지
+- 의문문·짧은 단답형 문장 3개 이상 섞기
+- 문장 길이 변화 (5단어 문장과 25단어 문장 교차)
+- 1인칭(나/저) 사용 금지 — 사이트 분석가 톤 유지
+- 추측은 "~할 가능성", "~로 보이는데" 같은 hedging 표현
+
+# 금지 표현 (AI 흔적)
+- "~로 풀이된다", "주목해야 한다", "주요한 신호로 볼 수 있다"
+- "~점이 흥미롭다", "~에 다름 아니다", "~로 해석할 수 있다" (글 전체 1회만)
+- "다음과 같은 의미를 갖는다", "유의하시기 바랍니다" 형식 문구
+
+# 숫자 사용
+- 모든 핵심 수치에 "맥락 한 줄" 부연 (전년 대비, 역대 최고, n개월 만 등)
+- 숫자 단독 나열 금지
+
+# 절대 금지
+- 투자 추천 표현 ("매수하세요", "추천드립니다")
+- 근거 없는 낙관/비관
+- 모호한 표현 ("좋아 보인다", "긍정적일 수 있다")
+- 교과서적 설명 ("ETF란~", "PER은~")
+- 마크다운 헤더(##) — 순수 텍스트로 줄바꿈만 사용
+
+# 출력 형식
+다음 XML 태그 형식으로만 응답 (앞뒤 설명 X, 줄바꿈 자유롭게 사용 가능):
+
+<title>제목 (40자 이내, 핵심 숫자 또는 키워드 1개 포함)</title>
+<body>
+본문 전체
+줄바꿈 그대로 사용
+</body>
 """
 
     try:
@@ -219,11 +325,11 @@ JSON 형식으로 응답해주세요:
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 2000,
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 5000,
                 "messages": [{"role": "user", "content": prompt}],
             },
-            timeout=60,
+            timeout=120,
         )
 
         if r.status_code != 200:
@@ -233,16 +339,20 @@ JSON 형식으로 응답해주세요:
         response = r.json()
         text = response["content"][0]["text"]
 
-        # JSON 파싱
-        # ```json ... ``` 형태 처리
-        text = re.sub(r"```json\s*", "", text)
-        text = re.sub(r"```\s*", "", text)
-        result = json.loads(text.strip())
-        return result
+        # XML 태그 추출 (<title>...</title>, <body>...</body>)
+        title_match = re.search(r"<title>\s*(.+?)\s*</title>", text, re.DOTALL)
+        body_match = re.search(r"<body>\s*([\s\S]+?)\s*</body>", text)
 
-    except json.JSONDecodeError:
-        print(f"  ⚠️ JSON 파싱 실패, 텍스트 그대로 저장")
+        if title_match and body_match:
+            return {
+                "title": title_match.group(1).strip(),
+                "body": body_match.group(1).strip(),
+            }
+
+        # 태그 파싱 실패 — 응답 일부를 로그로 남기고 fallback
+        print(f"  ⚠️ XML 태그 파싱 실패. 응답 첫 300자: {text[:300]}")
         return {"title": f"{date} 증시 시황", "body": text}
+
     except Exception as e:
         print(f"  ❌ API 호출 실패: {e}")
         return None
@@ -256,9 +366,13 @@ def main():
     print(f"  📅 기준일: {date}")
     print(f"  📊 데이터 요약: {len(data_summary)}자")
 
-    # 2. 뉴스 크롤링
-    news = crawl_news()
-    print(f"  📰 뉴스 헤드라인: {len(news)}개")
+    # 2. 뉴스 크롤링 (제목 + 본문)
+    news = crawl_news(max_items=20)
+    if news:
+        avg_body = sum(len(n["body"]) for n in news) // len(news)
+        print(f"  📰 뉴스 본문 추출: {len(news)}건 (평균 {avg_body:,}자)")
+    else:
+        print(f"  📰 뉴스 본문 추출: 0건")
 
     # 3. Claude API 호출
     report = generate_with_claude(date, data_summary, news)
