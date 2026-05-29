@@ -34,8 +34,8 @@ from pykrx import stock  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "public" / "data"
-SNAP_DIR = DATA_DIR / "snapshots"
-SNAP_DIR.mkdir(parents=True, exist_ok=True)
+# 기본 출력 경로 (--output으로 override 가능)
+DEFAULT_SNAP_DIR = DATA_DIR / "snapshots"
 
 MARKETS = ["KOSPI", "KOSDAQ"]
 UNIT = 1_000_000  # 백만원
@@ -145,12 +145,15 @@ def fetch_one_day(date_obj):
     return foreign_1d, inst_1d, pension_1d, prices
 
 
-def merge_snapshot(date_str, foreign_1d, inst_1d, pension_1d, prices, force=False):
-    """기존 스냅샷에 백필 데이터 병합 (없으면 신규 생성)"""
-    snap_path = SNAP_DIR / f"{date_str}.json"
+def merge_snapshot(snap_dir, date_str, foreign_1d, inst_1d, pension_1d, prices, force=False):
+    """기존 스냅샷에 백필 데이터 병합 (없으면 신규 생성). Atomic write."""
+    snap_path = snap_dir / f"{date_str}.json"
     if snap_path.exists():
-        with open(snap_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(snap_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {"date": date_str}
     else:
         data = {"date": date_str}
 
@@ -173,33 +176,52 @@ def merge_snapshot(date_str, foreign_1d, inst_1d, pension_1d, prices, force=Fals
     data.setdefault("breadth", {})
     data.setdefault("market", {})
 
-    with open(snap_path, "w", encoding="utf-8") as f:
+    # Atomic write: tmp 파일에 쓴 뒤 rename (충돌 시 부분 파일 안 남김)
+    tmp_path = snap_path.with_suffix(".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
+    import os
+    os.replace(tmp_path, snap_path)
 
     return snap_path
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--days", type=int, default=252, help="최근 영업일 수 (기본 252 = ~1년)")
+    parser.add_argument("--days", type=int, default=None, help="최근 영업일 수 (기본 252 = ~1년)")
+    parser.add_argument("--years", type=int, default=None, help="N년치 (--days보다 우선, N*252 영업일)")
     parser.add_argument("--end", type=str, default=None, help="기준일 YYYY-MM-DD (기본: 오늘)")
+    parser.add_argument("--output", type=str, default=None, help="저장 디렉토리 (기본 public/data/snapshots)")
     parser.add_argument("--force", action="store_true", help="기존 일별 수급 데이터도 덮어쓰기")
     parser.add_argument("--skip-existing", action="store_true", help="이미 일별 수급 있는 날 건너뛰기 (기본 동작)")
     args = parser.parse_args()
+
+    # 영업일 수 결정: years > days > 기본값
+    if args.years:
+        target_days = args.years * 252
+    elif args.days:
+        target_days = args.days
+    else:
+        target_days = 252
 
     end_date = (
         datetime.strptime(args.end, "%Y-%m-%d").date() if args.end else datetime.now().date()
     )
 
+    # 출력 디렉토리
+    snap_dir = Path(args.output) / "snapshots" if args.output else DEFAULT_SNAP_DIR
+    snap_dir.mkdir(parents=True, exist_ok=True)
+
     print("=" * 70)
     print(f"백필 시작")
     print(f"  기준일: {end_date}")
-    print(f"  영업일 수: {args.days}")
+    print(f"  영업일 수: {target_days}" + (f" ({args.years}년)" if args.years else ""))
+    print(f"  저장 위치: {snap_dir}")
     print(f"  기존 데이터 처리: {'덮어쓰기' if args.force else '병합 (있으면 스킵)'}")
     print("=" * 70)
 
     print("\n영업일 목록 수집 중...")
-    biz_days = get_business_days(end_date, args.days)
+    biz_days = get_business_days(end_date, target_days)
     print(f"  실제 수집할 영업일: {len(biz_days)}일")
     print(f"  범위: {biz_days[0].strftime('%Y-%m-%d')} ~ {biz_days[-1].strftime('%Y-%m-%d')}")
     print()
@@ -211,7 +233,7 @@ def main():
 
     for i, day in enumerate(biz_days, 1):
         date_str = day.strftime("%Y-%m-%d")
-        snap_path = SNAP_DIR / f"{date_str}.json"
+        snap_path = snap_dir / f"{date_str}.json"
 
         # 이미 일별 수급 있으면 스킵 (force가 아니면)
         if not args.force and snap_path.exists():
@@ -244,7 +266,7 @@ def main():
                 continue
 
             saved = merge_snapshot(
-                date_str, foreign_1d, inst_1d, pension_1d, prices, force=args.force
+                snap_dir, date_str, foreign_1d, inst_1d, pension_1d, prices, force=args.force
             )
             size_kb = saved.stat().st_size / 1024
             print(

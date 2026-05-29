@@ -65,6 +65,8 @@ jobs:
         run: python scripts/save_snapshot.py
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
+      - name: Build market signals
+        run: python scripts/build_market_signals.py
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"

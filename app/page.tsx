@@ -404,22 +404,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
     const sectorPeriod = sectorLeaders.length > 0 ? "1m" : "3m";
     if (sectorLeaders.length === 0) sectorLeaders = getSectorLeaders("3m");
 
-    // ── 2. 매수전환 주목주 ──
-    function getBuyReversals(period: string) {
-      const big = stocks.filter((s) => (s.market_cap ?? 0) >= 1000);
-      const longP = period === "1m" ? "3m" : "6m";
-      const shortP = period === "1m" ? "1w" : "1m";
-      return big
-        .filter((s) => (s.combined[longP] ?? 0) < -5000 && (s.combined[shortP] ?? 0) > 500)
-        .sort((a, b) => (b.combined[shortP] ?? 0) - (a.combined[shortP] ?? 0))
-        .slice(0, 3);
-    }
-
-    let buyReversals = getBuyReversals("1m");
-    const buyPeriod = buyReversals.length > 0 ? "1m" : "3m";
-    if (buyReversals.length === 0) buyReversals = getBuyReversals("3m");
-
-    // ── 3. 연기금 집중 ──
+    // ── 2. 연기금 집중 ──
     function getPensionTop(period: string) {
       return stocks
         .filter((s) => (s.pension?.[period] ?? 0) > 0)
@@ -431,18 +416,18 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
     const pensionPeriod = pensionTop.length > 0 ? "1m" : "3m";
     if (pensionTop.length === 0) pensionTop = getPensionTop("3m");
 
-    return { sectorLeaders, sectorPeriod, buyReversals, buyPeriod, pensionTop, pensionPeriod };
+    return { sectorLeaders, sectorPeriod, pensionTop, pensionPeriod };
   }, [stocks]);
 
-  if (data.sectorLeaders.length === 0 && data.buyReversals.length === 0 && data.pensionTop.length === 0) return null;
+  if (data.sectorLeaders.length === 0 && data.pensionTop.length === 0) return null;
 
   const periodLabel = (p: string) => p === "1m" ? "1개월" : "3개월";
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
+    <>
       {/* 주도 섹터 & 주도주 */}
       {data.sectorLeaders.length > 0 && (
-        <div>
+        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
             <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">주도 섹터 & 주도주</h4>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
@@ -469,28 +454,9 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
         </div>
       )}
 
-      {/* 매수전환 주목주 */}
-      {data.buyReversals.length > 0 && (
-        <div className="pt-4 border-t border-white/[0.04]">
-          <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">매수전환 주목주</h4>
-            <span className="text-[10px] text-[var(--text-muted)]">순매수 상위</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {data.buyReversals.map((s) => (
-              <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
-                <span className="text-white font-medium">{s.name}</span>
-                <NumUnit v={s.combined[data.buyPeriod === "1m" ? "1w" : "1m"]} cls="text-[10px] positive" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* 연기금 집중 */}
       {data.pensionTop.length > 0 && (
-        <div className="pt-4 border-t border-white/[0.04]">
+        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
             <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">연기금 집중</h4>
             <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
@@ -506,68 +472,186 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-/* ── 시장 수급 요약 (방향 일치 + 집중도 압축) ── */
-function MarketSummary({ stocks }: { stocks: StockRanking[] }) {
-  const filtered = stocks.filter((s) => (s.market_cap ?? 0) >= 1000);
+/* ── 시장 신호 대시보드 ─────────────────────── */
+interface MarketTrend {
+  foreign_streak_days: number;
+  foreign_streak_amount: number;
+  inst_streak_days: number;
+  inst_streak_amount: number;
+}
+interface MarketSignalsData {
+  date: string;
+  trend: {
+    kospi: MarketTrend;
+    kosdaq: MarketTrend;
+  };
+  activity: {
+    high_52w: number;
+    low_52w: number;
+    foreign_buy_breadth: number;
+    foreign_sell_breadth: number;
+    inst_buy_breadth: number;
+    inst_sell_breadth: number;
+  };
+  signals: {
+    buy_reversal: number;
+    sell_reversal: number;
+    accumulation: number;
+    divergence: number;
+  };
+  verdict: string;
+}
 
-  // 방향 일치
-  let bothBuy = 0, bothSell = 0, mixed = 0;
-  for (const s of filtered) {
-    const f = s.foreign["1m"] ?? 0;
-    const i = s.institution["1m"] ?? 0;
-    if (f > 0 && i > 0) bothBuy++;
-    else if (f < 0 && i < 0) bothSell++;
-    else mixed++;
-  }
+function MarketSignals() {
+  const [data, setData] = useState<MarketSignalsData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // 외국인 집중도
-  const fBuyers = stocks.filter((s) => s.foreign["1m"] > 0).sort((a, b) => b.foreign["1m"] - a.foreign["1m"]);
-  const fTotal = fBuyers.reduce((sum, s) => sum + s.foreign["1m"], 0);
-  const fTop5 = fBuyers.slice(0, 5).reduce((sum, s) => sum + s.foreign["1m"], 0);
-  const fPct = fTotal > 0 ? Math.round(fTop5 / fTotal * 1000) / 10 : 0;
+  useEffect(() => {
+    fetch("/data/market-signals.json")
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // 기관 집중도
-  const iBuyers = stocks.filter((s) => s.institution["1m"] > 0).sort((a, b) => b.institution["1m"] - a.institution["1m"]);
-  const iTotal = iBuyers.reduce((sum, s) => sum + s.institution["1m"], 0);
-  const iTop5 = iBuyers.slice(0, 5).reduce((sum, s) => sum + s.institution["1m"], 0);
-  const iPct = iTotal > 0 ? Math.round(iTop5 / iTotal * 1000) / 10 : 0;
-
-  const consensus = bothBuy > bothSell ? "매수 합의" : bothSell > bothBuy ? "매도 압력" : "방향 엇갈림";
-  const consensusColor = bothBuy > bothSell ? "text-[#f85149]" : bothSell > bothBuy ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
-
-  // 자동 해석
-  const fLabel = fPct >= 70 ? "소수 종목 집중 매수" : fPct >= 40 ? "중간 집중도 매수" : "분산 매수";
-  const iLabel = iPct >= 70 ? "소수 종목 집중 매수" : iPct >= 40 ? "중간 집중도 매수" : "분산 매수";
-  const dirLabel = bothBuy > bothSell ? "동시 매수 종목이 많아 수급 우호적" : bothSell > bothBuy ? "동시 매도 종목이 많아 수급 약세" : "방향이 엇갈려 관망 구간";
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
-      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">시장 수급 요약</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
-          <span className="text-[11px] text-[var(--text-secondary)]">외국인·기관 방향</span>
-          <div className="flex items-center gap-2">
-            <span className={`text-[14px] sm:text-[16px] font-semibold ${consensusColor}`}>{consensus}</span>
-          </div>
-          <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">동시매수 {bothBuy} · 엇갈림 {mixed} · 동시매도 {bothSell}</span>
-        </div>
-        <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
-          <span className="text-[11px] text-[var(--text-secondary)]">외국인 집중도</span>
-          <span className="text-[14px] sm:text-[16px] font-semibold num">{fPct}%</span>
-          <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
-        </div>
-        <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1">
-          <span className="text-[11px] text-[var(--text-secondary)]">기관 집중도</span>
-          <span className="text-[14px] sm:text-[16px] font-semibold num">{iPct}%</span>
-          <span className="text-[10px] text-[var(--text-muted)] hidden sm:block">상위 5종목 비중</span>
+  if (loading || !data) {
+    return (
+      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <div className="h-6 w-40 bg-white/[0.04] rounded animate-pulse mb-4" />
+        <div className="space-y-3">
+          <div className="h-12 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-12 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-20 bg-white/[0.04] rounded animate-pulse" />
         </div>
       </div>
-      <p className="text-[11px] text-[var(--text-secondary)] mt-3 pt-3 border-t border-white/[0.04] leading-relaxed">
-        💡 외국인 {fLabel}, 기관 {iLabel}. {dirLabel}.
+    );
+  }
+
+  const { trend, activity, signals, verdict } = data;
+
+  // 금액 포매팅 (입력: 백만원)
+  const fmtAmount = (mw: number) => {
+    const won = mw * 1_000_000;
+    const abs = Math.abs(won);
+    const sign = won > 0 ? "+" : won < 0 ? "-" : "";
+    if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(1)}조원`;
+    if (abs >= 1e8) return `${sign}${Math.round(abs / 1e8).toLocaleString()}억원`;
+    return `${sign}${Math.round(abs).toLocaleString()}원`;
+  };
+
+  // 시장별 추세 한 줄 렌더
+  const renderStreak = (label: string, days: number, amount: number) => {
+    const direction = days > 0 ? "매수" : days < 0 ? "매도" : "관망";
+    const color = days > 0 ? "text-[#f85149]" : days < 0 ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
+    return (
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[12px] text-white font-medium w-12 shrink-0">{label}</span>
+        <span className={`text-[12px] sm:text-[13px] font-semibold ${color}`}>
+          {direction} <span className="num">{Math.abs(days)}</span>일
+        </span>
+        <span className={`text-[10px] sm:text-[11px] num ml-auto ${color}`}>{fmtAmount(amount)}</span>
+      </div>
+    );
+  };
+
+  // 신고/신저가 비율
+  const totalHL = activity.high_52w + activity.low_52w;
+  const highPct = totalHL > 0 ? (activity.high_52w / totalHL) * 100 : 50;
+  const activityLabel = activity.high_52w > activity.low_52w * 1.2
+    ? "신고가 우위 — 강세 종목 다수"
+    : activity.low_52w > activity.high_52w * 1.2
+    ? "신저가 우위 — 약세장 신호"
+    : "균형 — 종목별 변동성";
+
+  return (
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
+      <h3 className="text-[13px] sm:text-[14px] font-semibold text-white">시장 신호 대시보드</h3>
+
+      {/* 추세 시그널 — 시장별 분리 */}
+      <div>
+        <h4 className="text-[11px] text-[var(--text-secondary)] mb-3">추세 시그널 — 시장별 연속 매수·매도</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* KOSPI */}
+          <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
+            <div className="text-[11px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
+            <div className="space-y-2">
+              {renderStreak("외국인", trend.kospi.foreign_streak_days, trend.kospi.foreign_streak_amount)}
+              {renderStreak("기관", trend.kospi.inst_streak_days, trend.kospi.inst_streak_amount)}
+            </div>
+          </div>
+          {/* KOSDAQ */}
+          <div className="bg-purple-500/[0.04] border border-purple-500/[0.1] rounded-xl p-3">
+            <div className="text-[11px] font-semibold text-purple-400 mb-2.5">KOSDAQ</div>
+            <div className="space-y-2">
+              {renderStreak("외국인", trend.kosdaq.foreign_streak_days, trend.kosdaq.foreign_streak_amount)}
+              {renderStreak("기관", trend.kosdaq.inst_streak_days, trend.kosdaq.inst_streak_amount)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 시장 활기 */}
+      <div>
+        <h4 className="text-[11px] text-[var(--text-secondary)] mb-3">시장 활기 — 52주 신고가 vs 신저가</h4>
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="text-[12px]">
+            신고가 <span className="text-[#f85149] num font-semibold">{activity.high_52w}</span>
+          </span>
+          <span className="text-[12px]">
+            <span className="text-[#58a6ff] num font-semibold">{activity.low_52w}</span> 신저가
+          </span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden flex bg-white/[0.04]">
+          {activity.high_52w > 0 && <div className="bg-[#f85149]" style={{ width: `${highPct}%` }} />}
+          {activity.low_52w > 0 && <div className="bg-[#58a6ff]" style={{ width: `${100 - highPct}%` }} />}
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)] mt-2">{activityLabel}</p>
+      </div>
+
+      {/* 수급 전환 알람 */}
+      <div>
+        <h4 className="text-[11px] text-[var(--text-secondary)] mb-3">수급 전환 알람 — 클릭하면 종목 보기</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <Link
+            href="/stocks?signal=buy_reversal"
+            className="bg-emerald-500/[0.08] border border-emerald-500/15 hover:border-emerald-500/30 rounded-xl px-3 py-2.5 transition"
+          >
+            <div className="flex items-baseline gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-[10px] text-[var(--text-secondary)]">매수전환</span>
+            </div>
+            <div className="text-[18px] font-semibold text-emerald-400 num mt-0.5">{signals.buy_reversal}</div>
+          </Link>
+          <Link
+            href="/stocks?signal=sell_reversal"
+            className="bg-orange-500/[0.08] border border-orange-500/15 hover:border-orange-500/30 rounded-xl px-3 py-2.5 transition"
+          >
+            <div className="flex items-baseline gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
+              <span className="text-[10px] text-[var(--text-secondary)]">매도전환</span>
+            </div>
+            <div className="text-[18px] font-semibold text-orange-400 num mt-0.5">{signals.sell_reversal}</div>
+          </Link>
+          <Link
+            href="/stocks?signal=accumulation"
+            className="bg-rose-500/[0.08] border border-rose-500/15 hover:border-rose-500/30 rounded-xl px-3 py-2.5 transition"
+          >
+            <div className="flex items-baseline gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-400" />
+              <span className="text-[10px] text-[var(--text-secondary)]">집중매수</span>
+            </div>
+            <div className="text-[18px] font-semibold text-rose-400 num mt-0.5">{signals.accumulation}</div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Verdict */}
+      <p className="text-[11px] text-[var(--text-secondary)] pt-3 border-t border-white/[0.04] leading-relaxed">
+        💡 {verdict}
       </p>
     </div>
   );
@@ -581,7 +665,7 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">{title}</h3>
+      <h3 className="text-[13px] sm:text-[14px] font-semibold text-white">{title}</h3>
       <p className="text-[10px] text-[var(--text-muted)] mb-3">{desc}</p>
       <div className="space-y-0">
         {sorted.map((s, i) => (
@@ -735,10 +819,10 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Section 2: 시장 수급 한눈에 */}
+      {/* Section 2: 시장 신호 대시보드 */}
       <section>
-        <SectionHeader title="시장 수급 한눈에" desc="외국인·기관 방향과 집중도" />
-        <MarketSummary stocks={stocks} />
+        <SectionHeader title="시장 신호 대시보드" desc="추세 · 활기 · 수급 전환 알람" />
+        <MarketSignals />
       </section>
 
       {/* Section 3: 오늘의 주목 */}
