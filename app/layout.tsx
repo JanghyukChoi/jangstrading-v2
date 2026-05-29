@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "./components/Header";
 import BottomNav from "./components/BottomNav";
 import "./globals.css";
@@ -44,6 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main className="max-w-7xl mx-auto px-5 py-6 pb-24 sm:pb-6">{children}</main>
         <BottomNav />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
