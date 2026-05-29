@@ -547,11 +547,12 @@ function MarketSignals() {
   const renderStreak = (label: string, days: number, amount: number) => {
     const direction = days > 0 ? "매수" : days < 0 ? "매도" : "관망";
     const color = days > 0 ? "text-[#f85149]" : days < 0 ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
+    const prefix = days !== 0 ? "연속 " : "";
     return (
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[12px] text-white font-medium w-12 shrink-0">{label}</span>
         <span className={`text-[12px] sm:text-[13px] font-semibold ${color}`}>
-          {direction} <span className="num">{Math.abs(days)}</span>일
+          {prefix}{direction} <span className="num">{Math.abs(days)}</span>일
         </span>
         <span className={`text-[10px] sm:text-[11px] num ml-auto ${color}`}>{fmtAmount(amount)}</span>
       </div>
@@ -569,11 +570,10 @@ function MarketSignals() {
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
-      <h3 className="text-[13px] sm:text-[14px] font-semibold text-white">시장 신호 대시보드</h3>
-
       {/* 추세 시그널 — 시장별 분리 */}
       <div>
-        <h4 className="text-[11px] text-[var(--text-secondary)] mb-3">추세 시그널 — 시장별 연속 매수·매도</h4>
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">추세 시그널</h3>
+        <p className="text-[10px] text-[var(--text-muted)] mb-3">시장별 연속 매수·매도</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* KOSPI */}
           <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
@@ -596,7 +596,8 @@ function MarketSignals() {
 
       {/* 시장 활기 */}
       <div>
-        <h4 className="text-[11px] text-[var(--text-secondary)] mb-3">시장 활기 — 52주 신고가 vs 신저가</h4>
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">시장 활기</h3>
+        <p className="text-[10px] text-[var(--text-muted)] mb-3">52주 신고가 vs 신저가</p>
         <div className="flex items-baseline justify-between mb-2">
           <span className="text-[12px]">
             신고가 <span className="text-[#f85149] num font-semibold">{activity.high_52w}</span>
@@ -614,7 +615,8 @@ function MarketSignals() {
 
       {/* 수급 전환 알람 */}
       <div>
-        <h4 className="text-[11px] text-[var(--text-secondary)] mb-3">수급 전환 알람 — 클릭하면 종목 보기</h4>
+        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">수급 전환 알람</h3>
+        <p className="text-[10px] text-[var(--text-muted)] mb-3">클릭하면 종목 보기</p>
         <div className="grid grid-cols-3 gap-2">
           <Link
             href="/stocks?signal=buy_reversal"
