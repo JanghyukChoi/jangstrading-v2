@@ -167,6 +167,8 @@ function StocksPageInner() {
   function setSortBy(v: "amount" | "ratio") { setSortByState(v); syncUrl({ sort: v }); }
 
   const [v3Signals, setV3Signals] = useState<V3Signals | null>(null);
+  // ai_screener는 점수 desc 순서 보존 위해 ticker -> rank map도 별도 저장
+  const [aiScreenerRank, setAiScreenerRank] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     Promise.all([
@@ -178,13 +180,17 @@ function StocksPageInner() {
         setAllStocks(s.data);
         setMeta(m);
         if (sig?.signals) {
+          const aiOrdered: string[] = sig.longterm?.ai_screener ?? [];
           setV3Signals({
             buy_reversal: new Set(sig.signals.buy_reversal ?? []),
             sell_reversal: new Set(sig.signals.sell_reversal ?? []),
             leader: new Set(sig.signals.leader ?? []),
             accumulation: new Set(sig.signals.accumulation ?? []),
-            ai_screener: new Set(sig.longterm?.ai_screener ?? []),
+            ai_screener: new Set(aiOrdered),
           });
+          const rankMap = new Map<string, number>();
+          aiOrdered.forEach((t, i) => rankMap.set(t, i));
+          setAiScreenerRank(rankMap);
         }
       })
       .finally(() => setLoading(false));
@@ -208,7 +214,12 @@ function StocksPageInner() {
       if (signalFilter === "ai_screener") {
         const set = v3Signals?.ai_screener ?? new Set<string>();
         r = r.filter((s) => s.ticker && set.has(s.ticker));
-        return [...r].sort((a, b) => (b.pension?.["3m"] ?? 0) - (a.pension?.["3m"] ?? 0));
+        // signals.json 배열 순서 (= 점수 desc) 유지
+        return [...r].sort((a, b) => {
+          const ra = aiScreenerRank.get(a.ticker ?? "") ?? 999;
+          const rb = aiScreenerRank.get(b.ticker ?? "") ?? 999;
+          return ra - rb;
+        });
       }
       r = r.filter((s) => getSignals(s, v3Signals).some((sig) => sig.key === signalFilter));
       // 신호별 최적 정렬
