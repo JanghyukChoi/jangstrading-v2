@@ -63,8 +63,15 @@ jobs:
         run: python scripts/send_telegram.py  
       - name: Save snapshot
         run: python scripts/save_snapshot.py
+      - name: Augment snapshot (market_cap + trade_value)
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python scripts/augment_snapshots.py --input public/data/snapshots
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
+      - name: Build V3 signals
+        run: python scripts/build_v3_signals.py
       - name: Build market signals
         run: python scripts/build_market_signals.py
       - name: Commit & Push

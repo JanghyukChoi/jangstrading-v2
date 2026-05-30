@@ -1,33 +1,47 @@
 """
 종목별 시계열 데이터 빌드
 
-입력: public/data/snapshots/*.json (일별 스냅샷, 종목별 일별 순매수)
-출력: public/data/timeseries/{ticker}.json (종목당 1 파일)
-      public/data/timeseries/_index.json (사용 가능한 ticker 목록 + 범위)
+입력: {input}/snapshots/*.json (일별 스냅샷, 종목별 일별 순매수)
+출력: {output}/timeseries/{ticker}.json (종목당 1 파일)
+      {output}/timeseries/_index.json (사용 가능한 ticker 목록 + 범위)
 
 목적:
 - 종목 상세 페이지에서 외국인/기관 누적 순매수 라인 차트 그릴 때
   한 파일만 fetch하면 됨 (250개 snapshot 파일 일일이 안 받아도 됨)
+- 백테스트에도 동일한 timeseries 구조 사용
 
 실행:
-  python scripts/build_timeseries.py
+  python scripts/build_timeseries.py                                 # 기본 (public/data)
+  python scripts/build_timeseries.py --input scripts/backtest_data \\
+                                     --output scripts/backtest_data   # 백테스트용
 """
 
+import argparse
 import json
 import time
 from collections import defaultdict
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "public" / "data"
-SNAP_DIR = DATA_DIR / "snapshots"
-OUT_DIR = DATA_DIR / "timeseries"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_DATA_DIR = BASE_DIR / "public" / "data"
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=str, default=None,
+                        help="입력 디렉토리 (snapshots/ 하위 디렉토리 포함). 기본: public/data")
+    parser.add_argument("--output", type=str, default=None,
+                        help="출력 디렉토리 (timeseries/ 하위 생성). 기본: 입력과 동일")
+    args = parser.parse_args()
+
+    input_root = Path(args.input) if args.input else DEFAULT_DATA_DIR
+    output_root = Path(args.output) if args.output else input_root
+    snap_dir = input_root / "snapshots"
+    out_dir = output_root / "timeseries"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     t0 = time.time()
-    snap_files = sorted(SNAP_DIR.glob("*.json"))
+    snap_files = sorted(snap_dir.glob("*.json"))
     print(f"=== 시계열 빌드 시작 ===")
     print(f"입력 스냅샷: {len(snap_files)}개")
 
@@ -36,13 +50,15 @@ def main():
         return
 
     # ticker별 시계열 수집
-    # data[ticker] = {dates: [], foreign: [], inst: [], pension: [], prices: []}
+    # data[ticker] = {dates: [], foreign: [], inst: [], pension: [], prices: [], market_cap: [], trade_value: []}
     data = defaultdict(lambda: {
         "dates": [],
         "foreign": [],
         "inst": [],
         "pension": [],
         "prices": [],
+        "market_cap": [],
+        "trade_value": [],
     })
 
     dates_processed = []
@@ -60,6 +76,8 @@ def main():
         inst_1d = snap.get("inst_1d", {})
         pension_1d = snap.get("pension_1d", {})
         prices = snap.get("prices", {})
+        market_cap = snap.get("market_cap", {})
+        trade_value = snap.get("trade_value", {})
 
         if not foreign_1d and not inst_1d:
             # 이 날 백필 안 된 상태 - 건너뛰기
@@ -68,7 +86,13 @@ def main():
         dates_processed.append(date)
 
         # 이 날 데이터가 있는 모든 ticker 합집합
-        all_tickers = set(foreign_1d.keys()) | set(inst_1d.keys()) | set(pension_1d.keys()) | set(prices.keys())
+        all_tickers = (
+            set(foreign_1d.keys())
+            | set(inst_1d.keys())
+            | set(pension_1d.keys())
+            | set(prices.keys())
+            | set(market_cap.keys())
+        )
 
         for ticker in all_tickers:
             row = data[ticker]
@@ -77,6 +101,8 @@ def main():
             row["inst"].append(inst_1d.get(ticker, 0))
             row["pension"].append(pension_1d.get(ticker, 0))
             row["prices"].append(prices.get(ticker, 0))
+            row["market_cap"].append(market_cap.get(ticker, 0))
+            row["trade_value"].append(trade_value.get(ticker, 0))
 
     print(f"수집된 영업일: {len(dates_processed)}일")
     print(f"  범위: {dates_processed[0] if dates_processed else '없음'} ~ {dates_processed[-1] if dates_processed else '없음'}")
@@ -93,7 +119,7 @@ def main():
             skipped_count += 1
             continue
 
-        out_path = OUT_DIR / f"{ticker}.json"
+        out_path = out_dir / f"{ticker}.json"
         payload = {
             "ticker": ticker,
             **row,
@@ -112,7 +138,7 @@ def main():
             "count": len(dates_processed),
         },
     }
-    index_path = OUT_DIR / "_index.json"
+    index_path = out_dir / "_index.json"
     with open(index_path, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, separators=(",", ":"))
 

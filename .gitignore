@@ -48,3 +48,7 @@ scripts/_preview.json
 
 # backtest data (local only)
 scripts/backtest_data/
+
+# python
+scripts/__pycache__/
+*.pyc

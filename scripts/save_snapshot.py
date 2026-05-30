@@ -34,25 +34,9 @@ def main():
 
     print(f"📸 스냅샷 저장 시작 ({date})")
 
-    # 1. 수급 신호 판정
-    big = [s for s in stocks if (s.get("market_cap") or 0) >= 1000]
-    signals = {"buy_reversal": [], "sell_reversal": [], "divergence": [], "accumulation": []}
-
-    for s in big:
-        t = s.get("ticker", "")
-        if not t:
-            continue
-        c = s["combined"]
-        pc = s.get("price_change", {})
-
-        if c.get("3m", 0) < -5000 and c.get("1w", 0) > 500:
-            signals["buy_reversal"].append(t)
-        if c.get("3m", 0) > 5000 and c.get("1w", 0) < -500:
-            signals["sell_reversal"].append(t)
-        if c.get("1m", 0) > 5000 and (pc.get("1m", 0) or 0) < -5:
-            signals["divergence"].append(t)
-        if c.get("1d", 0) > 50 and c.get("1w", 0) > 500 and c.get("1m", 0) > 5000:
-            signals["accumulation"].append(t)
+    # 1. 시그널 판정은 V3 (build_v3_signals.py)에서 timeseries 기반으로 계산.
+    #    snapshot 자체에는 empty placeholder만 저장. 실제 시그널은 public/data/signals.json.
+    signals = {"buy_reversal": [], "sell_reversal": [], "leader": [], "accumulation": []}
 
     # 2. 전 종목 종가
     prices = {}
@@ -131,7 +115,7 @@ def main():
         json.dump(snapshot, f, ensure_ascii=False)
 
     size_kb = snap_path.stat().st_size / 1024
-    print(f"  📊 신호: 매수전환 {len(signals['buy_reversal'])} | 매도전환 {len(signals['sell_reversal'])} | 괴리 {len(signals['divergence'])} | 집중매수 {len(signals['accumulation'])}")
+    print(f"  📊 신호: V3 시그널은 build_v3_signals.py에서 별도 계산 (signals.json)")
     print(f"  💰 종가: {len(prices)}종목")
     print(f"  📈 일별 수급: 외국인 {len(foreign_1d)} / 기관 {len(inst_1d)} / 연기금 {len(pension_1d)} 종목")
     print(f"  📈 Breadth: 외국인 +{breadth['foreign_buy']}/-{breadth['foreign_sell']} | 기관 +{breadth['inst_buy']}/-{breadth['inst_sell']}")

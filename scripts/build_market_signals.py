@@ -153,24 +153,32 @@ def main():
         f"기관 {kosdaq_trend['inst_streak_days']:+d}일"
     )
 
-    # 2. 최근 스냅샷에서 시그널 + breadth 추출
+    # 2. 최근 스냅샷에서 breadth 추출
     with open(snap_files[-1], "r", encoding="utf-8") as f:
         latest_snap = json.load(f)
-    signals_raw = latest_snap.get("signals") or {}
     breadth = latest_snap.get("breadth") or {}
     latest_date = latest_snap.get("date", "")
 
+    # V3 시그널은 별도 파일 (build_v3_signals.py가 만듦)
+    signals_path = DATA_DIR / "signals.json"
+    try:
+        with open(signals_path, "r", encoding="utf-8") as f:
+            v3 = json.load(f)
+        v3_signals = v3.get("signals") or {}
+    except Exception:
+        v3_signals = {}
+
     signal_counts = {
-        "buy_reversal": len(signals_raw.get("buy_reversal", [])),
-        "sell_reversal": len(signals_raw.get("sell_reversal", [])),
-        "accumulation": len(signals_raw.get("accumulation", [])),
-        "divergence": len(signals_raw.get("divergence", [])),
+        "buy_reversal": len(v3_signals.get("buy_reversal", [])),
+        "sell_reversal": len(v3_signals.get("sell_reversal", [])),
+        "leader": len(v3_signals.get("leader", [])),
+        "accumulation": len(v3_signals.get("accumulation", [])),
     }
     print(
-        f"  시그널: 매수전환 {signal_counts['buy_reversal']} / "
+        f"  시그널 (V3): 매수전환 {signal_counts['buy_reversal']} / "
         f"매도전환 {signal_counts['sell_reversal']} / "
-        f"집중매수 {signal_counts['accumulation']} / "
-        f"괴리 {signal_counts['divergence']}"
+        f"주도주 {signal_counts['leader']} / "
+        f"집중매수 {signal_counts['accumulation']}"
     )
 
     # 3. 52주 신고가/신저가 계산 (timeseries 기준)
