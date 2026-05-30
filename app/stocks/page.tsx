@@ -417,7 +417,7 @@ function StocksPageInner() {
         <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
           {signalFilter === "buy_reversal" && "최근 3개월간 외국인이 꾸준히 팔던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 사기 시작한 반등 후보. 주가는 60일 평균 아래, 거래량도 늘어남."}
           {signalFilter === "sell_reversal" && "최근 3개월간 외국인이 꾸준히 사들이던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 팔기 시작한 위험 신호. 주가는 60일 평균 위에서 거래량 증가와 함께 매도 전환."}
-          {signalFilter === "leaders" && "외국인과 기관이 60일 동안 함께 매수하며 주가도 강하게 오른 시장 주도 종목. 시가총액 1천억 이상, 거래량 surge 포함."}
+          {signalFilter === "leaders" && "외국인과 기관이 60일 동안 함께 매수하며 주가도 강하게 오른 시장 주도 종목. 시가총액 1천억 이상, 거래량 급증 포함."}
           {signalFilter === "accumulation" && "외국인과 기관이 20일 내내 사들이고, 최근 5일 매수 강도가 더 빨라진 종목. 주가는 60일 평균 위에서 모멘텀 가속 중."}
           {signalFilter === "ai_screener" && "스마트 머니가 매집 중인 핵심 종목. 다중 지표를 AI로 합성해 매일 검증된 5종목을 선별."}
         </div>
