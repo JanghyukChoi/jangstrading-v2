@@ -470,8 +470,7 @@ def signal_buy_reversal_v3(data, idx, ctx=None):
     if idx < 60 or idx >= len(f) or idx >= len(p):
         return None
 
-    if ctx and ctx.get("kospi_mom60") is not None and ctx["kospi_mom60"] < -0.05:
-        return None
+    # regime filter 제거 (모든 국면에서 시그널 표시)
 
     mcap = _mcap_at(data, idx)
     if mcap is None or mcap < 50_000_000_000:  # 시총 500억 미만은 노이즈
@@ -525,9 +524,7 @@ def signal_sell_reversal_v3(data, idx, ctx=None):
     if idx < 60 or idx >= len(f) or idx >= len(p):
         return None
 
-    # 강세장에서 short 시그널 비활성화 (완화: +5% → +15%)
-    if ctx and ctx.get("kospi_mom60") is not None and ctx["kospi_mom60"] > 0.15:
-        return None
+    # regime filter 제거 (모든 국면에서 시그널 표시)
 
     mcap = _mcap_at(data, idx)
     if mcap is None or mcap < 50_000_000_000:
@@ -577,8 +574,7 @@ def signal_leader_v3(data, idx, ctx=None):
     if idx < 60 or idx >= len(f) or idx >= len(p):
         return None
 
-    if ctx and ctx.get("kospi_mom60") is not None and ctx["kospi_mom60"] < -0.05:
-        return None
+    # regime filter 제거 (모든 국면에서 시그널 표시)
 
     mcap = _mcap_at(data, idx)
     if mcap is None or mcap < 100_000_000_000:  # 주도주는 시총 1000억 이상만
@@ -635,8 +631,7 @@ def signal_accumulation_v3(data, idx, ctx=None):
     if idx < 60 or idx >= len(f) or idx >= len(p):
         return None
 
-    if ctx and ctx.get("kospi_mom60") is not None and ctx["kospi_mom60"] < -0.05:
-        return None
+    # regime filter 제거 (모든 국면에서 시그널 표시)
 
     mcap = _mcap_at(data, idx)
     if mcap is None or mcap < 50_000_000_000:
