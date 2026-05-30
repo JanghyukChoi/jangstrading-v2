@@ -49,6 +49,9 @@ scripts/_preview.json
 # backtest data (local only)
 scripts/backtest_data/
 
+# ML artifacts (local only, not used in live)
+scripts/ml_artifacts/
+
 # python
 scripts/__pycache__/
 *.pyc

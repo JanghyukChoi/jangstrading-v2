@@ -993,6 +993,122 @@ SIGNAL_MAP = {
 }
 
 
+# ───────────────────────────────────────────────────────────
+# Long-term Signals (60d holding) — backtest_longterm.py에서 검증된 전략 A & E
+# ───────────────────────────────────────────────────────────
+
+
+def _price_mom(prices, idx, n):
+    if idx < n or idx >= len(prices):
+        return None
+    p_now = prices[idx]
+    p_past = prices[idx - n]
+    if not p_now or not p_past or p_now <= 0 or p_past <= 0:
+        return None
+    return p_now / p_past - 1
+
+
+def _positive_days_ratio(arr, start, end):
+    if start < 0 or end > len(arr) or end <= start:
+        return None
+    window = arr[start:end]
+    if not window:
+        return None
+    return sum(1 for v in window if v > 0) / len(window)
+
+
+def signal_nps_momentum(data, idx, ctx=None):
+    """장기 A: NPS-Confirmed Momentum
+    백테스트 (10년): t-stat 9.98, +4.99% TC adj / 60일 hold, walk-fwd Test +11%
+    조건: 12-1 momentum + 60일 모멘텀 + 연기금 60일 bps + 외인기관 동조 + 거래량
+    """
+    f = data.get("foreign", [])
+    inst = data.get("inst", [])
+    pension = data.get("pension", [])
+    p = data.get("prices", [])
+    if idx < 252 or idx >= len(f) or idx >= len(p):
+        return None
+
+    mcap = _mcap_at(data, idx)
+    if mcap is None or mcap < 50_000_000_000:
+        return None
+
+    mom_12 = _price_mom(p, idx - 20, 252 - 20)
+    if mom_12 is None or mom_12 <= 0:
+        return None
+    mom_60 = _price_mom(p, idx, 60)
+    if mom_60 is None or mom_60 <= 0:
+        return None
+
+    pen_60 = safe_sum(pension, idx - 60, idx)
+    if pen_60 is None:
+        return None
+    pen_bps = _flow_bps(pen_60, mcap)
+    if pen_bps is None or pen_bps < 5:
+        return None
+
+    f60 = safe_sum(f, idx - 60, idx)
+    i60 = safe_sum(inst, idx - 60, idx)
+    if f60 is None or i60 is None:
+        return None
+    fi_bps = _flow_bps(f60 + i60, mcap)
+    if fi_bps is None or fi_bps < 0:
+        return None
+
+    surge = _tv_surge(data, idx, 20) or 0
+
+    # Composite score (높을수록 좋음). 절대값이 아니라 상대 ranking에 사용
+    return mom_12 * 0.25 + mom_60 * 0.20 + pen_bps / 100 * 0.30 + fi_bps / 100 * 0.15 + surge * 0.10
+
+
+def signal_pension_divergence(data, idx, ctx=None):
+    """장기 E: Pension vs Foreign Divergence (외국인 매도 + 연기금 매수)
+    백테스트 (10년): t-stat 6.89, +1.68% TC adj / 60일 hold, walk-fwd Train+Test 양수
+    Regime robust (2022 약세장 +1.54%)
+    """
+    f = data.get("foreign", [])
+    pension = data.get("pension", [])
+    p = data.get("prices", [])
+    if idx < 60 or idx >= len(f) or idx >= len(p):
+        return None
+
+    mcap = _mcap_at(data, idx)
+    if mcap is None or mcap < 50_000_000_000:
+        return None
+
+    pen_60 = safe_sum(pension, idx - 60, idx)
+    if pen_60 is None or pen_60 <= 0:
+        return None
+    pen_bps = _flow_bps(pen_60, mcap)
+    if pen_bps is None or pen_bps < 5:
+        return None
+
+    f60 = safe_sum(f, idx - 60, idx)
+    if f60 is None or f60 >= 0:
+        return None
+    f_bps = _flow_bps(f60, mcap)
+    if f_bps is None or f_bps > -3:
+        return None
+
+    mom_60 = _price_mom(p, idx, 60)
+    if mom_60 is None or mom_60 < -0.15 or mom_60 > 0.10:
+        return None
+
+    pen_pos = _positive_days_ratio(pension, idx - 60, idx)
+    if pen_pos is None or pen_pos < 0.40:
+        return None
+
+    # Composite (분리 정규화는 어렵지만 단순 합산으로 ranking)
+    return pen_bps / 100 * 0.35 + (-f_bps) / 100 * 0.30 + pen_pos * 0.20 + (-abs(mom_60)) * 0.15
+
+
+# Long-term signal map (별도)
+LONGTERM_SIGNAL_MAP = {
+    "nps_momentum": signal_nps_momentum,
+    "divergence": signal_pension_divergence,
+}
+
+
 def run_one_signal(timeseries, name, candidate, top_n, market_ctx=None):
     """단일 시그널 1개 후보 백테스트 + 출력"""
     entry = SIGNAL_MAP[name]

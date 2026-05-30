@@ -28,6 +28,8 @@ from backtest_signals import (  # noqa: E402
     signal_sell_reversal_v3,
     signal_leader_v3,
     signal_accumulation_v3,
+    signal_nps_momentum,
+    signal_pension_divergence,
 )
 
 
@@ -77,12 +79,17 @@ def kospi_momentum_60d(ctx, date):
     return cur / past - 1
 
 TOP_N = 15
+LONGTERM_TOP_N = 10  # 장기 시그널은 더 selective (백테스트 일평균 2개 → 라이브는 10개 cap)
 
 SIGNAL_FNS = {
     "buy_reversal": signal_buy_reversal_v3,
     "sell_reversal": signal_sell_reversal_v3,
     "leader": signal_leader_v3,
     "accumulation": signal_accumulation_v3,
+}
+
+LONGTERM_FNS = {
+    "ai_screener": signal_nps_momentum,  # A 시그널을 UI에 "AI 수급 주도주"로 노출
 }
 
 
@@ -135,8 +142,9 @@ def main():
     else:
         print(f"  KOSPI 60일 모멘텀: 데이터 부족")
 
-    # 각 시그널별로 모든 종목 점수 계산 → top-15
+    # 단기(V3) 시그널: 각각 top-15
     print()
+    print("  -- 단기 시그널 (V3) --")
     results = {}
     for name, fn in SIGNAL_FNS.items():
         scored = []
@@ -152,13 +160,34 @@ def main():
         scored.sort(key=lambda x: -x[1])
         top = scored[:TOP_N]
         results[name] = [t for t, _ in top]
-        print(f"  [{name:14s}] raw {len(scored):4d} → top-{TOP_N}: {len(top)}개")
+        print(f"  [{name:14s}] raw {len(scored):4d} -> top-{TOP_N}: {len(top)}개")
+
+    # 장기(60일 보유) 시그널: 각각 top-10
+    print()
+    print("  -- 장기 시그널 (60일 보유) --")
+    longterm = {}
+    for name, fn in LONGTERM_FNS.items():
+        scored = []
+        for ticker, data in ts.items():
+            dates = data.get("dates", [])
+            try:
+                idx = dates.index(latest_date)
+            except ValueError:
+                continue
+            score = fn(data, idx, ctx)
+            if score is not None and score > 0:
+                scored.append((ticker, score))
+        scored.sort(key=lambda x: -x[1])
+        top = scored[:LONGTERM_TOP_N]
+        longterm[name] = [t for t, _ in top]
+        print(f"  [{name:14s}] raw {len(scored):4d} -> top-{LONGTERM_TOP_N}: {len(top)}개")
 
     output = {
         "date": latest_date,
         "version": "v3",
         "top_n": TOP_N,
         "signals": results,
+        "longterm": longterm,
     }
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)

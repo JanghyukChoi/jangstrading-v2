@@ -23,7 +23,7 @@ interface StockRanking {
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-type Signal = "all" | "buy_reversal" | "sell_reversal" | "leaders" | "accumulation";
+type Signal = "all" | "buy_reversal" | "sell_reversal" | "leaders" | "accumulation" | "ai_screener";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function getInvVal(s: StockRanking, inv: Investor, p: string): number {
@@ -72,6 +72,7 @@ interface V3Signals {
   sell_reversal: Set<string>;
   leader: Set<string>;
   accumulation: Set<string>;
+  ai_screener: Set<string>;
 }
 
 const SIGNAL_LABEL: Record<Exclude<Signal, "all">, { label: string; color: string }> = {
@@ -79,6 +80,7 @@ const SIGNAL_LABEL: Record<Exclude<Signal, "all">, { label: string; color: strin
   sell_reversal: { label: "매도전환", color: "bg-orange-500/15 text-orange-400" },
   leaders: { label: "주도주", color: "bg-amber-500/15 text-amber-400" },
   accumulation: { label: "집중매수", color: "bg-rose-500/15 text-rose-400" },
+  ai_screener: { label: "AI 수급 주도주", color: "bg-indigo-500/15 text-indigo-400" },
 };
 
 function getSignals(
@@ -92,6 +94,7 @@ function getSignals(
   if (v3.sell_reversal.has(t)) out.push({ key: "sell_reversal", ...SIGNAL_LABEL.sell_reversal });
   if (v3.leader.has(t)) out.push({ key: "leaders", ...SIGNAL_LABEL.leaders });
   if (v3.accumulation.has(t)) out.push({ key: "accumulation", ...SIGNAL_LABEL.accumulation });
+  if (v3.ai_screener.has(t)) out.push({ key: "ai_screener", ...SIGNAL_LABEL.ai_screener });
   return out;
 }
 
@@ -180,6 +183,7 @@ function StocksPageInner() {
             sell_reversal: new Set(sig.signals.sell_reversal ?? []),
             leader: new Set(sig.signals.leader ?? []),
             accumulation: new Set(sig.signals.accumulation ?? []),
+            ai_screener: new Set(sig.longterm?.ai_screener ?? []),
           });
         }
       })
@@ -200,6 +204,11 @@ function StocksPageInner() {
         const leaderSet = v3Signals?.leader ?? new Set<string>();
         r = r.filter((s) => s.ticker && leaderSet.has(s.ticker));
         return [...r].sort((a, b) => b.combined[period] - a.combined[period]);
+      }
+      if (signalFilter === "ai_screener") {
+        const set = v3Signals?.ai_screener ?? new Set<string>();
+        r = r.filter((s) => s.ticker && set.has(s.ticker));
+        return [...r].sort((a, b) => (b.pension?.["3m"] ?? 0) - (a.pension?.["3m"] ?? 0));
       }
       r = r.filter((s) => getSignals(s, v3Signals).some((sig) => sig.key === signalFilter));
       // 신호별 최적 정렬
@@ -236,6 +245,7 @@ function StocksPageInner() {
       sell_reversal: v3Signals?.sell_reversal.size ?? 0,
       leaders: v3Signals?.leader.size ?? 0,
       accumulation: v3Signals?.accumulation.size ?? 0,
+      ai_screener: v3Signals?.ai_screener.size ?? 0,
     };
   }, [v3Signals]);
 
@@ -314,6 +324,7 @@ function StocksPageInner() {
           { key: "sell_reversal" as Signal, label: "매도전환", count: signalCounts.sell_reversal, dot: "bg-orange-400" },
           { key: "leaders" as Signal, label: "주도주", count: signalCounts.leaders, dot: "bg-amber-400" },
           { key: "accumulation" as Signal, label: "집중매수", count: signalCounts.accumulation, dot: "bg-rose-400" },
+          { key: "ai_screener" as Signal, label: "AI 수급 주도주", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
         ]).map((s) => (
           <button
             key={s.key}
@@ -397,6 +408,7 @@ function StocksPageInner() {
           {signalFilter === "sell_reversal" && "최근 3개월간 외국인이 꾸준히 사들이던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 팔기 시작한 위험 신호. 주가는 60일 평균 위에서 거래량 증가와 함께 매도 전환."}
           {signalFilter === "leaders" && "외국인과 기관이 60일 동안 함께 매수하며 주가도 강하게 오른 시장 주도 종목. 시가총액 1천억 이상, 거래량 surge 포함."}
           {signalFilter === "accumulation" && "외국인과 기관이 20일 내내 사들이고, 최근 5일 매수 강도가 더 빨라진 종목. 주가는 60일 평균 위에서 모멘텀 가속 중."}
+          {signalFilter === "ai_screener" && "다중 팩터 합성: 가격 12-1 모멘텀 (Jegadeesh-Titman) + 60일 모멘텀 + 연기금 60일 매수 + 외인·기관 동조 + 거래량 surge. 60일 보유 권장. 10년 백테스트 검증."}
         </div>
       )}
 
