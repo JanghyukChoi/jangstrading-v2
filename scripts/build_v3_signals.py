@@ -28,8 +28,8 @@ from backtest_signals import (  # noqa: E402
     signal_sell_reversal_v3,
     signal_leader_v3,
     signal_accumulation_v3,
-    signal_nps_momentum,
-    signal_pension_divergence,
+    ai_screener_factors,
+    composite_ai_screener_pct,
 )
 
 
@@ -79,7 +79,7 @@ def kospi_momentum_60d(ctx, date):
     return cur / past - 1
 
 TOP_N = 15
-LONGTERM_TOP_N = 10  # 장기 시그널은 더 selective (백테스트 일평균 2개 → 라이브는 10개 cap)
+LONGTERM_TOP_N = 5  # 백테스트 (top-5 overlap)와 정합
 
 SIGNAL_FNS = {
     "buy_reversal": signal_buy_reversal_v3,
@@ -88,8 +88,13 @@ SIGNAL_FNS = {
     "accumulation": signal_accumulation_v3,
 }
 
-LONGTERM_FNS = {
-    "ai_screener": signal_nps_momentum,  # A 시그널을 UI에 "AI 수급 주도주"로 노출
+# 장기 시그널: factor dict 반환 함수 + cross-section 백분위 composite
+# (백테스트 backtest_longterm.py의 score_strategy_a + composite_a와 정합)
+LONGTERM_FACTOR_FNS = {
+    "ai_screener": ai_screener_factors,
+}
+LONGTERM_COMPOSITE_FNS = {
+    "ai_screener": composite_ai_screener_pct,
 }
 
 
@@ -162,25 +167,30 @@ def main():
         results[name] = [t for t, _ in top]
         print(f"  [{name:14s}] raw {len(scored):4d} -> top-{TOP_N}: {len(top)}개")
 
-    # 장기(60일 보유) 시그널: 각각 top-10
+    # 장기(60일 보유) 시그널: cross-section 백분위 ranking → top-N
     print()
-    print("  -- 장기 시그널 (60일 보유) --")
+    print("  -- 장기 시그널 (60일 보유, 백분위 ranking) --")
     longterm = {}
-    for name, fn in LONGTERM_FNS.items():
-        scored = []
+    for name, factor_fn in LONGTERM_FACTOR_FNS.items():
+        composite_fn = LONGTERM_COMPOSITE_FNS[name]
+        # 1) 조건 통과 종목들의 raw factors 수집
+        candidates = []  # [(ticker, factors_dict), ...]
         for ticker, data in ts.items():
             dates = data.get("dates", [])
             try:
                 idx = dates.index(latest_date)
             except ValueError:
                 continue
-            score = fn(data, idx, ctx)
-            if score is not None and score > 0:
-                scored.append((ticker, score))
+            f = factor_fn(data, idx, ctx)
+            if f is not None:
+                candidates.append((ticker, f))
+        # 2) cross-section 백분위 합성 점수
+        all_factors = [f for _, f in candidates]
+        scored = [(t, composite_fn(f, all_factors)) for t, f in candidates]
         scored.sort(key=lambda x: -x[1])
         top = scored[:LONGTERM_TOP_N]
         longterm[name] = [t for t, _ in top]
-        print(f"  [{name:14s}] raw {len(scored):4d} -> top-{LONGTERM_TOP_N}: {len(top)}개")
+        print(f"  [{name:14s}] candidates {len(candidates):4d} -> top-{LONGTERM_TOP_N}: {len(top)}개")
 
     output = {
         "date": latest_date,

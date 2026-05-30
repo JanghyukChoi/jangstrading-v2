@@ -1109,6 +1109,77 @@ LONGTERM_SIGNAL_MAP = {
 }
 
 
+def ai_screener_factors(data, idx, ctx=None):
+    """A 전략 raw factor dict 반환 (백분위 변환 전).
+    build_v3_signals.py에서 매일 cross-section 백분위 ranking에 사용.
+    조건 통과 못하면 None.
+    """
+    f = data.get("foreign", [])
+    inst = data.get("inst", [])
+    pension = data.get("pension", [])
+    p = data.get("prices", [])
+    if idx < 252 or idx >= len(f) or idx >= len(p):
+        return None
+
+    mcap = _mcap_at(data, idx)
+    if mcap is None or mcap < 50_000_000_000:
+        return None
+
+    mom_12 = _price_mom(p, idx - 20, 252 - 20)
+    if mom_12 is None or mom_12 <= 0:
+        return None
+    mom_60 = _price_mom(p, idx, 60)
+    if mom_60 is None or mom_60 <= 0:
+        return None
+
+    pen_60 = safe_sum(pension, idx - 60, idx)
+    if pen_60 is None:
+        return None
+    pen_bps = _flow_bps(pen_60, mcap)
+    if pen_bps is None or pen_bps < 5:
+        return None
+
+    f60 = safe_sum(f, idx - 60, idx)
+    i60 = safe_sum(inst, idx - 60, idx)
+    if f60 is None or i60 is None:
+        return None
+    fi_bps = _flow_bps(f60 + i60, mcap)
+    if fi_bps is None or fi_bps < 0:
+        return None
+
+    surge = _tv_surge(data, idx, 20) or 0
+
+    return {
+        "mom_12": mom_12,
+        "mom_60": mom_60,
+        "pen_bps": pen_bps,
+        "fi_bps": fi_bps,
+        "surge": surge,
+    }
+
+
+def composite_ai_screener_pct(sc, all_scores):
+    """백분위 기반 composite score (backtest의 composite_a와 동일 가중치)"""
+    def pct_rank(values, val):
+        if len(values) <= 1:
+            return 50
+        below = sum(1 for v in values if v < val)
+        return below / (len(values) - 1) * 100
+
+    mom_12s = [s["mom_12"] for s in all_scores]
+    mom_60s = [s["mom_60"] for s in all_scores]
+    pen_bpss = [s["pen_bps"] for s in all_scores]
+    fi_bpss = [s["fi_bps"] for s in all_scores]
+    surges = [s["surge"] for s in all_scores]
+    return (
+        0.25 * pct_rank(mom_12s, sc["mom_12"])
+        + 0.20 * pct_rank(mom_60s, sc["mom_60"])
+        + 0.30 * pct_rank(pen_bpss, sc["pen_bps"])
+        + 0.15 * pct_rank(fi_bpss, sc["fi_bps"])
+        + 0.10 * pct_rank(surges, sc["surge"])
+    )
+
+
 def run_one_signal(timeseries, name, candidate, top_n, market_ctx=None):
     """단일 시그널 1개 후보 백테스트 + 출력"""
     entry = SIGNAL_MAP[name]

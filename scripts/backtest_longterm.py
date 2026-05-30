@@ -669,18 +669,16 @@ def report(name, results, n_dates):
 def main():
     ts = load_timeseries()
 
-    # No-re-entry 60일 적용해서 진짜 alpha 검증
+    # 라이브 정합성: top-5 overlap 허용 (build_v3_signals와 동일)
     strategies = [
-        ("A: NPS Momentum (top-2, no-reentry)", score_strategy_a, composite_a, 2),
-        ("A: NPS Momentum (top-5, no-reentry)", score_strategy_a, composite_a, 5),
-        ("E: Divergence (top-2, no-reentry)", score_strategy_e, composite_e, 2),
-        ("E: Divergence (top-5, no-reentry)", score_strategy_e, composite_e, 5),
+        ("A top-5 (overlap, live parity)", score_strategy_a, composite_a, 5),
     ]
 
     all_results = {}
     for label, score_fn, comp_fn, top_n in strategies:
         print(f"\n>>> Running {label} (top-{top_n})")
-        results, n_dates = run_backtest(ts, score_fn, comp_fn, top_n=top_n, label=label)
+        # overlap 허용 (라이브와 동일) — no_reentry_days=0
+        results, n_dates = run_backtest(ts, score_fn, comp_fn, top_n=top_n, label=label, no_reentry_days=0)
         all_results[label] = (results, n_dates)
         report(label, results, n_dates)
 
