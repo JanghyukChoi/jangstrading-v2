@@ -68,6 +68,11 @@ jobs:
           KRX_ID: ${{ secrets.KRX_ID }}
           KRX_PW: ${{ secrets.KRX_PW }}
         run: python scripts/augment_snapshots.py --input public/data/snapshots
+      - name: Fetch KOSPI history (regime filter용)
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python scripts/fetch_kospi_history.py
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
       - name: Build V3 signals

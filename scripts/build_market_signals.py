@@ -233,7 +233,7 @@ def main():
 
     size_kb = OUT_PATH.stat().st_size / 1024
     print()
-    print(f"✅ {OUT_PATH.name} ({size_kb:.1f} KB) — {time.time() - t0:.1f}s")
+    print(f"OK {OUT_PATH.name} ({size_kb:.1f} KB) - {time.time() - t0:.1f}s")
     print("=" * 60)
 
 

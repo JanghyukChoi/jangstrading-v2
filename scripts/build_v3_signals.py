@@ -18,6 +18,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 TS_DIR = BASE_DIR / "public" / "data" / "timeseries"
 SNAP_DIR = BASE_DIR / "public" / "data" / "snapshots"
+KOSPI_HISTORY_PATH = BASE_DIR / "public" / "data" / "kospi-history.json"
 OUT_PATH = BASE_DIR / "public" / "data" / "signals.json"
 
 # backtest_signals.py에서 V3 시그널 함수 + helper 재사용
@@ -31,9 +32,18 @@ from backtest_signals import (  # noqa: E402
 
 
 def build_kospi_context():
-    """snapshots에서 KOSPI 종가 시계열을 읽어 정확한 mom60 계산용 context 생성.
-    backtest의 equal-weighted index 대신 실제 KOSPI index 사용 (라이브용).
+    """KOSPI 종가 시계열 로드 (fetch_kospi_history.py가 만든 cache).
+    fallback: snapshot.market.kospi 사용 (cache 없을 때).
     """
+    # 우선 kospi-history.json
+    if KOSPI_HISTORY_PATH.exists():
+        try:
+            mi = json.load(open(KOSPI_HISTORY_PATH, "r", encoding="utf-8"))
+            mi = {d: float(v) for d, v in mi.items() if v}
+            return {"market_index": mi, "dates_sorted": sorted(mi.keys())}
+        except Exception:
+            pass
+    # Fallback: snapshots
     market_index = {}
     for f in sorted(SNAP_DIR.glob("*.json")):
         try:
