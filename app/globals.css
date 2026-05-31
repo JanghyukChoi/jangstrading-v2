@@ -35,3 +35,13 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+
+/* Select 옵션 — 다크 배경 + 밝은 글씨 (브라우저 기본 흰 배경 덮어쓰기) */
+select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+select optgroup {
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+}

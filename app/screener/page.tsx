@@ -342,10 +342,10 @@ function ScreenerInner() {
             placeholder="예: 1000"
           />
           <NumInput
-            label={`가격 ${periodLabels[filters.period]} 모멘텀 최소 (%)`}
+            label={`주가 ${periodLabels[filters.period]} 변동률 최소 (%)`}
             value={filters.minPriceMom}
             onChange={(v) => updateFilter("minPriceMom", v)}
-            placeholder="예: 0 (=상승), -10 (=10%이내 하락)"
+            placeholder="0 = 상승만, -5 = 5%까지 하락 허용"
             allowNegative
           />
         </div>
@@ -396,7 +396,7 @@ function ScreenerInner() {
               <option value="inst">기관 순매수</option>
               <option value="pension">연기금 순매수</option>
               <option value="market_cap">시가총액</option>
-              <option value="price_mom">가격 모멘텀</option>
+              <option value="price_mom">주가 변동률</option>
             </select>
           </div>
           <div>
@@ -439,7 +439,7 @@ function ScreenerInner() {
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">기관 ({periodLabels[filters.period]})</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">연기금 ({periodLabels[filters.period]})</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">합계 ({periodLabels[filters.period]})</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">가격 ({periodLabels[filters.period]})</th>
+                <th className="text-right px-2 sm:px-3 py-3 font-normal">변동률 ({periodLabels[filters.period]})</th>
               </tr>
             </thead>
             <tbody>
@@ -505,7 +505,7 @@ function ScreenerInner() {
                     <CNum v={s.combined[filters.period]} />
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">가격</span>
+                    <span className="text-[var(--text-muted)]">변동률</span>
                     {pm != null ? (
                       <span className={`num ${pm > 0 ? "positive" : pm < 0 ? "negative" : ""}`}>
                         {pm > 0 ? "+" : ""}{pm.toFixed(1)}%
