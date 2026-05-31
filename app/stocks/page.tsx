@@ -80,7 +80,7 @@ const SIGNAL_LABEL: Record<Exclude<Signal, "all">, { label: string; color: strin
   sell_reversal: { label: "매도전환", color: "bg-orange-500/15 text-orange-400" },
   leaders: { label: "주도주", color: "bg-amber-500/15 text-amber-400" },
   accumulation: { label: "집중매수", color: "bg-rose-500/15 text-rose-400" },
-  ai_screener: { label: "AI 수급 주도주", color: "bg-indigo-500/15 text-indigo-400" },
+  ai_screener: { label: "수급 상위", color: "bg-indigo-500/15 text-indigo-400" },
 };
 
 function getSignals(
@@ -335,7 +335,7 @@ function StocksPageInner() {
           { key: "sell_reversal" as Signal, label: "매도전환", count: signalCounts.sell_reversal, dot: "bg-orange-400" },
           { key: "leaders" as Signal, label: "주도주", count: signalCounts.leaders, dot: "bg-amber-400" },
           { key: "accumulation" as Signal, label: "집중매수", count: signalCounts.accumulation, dot: "bg-rose-400" },
-          { key: "ai_screener" as Signal, label: "AI 수급 주도주", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
+          { key: "ai_screener" as Signal, label: "수급 상위", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
         ]).map((s) => (
           <button
             key={s.key}
@@ -419,7 +419,7 @@ function StocksPageInner() {
           {signalFilter === "sell_reversal" && "최근 3개월간 외국인이 꾸준히 사들이던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 팔기 시작한 위험 신호. 주가는 60일 평균 위에서 거래량 증가와 함께 매도 전환."}
           {signalFilter === "leaders" && "외국인과 기관이 60일 동안 함께 매수하며 주가도 강하게 오른 시장 주도 종목. 시가총액 1천억 이상, 거래량 급증 포함."}
           {signalFilter === "accumulation" && "외국인과 기관이 20일 내내 사들이고, 최근 5일 매수 강도가 더 빨라진 종목. 주가는 60일 평균 위에서 모멘텀 가속 중."}
-          {signalFilter === "ai_screener" && "스마트 머니가 매집 중인 핵심 종목. 다중 지표를 AI로 합성해 매일 검증된 5종목을 선별."}
+          {signalFilter === "ai_screener" && "외국인·기관·연기금이 최근 60일간 누적 순매수하며 가격·거래량 지표도 함께 상승한 종목 상위 5개. 본 정보는 KRX 공시 데이터 기반 사실 정보로, 종목 추천이 아닙니다."}
         </div>
       )}
 
@@ -438,7 +438,7 @@ function StocksPageInner() {
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal">{investor === "pension" ? "연기금" : "합계"}{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
                 <th className="text-right px-2 sm:px-3 py-3 font-normal hidden sm:table-cell">시총대비</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">수익률</th>
+                {signalFilter !== "ai_screener" && <th className="text-right px-2 sm:px-3 py-3 font-normal">수익률</th>}
               </tr>
             </thead>
             <tbody>
@@ -485,15 +485,17 @@ function StocksPageInner() {
                         </span>
                       ) : <span className="text-[var(--text-muted)]">-</span>}
                     </td>
-                    <td className="px-2 sm:px-3 py-2.5 text-right">
-                      {pc != null ? (
-                        <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
-                          {pc > 0 ? "+" : ""}{pc.toFixed(1)}%
-                        </span>
-                      ) : (
-                        <span className="text-[var(--text-muted)]">-</span>
-                      )}
-                    </td>
+                    {signalFilter !== "ai_screener" && (
+                      <td className="px-2 sm:px-3 py-2.5 text-right">
+                        {pc != null ? (
+                          <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
+                            {pc > 0 ? "+" : ""}{pc.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-[var(--text-muted)]">-</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -513,7 +515,7 @@ function StocksPageInner() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[var(--text-muted)] num text-[11px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
                   <span className="text-white font-medium text-[14px] flex-1 truncate">{s.name}</span>
-                  {pc != null && (
+                  {pc != null && signalFilter !== "ai_screener" && (
                     <span className={`text-[12px] font-medium ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
                       <span className="num">{pc > 0 ? "+" : ""}{pc.toFixed(1)}%</span>
                     </span>

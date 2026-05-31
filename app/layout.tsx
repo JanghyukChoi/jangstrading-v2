@@ -45,6 +45,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Header />
         <main className="max-w-7xl mx-auto px-5 py-6 pb-24 sm:pb-6">{children}</main>
+        <footer className="max-w-7xl mx-auto px-5 pb-28 sm:pb-10 mt-8">
+          <div className="border-t border-white/[0.06] pt-6 text-[11px] text-[var(--text-muted)] leading-relaxed space-y-1.5">
+            <p className="font-medium text-[var(--text-secondary)]">투자 유의사항</p>
+            <p>본 서비스는 투자 자문이 아닙니다. 표시된 정보는 한국거래소(KRX) 공시 데이터를 기반으로 한 사실 정보이며, 종목 추천이 아닌 분석 도구입니다.</p>
+            <p>투자 판단과 그에 따른 손익의 책임은 사용자 본인에게 있습니다. 과거 데이터 및 백테스트 결과는 미래 수익을 보장하지 않습니다.</p>
+            <p className="pt-2 text-[var(--text-muted)] opacity-70">© JangsTrading. 모든 데이터는 한국거래소(KRX) 공시 자료를 기반으로 합니다.</p>
+          </div>
+        </footer>
         <BottomNav />
         <Analytics />
         <SpeedInsights />
