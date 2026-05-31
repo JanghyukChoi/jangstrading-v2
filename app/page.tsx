@@ -644,7 +644,7 @@ function MarketSignals() {
           >
             <div className="flex items-baseline gap-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-400" />
-              <span className="text-[10px] text-[var(--text-secondary)]">집중매수</span>
+              <span className="text-[10px] text-[var(--text-secondary)]">단기수급상위</span>
             </div>
             <div className="text-[18px] font-semibold text-rose-400 num mt-0.5">{signals.accumulation}</div>
           </Link>

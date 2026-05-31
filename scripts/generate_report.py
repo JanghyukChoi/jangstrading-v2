@@ -164,7 +164,7 @@ def extract_key_data():
 {chr(10).join(f'  {i+1}. {name}: 합계 {fmt(d["combined"])}' for i, (name, d) in enumerate(sector_top5_sell))}
 
 [수급 신호 (시총 1천억 이상)]
-매수전환: {signals["buy_reversal"]}종목 / 매도전환: {signals["sell_reversal"]}종목 / 수급·주가 괴리: {signals["divergence"]}종목 / 집중매수: {signals["accumulation"]}종목
+매수전환: {signals["buy_reversal"]}종목 / 매도전환: {signals["sell_reversal"]}종목 / 수급·주가 괴리: {signals["divergence"]}종목 / 단기수급상위(외인+기관 5d/20d 가속): {signals["accumulation"]}종목
 
 [TOP 10 순매수 종목 (1개월)]
 {chr(10).join(f'  {i+1}. {s["name"]}: 외국인 {fmt(s["foreign"]["1m"])}, 기관 {fmt(s["institution"]["1m"])}, 합계 {fmt(s["combined"]["1m"])}, 주가변동 {s.get("price_change",{}).get("1m","N/A")}%' for i, s in enumerate(top_buy))}

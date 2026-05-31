@@ -79,8 +79,8 @@ const SIGNAL_LABEL: Record<Exclude<Signal, "all">, { label: string; color: strin
   buy_reversal: { label: "매수전환", color: "bg-emerald-500/15 text-emerald-400" },
   sell_reversal: { label: "매도전환", color: "bg-orange-500/15 text-orange-400" },
   leaders: { label: "주도주", color: "bg-amber-500/15 text-amber-400" },
-  accumulation: { label: "집중매수", color: "bg-rose-500/15 text-rose-400" },
-  ai_screener: { label: "수급 상위", color: "bg-indigo-500/15 text-indigo-400" },
+  accumulation: { label: "단기수급상위", color: "bg-rose-500/15 text-rose-400" },
+  ai_screener: { label: "장기수급상위", color: "bg-indigo-500/15 text-indigo-400" },
 };
 
 function getSignals(
@@ -334,8 +334,8 @@ function StocksPageInner() {
           { key: "buy_reversal" as Signal, label: "매수전환", count: signalCounts.buy_reversal, dot: "bg-emerald-400" },
           { key: "sell_reversal" as Signal, label: "매도전환", count: signalCounts.sell_reversal, dot: "bg-orange-400" },
           { key: "leaders" as Signal, label: "주도주", count: signalCounts.leaders, dot: "bg-amber-400" },
-          { key: "accumulation" as Signal, label: "집중매수", count: signalCounts.accumulation, dot: "bg-rose-400" },
-          { key: "ai_screener" as Signal, label: "수급 상위", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
+          { key: "accumulation" as Signal, label: "단기수급상위", count: signalCounts.accumulation, dot: "bg-rose-400" },
+          { key: "ai_screener" as Signal, label: "장기수급상위", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
         ]).map((s) => (
           <button
             key={s.key}
@@ -418,8 +418,8 @@ function StocksPageInner() {
           {signalFilter === "buy_reversal" && "최근 3개월간 외국인이 꾸준히 팔던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 사기 시작한 반등 후보. 주가는 60일 평균 아래, 거래량도 늘어남."}
           {signalFilter === "sell_reversal" && "최근 3개월간 외국인이 꾸준히 사들이던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 팔기 시작한 위험 신호. 주가는 60일 평균 위에서 거래량 증가와 함께 매도 전환."}
           {signalFilter === "leaders" && "외국인과 기관이 60일 동안 함께 매수하며 주가도 강하게 오른 시장 주도 종목. 시가총액 1천억 이상, 거래량 급증 포함."}
-          {signalFilter === "accumulation" && "외국인과 기관이 20일 내내 사들이고, 최근 5일 매수 강도가 더 빨라진 종목. 주가는 60일 평균 위에서 모멘텀 가속 중."}
-          {signalFilter === "ai_screener" && "외국인·기관·연기금이 최근 60일간 누적 순매수하며 가격·거래량 지표도 함께 상승한 종목 상위 5개."}
+          {signalFilter === "accumulation" && "단기 (5일/20일) 외국인·기관 매수가 가속 중인 종목. 거래량 증가와 모멘텀 가속 동반."}
+          {signalFilter === "ai_screener" && "장기 (60일/12개월) 외국인·기관·연기금 누적 순매수가 상위인 종목. 가격·거래량 지표도 함께 상승."}
         </div>
       )}
 

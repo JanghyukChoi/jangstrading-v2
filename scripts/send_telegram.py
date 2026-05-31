@@ -156,7 +156,7 @@ def main():
         msg += f"{idx_line}\n\n"
 
     msg += f"🔥 수급 신호\n"
-    msg += f"매수전환 {signals['buy']} | 매도전환 {signals['sell']} | 괴리 {signals['div']} | 집중매수 {signals['acc']}\n\n"
+    msg += f"매수전환 {signals['buy']} | 매도전환 {signals['sell']} | 괴리 {signals['div']} | 단기수급상위 {signals['acc']}\n\n"
 
     msg += "⭐ 섹터별 주도주 (1개월)\n"
     msg += "\n".join(leader_lines)
