@@ -32,6 +32,9 @@ export default function Header() {
           <Link href="/stocks" className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition">
             종목
           </Link>
+          <Link href="/screener" className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition">
+            스크리너
+          </Link>
           <Link href="/sectors" className="px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition">
             섹터
           </Link>
@@ -76,6 +79,10 @@ export default function Header() {
             <Link href="/stocks" onClick={() => setMenuOpen(false)}
               className="px-3 py-2.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition text-[14px]">
               종목 순매수
+            </Link>
+            <Link href="/screener" onClick={() => setMenuOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition text-[14px]">
+              스크리너
             </Link>
             <Link href="/sectors" onClick={() => setMenuOpen(false)}
               className="px-3 py-2.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition text-[14px]">
