@@ -128,7 +128,6 @@ function StocksPageInner() {
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -199,10 +198,6 @@ function StocksPageInner() {
   const filtered = useMemo(() => {
     let r = allStocks;
     if (marketFilter !== "ALL") r = r.filter((s) => s.market === marketFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      r = r.filter((s) => s.name.toLowerCase().includes(q));
-    }
 
     // 신호 필터 → 자동 정렬
     if (signalFilter !== "all") {
@@ -247,7 +242,7 @@ function StocksPageInner() {
       const bv = getInvVal(b, investor, period);
       return sortDir === "desc" ? bv - av : av - bv;
     });
-  }, [allStocks, marketFilter, search, investor, period, sortDir, sortBy, signalFilter, v3Signals]);
+  }, [allStocks, marketFilter, investor, period, sortDir, sortBy, signalFilter, v3Signals]);
 
   // 신호별 종목 수 카운트 (V3 결과 그대로)
   const signalCounts = useMemo(() => {
@@ -269,7 +264,7 @@ function StocksPageInner() {
   const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(getInvVal(s, investor, displayPeriod))), 1) : 1;
   const hasPer = allStocks.some((s) => s.per != null);
 
-  useEffect(() => setPage(0), [search, marketFilter, investor, period, sortDir, sortBy, signalFilter]);
+  useEffect(() => setPage(0), [marketFilter, investor, period, sortDir, sortBy, signalFilter]);
 
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
@@ -327,8 +322,8 @@ function StocksPageInner() {
 
       {/* Sticky 필터 영역 */}
       <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#06080d]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
-      {/* 신호 필터 카드 */}
-      <div className="flex flex-wrap gap-2">
+      {/* 신호 필터 — 모바일은 가로 스크롤 한 줄, 데스크톱은 wrap */}
+      <div className="flex sm:flex-wrap gap-2 overflow-x-auto sm:overflow-x-visible -mx-5 px-5 sm:mx-0 sm:px-0 no-scrollbar">
         {([
           { key: "all" as Signal, label: "전체", count: null, dot: "" },
           { key: "buy_reversal" as Signal, label: "매수전환", count: signalCounts.buy_reversal, dot: "bg-emerald-400" },
@@ -340,7 +335,7 @@ function StocksPageInner() {
           <button
             key={s.key}
             onClick={() => setSignalFilter(s.key)}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-[12px] border transition inline-flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] sm:text-[12px] border transition inline-flex items-center gap-1.5 ${
               signalFilter === s.key
                 ? "bg-white/[0.08] border-white/[0.15] text-white font-medium"
                 : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:border-white/[0.12]"
@@ -353,20 +348,8 @@ function StocksPageInner() {
         ))}
       </div>
 
-      {/* 필터 바 */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/>
-          </svg>
-          <input
-            type="text"
-            placeholder="종목 검색..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl pl-9 pr-3 py-[7px] text-[13px] text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-blue)] w-44 sm:w-52 transition"
-          />
-        </div>
+      {/* 필터 바 — 모바일 가로 스크롤, 데스크톱 wrap (검색은 글로벌 SearchBar) */}
+      <div className="flex sm:flex-wrap gap-2 items-center overflow-x-auto sm:overflow-x-visible -mx-5 px-5 sm:mx-0 sm:px-0 no-scrollbar">
         <FilterGroup
           options={[{ key: "ALL" as const, label: "전체" }, { key: "KOSPI" as const, label: "KOSPI" }, { key: "KOSDAQ" as const, label: "KOSDAQ" }]}
           value={marketFilter} onChange={setMarketFilter}

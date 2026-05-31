@@ -45,3 +45,7 @@ select optgroup {
   background-color: var(--bg-card);
   color: var(--text-muted);
 }
+
+/* 가로 스크롤 영역의 스크롤바 숨김 (모바일 필터 칩 가로 스크롤용) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
