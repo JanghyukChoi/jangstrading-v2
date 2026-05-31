@@ -103,12 +103,12 @@ function FilterGroup<T extends string>({
   options, value, onChange,
 }: { options: { key: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="flex rounded-xl overflow-hidden border border-white/[0.06] bg-[var(--bg-card)]">
+    <div className="flex shrink-0 rounded-xl overflow-hidden border border-white/[0.06] bg-[var(--bg-card)]">
       {options.map((o) => (
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`px-3 py-[7px] text-[11px] sm:text-[12px] transition-all ${
+          className={`shrink-0 whitespace-nowrap px-3 py-[7px] text-[11px] sm:text-[12px] transition-all ${
             value === o.key
               ? "bg-[var(--accent-blue)] text-white font-medium"
               : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"
@@ -320,10 +320,10 @@ function StocksPageInner() {
         <div className="text-xs text-[var(--text-muted)] num">{filtered.length}개 종목</div>
       </div>
 
-      {/* Sticky 필터 영역 */}
-      <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#06080d]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
+      {/* 필터 영역 (sticky 제거 — 스크롤 시 자연스럽게 위로) */}
+      <div className="space-y-3">
       {/* 신호 필터 — 모바일은 가로 스크롤 한 줄, 데스크톱은 wrap */}
-      <div className="flex sm:flex-wrap gap-2 overflow-x-auto sm:overflow-x-visible -mx-5 px-5 sm:mx-0 sm:px-0 no-scrollbar">
+      <div className="flex sm:flex-wrap gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {([
           { key: "all" as Signal, label: "전체", count: null, dot: "" },
           { key: "buy_reversal" as Signal, label: "매수전환", count: signalCounts.buy_reversal, dot: "bg-emerald-400" },
@@ -349,7 +349,7 @@ function StocksPageInner() {
       </div>
 
       {/* 필터 바 — 모바일 가로 스크롤, 데스크톱 wrap (검색은 글로벌 SearchBar) */}
-      <div className="flex sm:flex-wrap gap-2 items-center overflow-x-auto sm:overflow-x-visible -mx-5 px-5 sm:mx-0 sm:px-0 no-scrollbar">
+      <div className="flex sm:flex-wrap gap-2 items-center overflow-x-auto sm:overflow-x-visible no-scrollbar">
         <FilterGroup
           options={[{ key: "ALL" as const, label: "전체" }, { key: "KOSPI" as const, label: "KOSPI" }, { key: "KOSDAQ" as const, label: "KOSDAQ" }]}
           value={marketFilter} onChange={setMarketFilter}
@@ -358,7 +358,7 @@ function StocksPageInner() {
             <select
               value={investor}
               onChange={(e) => setInvestor(e.target.value as Investor)}
-              className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
+              className="shrink-0 bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
             >
               {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -373,13 +373,13 @@ function StocksPageInner() {
             <>
             <button
               onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-              className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
             >
               {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
             </button>
             <button
               onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
-              className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
                 sortBy === "ratio"
                   ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
                   : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
