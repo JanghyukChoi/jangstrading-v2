@@ -1,7 +1,7 @@
 name: Daily Data Fetch
 on:
-  schedule:
-    - cron: '30 7 * * 1-5'
+  # 정시 실행은 외부 cron-job.org가 매일 KST 17:10에 workflow_dispatch로 트리거.
+  # GitHub Actions schedule은 Free tier 큐 지연이 커서 사용하지 않음.
   workflow_dispatch:
 jobs:
   fetch-data:
