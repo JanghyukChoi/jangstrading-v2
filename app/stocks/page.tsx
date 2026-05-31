@@ -348,15 +348,7 @@ function StocksPageInner() {
         ))}
       </div>
 
-      {/* 시장 필터 — 자체 한 줄 */}
-      <div className="flex">
-        <FilterGroup
-          options={[{ key: "ALL" as const, label: "전체" }, { key: "KOSPI" as const, label: "KOSPI" }, { key: "KOSDAQ" as const, label: "KOSDAQ" }]}
-          value={marketFilter} onChange={setMarketFilter}
-        />
-      </div>
-
-      {/* 그 외 필터 바 — 모바일 가로 스크롤, 데스크톱 wrap */}
+      {/* 필터 바 (투자자/기간/정렬) — 모바일 가로 스크롤, 데스크톱 wrap */}
       <div className="flex sm:flex-wrap gap-2 items-center overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {signalFilter === "all" && (
             <select
@@ -396,8 +388,16 @@ function StocksPageInner() {
           </>
         )}
       </div>
+
+      {/* 시장 필터 — 헤더 맨 아래 */}
+      <div className="flex">
+        <FilterGroup
+          options={[{ key: "ALL" as const, label: "전체" }, { key: "KOSPI" as const, label: "KOSPI" }, { key: "KOSDAQ" as const, label: "KOSDAQ" }]}
+          value={marketFilter} onChange={setMarketFilter}
+        />
       </div>
-      {/* /Sticky 필터 영역 */}
+      </div>
+      {/* /필터 영역 */}
 
       {/* 신호 설명 (필터 선택 시) */}
       {signalFilter !== "all" && (
