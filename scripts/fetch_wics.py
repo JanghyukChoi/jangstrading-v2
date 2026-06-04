@@ -70,19 +70,28 @@ def get_dates_to_try():
     return dates
 
 
-def fetch_sector_stocks(sec_cd, date):
-    """특정 섹터 코드의 구성종목을 가져온다"""
-    try:
-        r = requests.get(
-            BASE_URL,
-            params={"ceil_yn": 0, "dt": date, "sec_cd": sec_cd},
-            timeout=15,
-        )
-        if r.status_code == 200:
-            data = r.json()
-            return data.get("list", [])
-    except Exception as e:
-        pass
+def fetch_sector_stocks(sec_cd, date, retries=3):
+    """특정 섹터 코드의 구성종목을 가져온다. 빈 응답·실패 시 재시도."""
+    last_err = None
+    for attempt in range(retries):
+        try:
+            r = requests.get(
+                BASE_URL,
+                params={"ceil_yn": 0, "dt": date, "sec_cd": sec_cd},
+                timeout=15,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                lst = data.get("list", [])
+                if lst:
+                    return lst
+                last_err = "empty list"
+            else:
+                last_err = f"HTTP {r.status_code}"
+        except Exception as e:
+            last_err = str(e)
+        if attempt < retries - 1:
+            time.sleep(1.0 * (attempt + 1))  # 1s, 2s 백오프
     return []
 
 
@@ -108,22 +117,51 @@ def main():
     print(f"📊 WICS 업종분류 수집 시작 (기준일: {working_date})...")
 
     mapping = {}
+    success_count = 0
+    failed_categories = []
 
     for mid_cd, (large_name, mid_name) in MID_SECTORS.items():
         stocks = fetch_sector_stocks(mid_cd, working_date)
-        for s in stocks:
-            ticker = s.get("CMP_CD", "")
-            if ticker:
-                mapping[ticker] = {
-                    "large": large_name,
-                    "mid": mid_name,
-                }
-        print(f"  ✅ {mid_name} ({large_name}): {len(stocks)}종목")
+        if stocks:
+            for s in stocks:
+                ticker = s.get("CMP_CD", "")
+                if ticker:
+                    mapping[ticker] = {
+                        "large": large_name,
+                        "mid": mid_name,
+                    }
+            success_count += 1
+            print(f"  ✅ {mid_name} ({large_name}): {len(stocks)}종목")
+        else:
+            failed_categories.append(f"{mid_name}({mid_cd})")
+            print(f"  ❌ {mid_name} ({large_name}): 데이터 없음 (재시도 3회 실패)")
         time.sleep(0.5)
 
-    print(f"\n📋 총 {len(mapping)}개 종목 매핑 완료")
+    total_categories = len(MID_SECTORS)
+    print(f"\n📋 총 {len(mapping)}개 종목 매핑 / {success_count}/{total_categories} 카테고리 성공")
+    if failed_categories:
+        print(f"❌ 실패한 카테고리: {', '.join(failed_categories)}")
 
+    # 안전망: 새 매핑이 기존보다 30%+ 감소했으면 기존 유지 (regression 방지)
     sector_map_path = DATA_DIR / "sector-map.json"
+    if sector_map_path.exists():
+        try:
+            with open(sector_map_path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            existing_count = len(existing)
+            new_count = len(mapping)
+            if existing_count > 0 and new_count < existing_count * 0.7:
+                print(f"⚠️ 안전망 작동: 새 매핑({new_count})이 기존({existing_count}) 대비 "
+                      f"{int(new_count/existing_count*100)}%로 크게 감소. 기존 매핑 유지.")
+                return
+        except Exception as e:
+            print(f"  [WARN] 기존 sector-map.json 비교 실패: {e}")
+
+    # 충분한 매핑 받았으면 저장
+    if len(mapping) < 500:
+        print(f"⚠️ 매핑 너무 적음 ({len(mapping)}개). 안전상 저장 건너뜀.")
+        return
+
     with open(sector_map_path, "w", encoding="utf-8") as f:
         json.dump(mapping, f, ensure_ascii=False, indent=None)
 
