@@ -5,7 +5,7 @@
 2. 네이버 금융 뉴스 최대 20건의 제목 + 본문 크롤링
    (n.news.naver.com/mnews/... 모바일 URL → #dic_area 셀렉터)
 3. Claude Sonnet 4.6 API 호출 → 5섹션 구조 시황 글 생성
-   (TL;DR / 핵심 숫자 / 구조적 해석 / 주목할 신호 / 종합 판단)
+   (한 줄 요약 / 핵심 숫자 / 구조적 해석 / 주목할 신호 / 종합 판단)
 4. public/data/reports/YYYY-MM-DD.json 저장
 
 실행: python scripts/generate_report.py
@@ -263,8 +263,9 @@ def generate_with_claude(date, data_summary, news_items):
 
 # 본문 구조 (1,500~2,000자, 마크다운 없이 순수 텍스트)
 
-## 1. 한 줄 요약 (TL;DR, 3~4문장)
+## 1. 한 줄 요약 (3~4문장)
 오늘 시장의 핵심 흐름을 압축. 숫자 1~2개 포함.
+섹션 헤더는 '[한 줄 요약]'으로 출력. 'TL;DR' 같은 영어 약어 사용 금지.
 
 ## 2. 오늘의 핵심 숫자 (4~6개)
 각 숫자에 비교 맥락 한 줄 부연.
