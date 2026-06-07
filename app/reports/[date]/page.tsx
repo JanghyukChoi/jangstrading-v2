@@ -26,12 +26,32 @@ interface StockRef {
 }
 
 // 본문 텍스트에서 종목명을 찾아 Link로 변환
+// 한글 word boundary가 없어서 부분 매칭(예: "테스트"에서 "테스" 매칭)이 발생.
+// 시작 lookbehind + 끝 lookahead(조사 허용)로 해결.
+const KOREAN_JOSA = [
+  // 길이 긴 것부터 (regex alternation 우선순위 위해)
+  "으로의", "이라는", "으로서", "으로써", "에서의", "에게서", "에서는", "에서도", "까지는", "까지도", "에게는", "에게도",
+  "으로", "이라", "라고", "에서", "에게", "한테", "부터", "까지", "처럼", "보다", "마저", "조차", "마다", "로서", "로써", "라는",
+  "은", "는", "이", "가", "을", "를", "의", "도", "만", "에", "와", "과", "로", "라", "야", "와", "랑", "뿐", "께", "더",
+];
+
+function buildStockLinkPattern(stocks: StockRef[]): RegExp {
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = stocks.map((s) => escape(s.name)).join("|");
+  const josa = [...KOREAN_JOSA].sort((a, b) => b.length - a.length).join("|");
+  // 시작: 한글/영문/숫자 아닌 글자 또는 문자열 시작
+  // 끝: 한글/영문/숫자 아닌 글자(공백·구두점) 또는 조사 또는 문자열 끝
+  return new RegExp(
+    `(?<![가-힣A-Za-z0-9])(${names})(?=$|[^가-힣A-Za-z0-9]|(?:${josa})(?![가-힣A-Za-z0-9]))`,
+    "g"
+  );
+}
+
 function linkifyStocks(body: string, stocks: StockRef[]): React.ReactNode[] {
   if (stocks.length === 0) return [body];
   // 긴 이름이 먼저 매칭되도록 정렬 (예: "삼성전자우"가 "삼성전자"보다 우선)
   const sorted = [...stocks].sort((a, b) => b.name.length - a.name.length);
-  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`(${sorted.map((s) => escape(s.name)).join("|")})`, "g");
+  const pattern = buildStockLinkPattern(sorted);
   const tokens = body.split(pattern);
   const nameToTicker = new Map(sorted.map((s) => [s.name, s.ticker]));
   return tokens.map((tok, i) => {
