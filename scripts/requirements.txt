@@ -1,5 +1,9 @@
 pykrx>=1.2.4
 pandas
+numpy
+pyarrow
 python-dotenv
 requests
 beautifulsoup4
+hmmlearn
+scikit-learn

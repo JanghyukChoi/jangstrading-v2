@@ -79,6 +79,9 @@ jobs:
         run: python scripts/build_v3_signals.py
       - name: Build market signals
         run: python scripts/build_market_signals.py
+      - name: Build market regime (HMM)
+        run: python scripts/build_regime.py
+        continue-on-error: true
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
