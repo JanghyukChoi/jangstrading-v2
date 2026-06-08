@@ -53,6 +53,28 @@ LIVE_SECTOR_MAP = BASE_DIR / "public" / "data" / "sector-map.json"
 
 HISTORY_DAYS = 252  # 사이트 표시용 (1년)
 
+# 사용자 친화 라벨 (panic 유발 X, 사실 서술)
+LABEL_OVERRIDE = {
+    0: {"ko": "저변동 안정기", "en": "Quiet"},
+    1: {"ko": "고변동 하락기", "en": "Crisis"},
+    2: {"ko": "조정기", "en": "Transition"},
+    3: {"ko": "강세 안정기", "en": "Bull"},
+}
+
+
+def get_friendly_label(regime: int) -> str:
+    info = LABEL_OVERRIDE.get(regime)
+    if info:
+        return f"{info['en']} ({info['ko']})"
+    return f"Regime {regime}"
+
+
+def per_episode_return(annualized_return: float, avg_duration_days: float) -> float:
+    """국면 1회 평균 누적 수익률 = (annualized × duration / 250)
+    예: ann_ret -93.5%, duration 26일 → -9.7%
+    """
+    return annualized_return * avg_duration_days / 250.0
+
 
 def build_features_from_sector_panel(sector_panel):
     """sector_panel parquet에서 feature 추출 (cycle_hmm.py와 동일 로직)"""
@@ -159,7 +181,8 @@ def main():
     model = saved["model"]
     feat_cols = saved["features"]
     n_regimes = saved["n_regimes"]
-    regime_labels = saved["regime_labels"]
+    # 모델 학습 시 라벨은 무시하고 사용자 친화 라벨 적용
+    regime_labels = {r: get_friendly_label(r) for r in range(n_regimes)}
     print(f"  Model: {n_regimes} regimes, features={feat_cols}")
     print(f"  Labels: {regime_labels}")
 
@@ -256,13 +279,19 @@ def main():
             rr = json.load(f)
         for s in rr.get("train_regime_stats", []):
             r = s["regime"]
+            ann_ret = s["annualized_return"]
+            dur = s["avg_duration_days"]
             regime_meta[str(r)] = {
-                "label": s["label"],
+                "label": get_friendly_label(r),
+                "label_ko": LABEL_OVERRIDE.get(r, {}).get("ko", ""),
+                "label_en": LABEL_OVERRIDE.get(r, {}).get("en", f"Regime {r}"),
                 "pct_of_time": s["pct_of_time"],
-                "annualized_return": s["annualized_return"],
+                "avg_duration_days": dur,
+                "per_episode_return": per_episode_return(ann_ret, dur),  # 1회 평균 누적 수익률
+                # 학술 metric (사이트엔 노출 X, 호환성 위해 유지)
+                "annualized_return": ann_ret,
                 "annualized_vol": s["annualized_vol"],
                 "sharpe": s["sharpe"],
-                "avg_duration_days": s["avg_duration_days"],
             }
 
     # Output
@@ -271,6 +300,8 @@ def main():
         "current_regime": {
             "regime": current_regime,
             "label": current_label,
+            "label_ko": LABEL_OVERRIDE.get(current_regime, {}).get("ko", ""),
+            "label_en": LABEL_OVERRIDE.get(current_regime, {}).get("en", f"Regime {current_regime}"),
             "meta": regime_meta.get(str(current_regime)),
         },
         "history": history,

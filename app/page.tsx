@@ -482,24 +482,22 @@ interface RegimeMini {
   current_regime: {
     regime: number;
     label: string;
-    meta: { pct_of_time: number; avg_duration_days: number };
+    label_ko?: string;
+    label_en?: string;
+    meta: {
+      pct_of_time: number;
+      avg_duration_days: number;
+      per_episode_return: number;
+    };
   };
   sectors_by_regime: Record<string, { sector: string; avg_20d: number; t_stat: number; hit_rate: number }[]>;
 }
 
-function regimeShortName(label: string): string {
-  return label.split(" ")[0]; // "Bull (강세장)" -> "Bull"
-}
-function regimeKoreanName(label: string): string {
-  const m = label.match(/\((.+?)\)/);
-  return m ? m[1] : label;
-}
-function regimeStyle(label: string) {
-  const short = regimeShortName(label);
-  if (short === "Bull") return { text: "text-emerald-400", dot: "bg-emerald-400", border: "border-emerald-500/30" };
-  if (short === "Quiet") return { text: "text-blue-400", dot: "bg-blue-400", border: "border-blue-500/30" };
-  if (short === "Transition") return { text: "text-amber-400", dot: "bg-amber-400", border: "border-amber-500/30" };
-  if (short === "Crisis") return { text: "text-rose-400", dot: "bg-rose-400", border: "border-rose-500/30" };
+function regimeStyleEn(en?: string) {
+  if (en === "Bull") return { text: "text-emerald-400", dot: "bg-emerald-400", border: "border-emerald-500/30" };
+  if (en === "Quiet") return { text: "text-blue-400", dot: "bg-blue-400", border: "border-blue-500/30" };
+  if (en === "Transition") return { text: "text-amber-400", dot: "bg-amber-400", border: "border-amber-500/30" };
+  if (en === "Crisis") return { text: "text-rose-400", dot: "bg-rose-400", border: "border-rose-500/30" };
   return { text: "text-[var(--text-secondary)]", dot: "bg-white/20", border: "border-white/[0.08]" };
 }
 
@@ -509,49 +507,51 @@ function CycleMiniCard() {
   useEffect(() => {
     fetch("/data/regime.json").then((r) => r.json()).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
   }, []);
-  if (loading) {
-    return <div className="h-32 bg-white/[0.04] rounded-2xl animate-pulse" />;
-  }
+  if (loading) return <div className="h-28 bg-white/[0.04] rounded-2xl animate-pulse" />;
   if (!data) return null;
   const cur = data.current_regime;
-  const style = regimeStyle(cur.label);
+  const style = regimeStyleEn(cur.label_en);
   const sectors = (data.sectors_by_regime[String(cur.regime)] || []).slice(0, 3);
+  const per = cur.meta.per_episode_return;
+  const dur = cur.meta.avg_duration_days;
   return (
     <Link href="/cycle" className="block">
       <div className={`bg-[var(--bg-card)] border ${style.border} rounded-2xl p-4 sm:p-5 hover:bg-white/[0.02] transition`}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${style.dot}`} />
             <span className={`text-[14px] sm:text-[15px] font-semibold ${style.text}`}>
-              {regimeShortName(cur.label)}
-            </span>
-            <span className="text-[11px] sm:text-[12px] text-[var(--text-secondary)]">
-              {regimeKoreanName(cur.label)}
+              {cur.label_ko || cur.label}
             </span>
           </div>
           <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
-            자세히 보기
+            자세히
             <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
               <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
             </svg>
           </span>
         </div>
-        <div className="text-[11px] text-[var(--text-muted)] mb-2">
-          이 국면 후 20일 평균 outperform 섹터 (역사적 통계)
+        <div className="flex items-baseline gap-2 mb-3">
+          <span className={`text-[22px] sm:text-[26px] font-bold num leading-none ${per > 0 ? "positive" : "negative"}`}>
+            {per > 0 ? "+" : ""}{(per * 100).toFixed(1)}%
+          </span>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            보통 {dur.toFixed(0)}일 지속
+          </span>
         </div>
-        <div className="space-y-1">
+        <div className="text-[10px] text-[var(--text-muted)] mb-1.5">
+          과거 이 국면에서 강했던 섹터
+        </div>
+        <div className="space-y-0.5">
           {sectors.map((s, i) => (
-            <div key={s.sector} className="flex items-center justify-between text-[12px]">
+            <div key={s.sector} className="flex items-center justify-between text-[11px] sm:text-[12px]">
               <div className="flex items-center gap-2">
                 <span className="text-[var(--text-muted)] num w-3">{i + 1}</span>
                 <span className="text-white">{s.sector}</span>
               </div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] text-[var(--text-muted)] num">적중 {(s.hit_rate * 100).toFixed(0)}%</span>
-                <span className={`num font-medium ${s.avg_20d > 0 ? "positive" : "negative"}`}>
-                  {s.avg_20d > 0 ? "+" : ""}{(s.avg_20d * 100).toFixed(2)}%
-                </span>
-              </div>
+              <span className={`num font-medium ${s.avg_20d > 0 ? "positive" : "negative"}`}>
+                {s.avg_20d > 0 ? "+" : ""}{(s.avg_20d * 100).toFixed(1)}%
+              </span>
             </div>
           ))}
         </div>

@@ -14,15 +14,21 @@ interface SectorStat {
 }
 interface RegimeMeta {
   label: string;
+  label_ko?: string;
+  label_en?: string;
   pct_of_time: number;
+  avg_duration_days: number;
+  per_episode_return: number;  // 1회 평균 누적 수익률
+  // 학술 metric (사이트엔 노출 X)
   annualized_return: number;
   annualized_vol: number;
   sharpe: number;
-  avg_duration_days: number;
 }
 interface CurrentRegime {
   regime: number;
   label: string;
+  label_ko?: string;
+  label_en?: string;
   meta: RegimeMeta;
 }
 interface HistoryEntry {
@@ -120,117 +126,106 @@ export default function CyclePage() {
     <div className="space-y-5">
       {/* 헤더 */}
       <div>
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">시장 사이클 분석</h1>
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">시장 사이클</h1>
         <p className="text-[11px] sm:text-[12px] text-[var(--text-muted)] mt-1">
-          HMM 모델로 10년 데이터 학습. 4개 시장 국면 식별 + 국면별 역사적 우세 섹터 통계.
+          시장이 강세장·안정기·조정기·하락기 4개 국면을 반복하는 패턴을 머신러닝으로 추정합니다.
+          각 국면에서 과거에 강했던 섹터를 참고용으로 함께 보여줍니다.
         </p>
       </div>
 
-      {/* 현재 국면 카드 */}
+      {/* 현재 국면 카드 — 단순화 (큰 숫자 + 짧은 설명) */}
       <div className={`bg-[var(--bg-card)] border ${curColor.border} rounded-2xl p-5 sm:p-6`}>
         <div className="flex items-baseline justify-between mb-3">
           <span className="text-[11px] text-[var(--text-muted)]">오늘의 시장 국면</span>
           <span className="text-[10px] text-[var(--text-muted)] num">{data.date} 기준</span>
         </div>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 mb-4">
           <span className={`inline-block w-2 h-2 rounded-full ${curColor.dot}`} />
-          <span className={`text-[20px] sm:text-[24px] font-semibold ${curColor.text}`}>
-            {regimeShort(cur.label)}
-          </span>
-          <span className="text-[14px] text-[var(--text-secondary)]">
-            {regimeKorean(cur.label)}
+          <span className={`text-[18px] sm:text-[20px] font-semibold ${curColor.text}`}>
+            {cur.label_ko || regimeKorean(cur.label)}
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-[11px] sm:text-[12px]">
-          <div>
-            <div className="text-[var(--text-muted)] mb-0.5">과거 평균 비중</div>
-            <div className="text-white font-medium num">{(cur.meta.pct_of_time * 100).toFixed(1)}%</div>
-          </div>
-          <div>
-            <div className="text-[var(--text-muted)] mb-0.5">평균 지속</div>
-            <div className="text-white font-medium num">{cur.meta.avg_duration_days.toFixed(0)}일</div>
-          </div>
-          <div>
-            <div className="text-[var(--text-muted)] mb-0.5">과거 연수익률</div>
-            <div className={`font-medium num ${cur.meta.annualized_return > 0 ? "positive" : "negative"}`}>
-              {fmtPct(cur.meta.annualized_return, 1)}
-            </div>
-          </div>
+        <div className="flex items-baseline gap-3 mb-2">
+          <span className={`text-[36px] sm:text-[42px] font-bold num ${cur.meta.per_episode_return > 0 ? "positive" : "negative"} leading-none`}>
+            {fmtPct(cur.meta.per_episode_return, 1)}
+          </span>
+          <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)]">
+            보통 {cur.meta.avg_duration_days.toFixed(0)}일 지속
+          </span>
         </div>
+        <p className="text-[11px] text-[var(--text-muted)]">
+          과거 10년 데이터에서 이 국면이 시작되면 평균 {cur.meta.avg_duration_days.toFixed(0)}영업일 동안 시장이 {cur.meta.per_episode_return > 0 ? "+" : ""}{(cur.meta.per_episode_return * 100).toFixed(1)}% 움직였습니다. 전체 기간 중 비중 {(cur.meta.pct_of_time * 100).toFixed(1)}%.
+        </p>
       </div>
 
-      {/* 현재 국면 우세 섹터 */}
+      {/* 현재 국면에서 과거 강세를 보인 섹터 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
         <h3 className="text-[13px] sm:text-[14px] font-semibold text-white mb-1">
-          이 국면 후 20일 평균 outperform 섹터 (역사적 통계)
+          이 국면에서 과거에 강세를 보인 섹터
         </h3>
         <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-3">
-          Test 데이터 (2022-2026) 기준 - 과거 통계이며 미래 수익을 보장하지 않습니다.
+          2022~2026년 데이터에서 이 국면 발생 후 20영업일 평균 상승률 상위 섹터 (과거 통계, 미래 수익을 보장하지 않습니다).
         </p>
         <div className="space-y-2">
           {curSectors.slice(0, 10).map((s, i) => (
-            <div key={s.sector} className="flex items-center justify-between py-1.5 border-b border-white/[0.03] last:border-0">
+            <Link
+              key={s.sector}
+              href={`/sectors/${encodeURIComponent(s.sector)}`}
+              className="flex items-center justify-between py-1.5 border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] rounded transition px-1"
+            >
               <div className="flex items-center gap-2.5">
                 <span className="text-[var(--text-muted)] num text-[11px] w-5">{i + 1}</span>
                 <span className="text-white text-[12px] sm:text-[13px]">{s.sector}</span>
               </div>
               <div className="flex items-center gap-3 text-[11px]">
-                <span className="text-[var(--text-muted)] num">적중 {(s.hit_rate * 100).toFixed(0)}%</span>
+                <span className="text-[var(--text-muted)] num">{(s.hit_rate * 100).toFixed(0)}% 상승</span>
                 <span className={`num font-medium ${s.avg_20d > 0 ? "positive" : "negative"}`}>
                   {fmtPct(s.avg_20d, 2)}
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
 
-      {/* 4 국면 비교 */}
+      {/* 4 국면 비교 — 단순화 (큰 숫자 + 지속·비중만) */}
       <div>
-        <h3 className="text-[13px] sm:text-[14px] font-semibold text-white mb-2">4개 시장 국면 비교</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <h3 className="text-[13px] sm:text-[14px] font-semibold text-white mb-2">4개 시장 국면</h3>
+        <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-3">
+          각 국면이 시작되면 보통 N일 동안 시장이 이만큼 움직였습니다 (과거 10년 통계).
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {regimeEntries.map((r) => {
-            const key = regimeKey(r.label);
-            const color = REGIME_COLOR[key];
             const isCurrent = r.regime === cur.regime;
+            const labelKo = (r as any).label_ko || regimeKorean(r.label);
+            const labelKey = (r as any).label_en || regimeShort(r.label);
+            const color = REGIME_COLOR[labelKey] || REGIME_COLOR.Quiet;
             return (
               <div
                 key={r.regime}
-                className={`bg-[var(--bg-card)] border rounded-2xl p-3.5 ${
-                  isCurrent ? `${color.border} ring-1 ring-${key.toLowerCase()}-500/20` : "border-white/[0.06]"
+                className={`bg-[var(--bg-card)] border rounded-2xl p-4 ${
+                  isCurrent ? color.border : "border-white/[0.06]"
                 }`}
               >
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${color.dot}`} />
-                  <span className={`text-[13px] font-semibold ${color.text}`}>
-                    {regimeShort(r.label)}
-                  </span>
-                  {isCurrent && <span className="text-[9px] text-[var(--text-muted)] ml-auto">현재</span>}
-                </div>
-                <div className="text-[10px] text-[var(--text-muted)] mb-2">{regimeKorean(r.label)}</div>
-                <div className="space-y-1.5 text-[11px]">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">연수익</span>
-                    <span className={`num font-medium ${r.annualized_return > 0 ? "positive" : "negative"}`}>
-                      {fmtPct(r.annualized_return, 1)}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${color.dot}`} />
+                    <span className={`text-[13px] sm:text-[14px] font-semibold ${color.text}`}>
+                      {labelKo}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">변동성</span>
-                    <span className="text-white num">{fmtPct(r.annualized_vol, 1)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Sharpe</span>
-                    <span className="text-white num">{r.sharpe.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">비중</span>
-                    <span className="text-white num">{(r.pct_of_time * 100).toFixed(0)}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">지속</span>
-                    <span className="text-white num">{r.avg_duration_days.toFixed(0)}일</span>
-                  </div>
+                  {isCurrent && <span className="text-[10px] text-[var(--text-muted)]">현재 국면</span>}
+                </div>
+                <div className="flex items-baseline gap-2 mb-1.5">
+                  <span className={`text-[24px] sm:text-[28px] font-bold num leading-none ${r.per_episode_return > 0 ? "positive" : "negative"}`}>
+                    {fmtPct(r.per_episode_return, 1)}
+                  </span>
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    / {r.avg_duration_days.toFixed(0)}일
+                  </span>
+                </div>
+                <div className="text-[10px] text-[var(--text-muted)]">
+                  전체 기간 중 {(r.pct_of_time * 100).toFixed(0)}% 발생
                 </div>
               </div>
             );
@@ -238,27 +233,31 @@ export default function CyclePage() {
         </div>
       </div>
 
-      {/* 국면별 우세 섹터 (전체) */}
+      {/* 국면별 강세 섹터 (전체 4국면) */}
       <div>
-        <h3 className="text-[13px] sm:text-[14px] font-semibold text-white mb-2">국면별 역사적 우세 섹터 Top 5</h3>
+        <h3 className="text-[13px] sm:text-[14px] font-semibold text-white mb-2">국면별 강세 섹터 Top 5</h3>
         <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-3">
-          각 국면에서 향후 20영업일간 평균 outperform한 섹터 (Test 2022-2026, t-stat ≥ 5 통계 유의).
+          각 국면에서 과거에 가장 강한 상승을 보인 섹터 (20영업일 평균, 통계적으로 유의).
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {regimeEntries.map((r) => {
-            const key = regimeKey(r.label);
-            const color = REGIME_COLOR[key];
+            const labelKo = (r as any).label_ko || regimeKorean(r.label);
+            const labelKey = (r as any).label_en || regimeShort(r.label);
+            const color = REGIME_COLOR[labelKey] || REGIME_COLOR.Quiet;
             const sectors = data.sectors_by_regime[String(r.regime)] || [];
             return (
               <div key={r.regime} className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-3.5">
                 <div className="flex items-center gap-1.5 mb-2.5">
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${color.dot}`} />
-                  <span className={`text-[12px] font-semibold ${color.text}`}>{regimeShort(r.label)}</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">{regimeKorean(r.label)}</span>
+                  <span className={`text-[12px] font-semibold ${color.text}`}>{labelKo}</span>
                 </div>
                 <div className="space-y-1.5">
                   {sectors.slice(0, 5).map((s, i) => (
-                    <div key={s.sector} className="flex items-center justify-between text-[11px]">
+                    <Link
+                      key={s.sector}
+                      href={`/sectors/${encodeURIComponent(s.sector)}`}
+                      className="flex items-center justify-between text-[11px] hover:bg-white/[0.02] rounded transition px-1 py-0.5"
+                    >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-[var(--text-muted)] num w-3">{i + 1}</span>
                         <span className="text-white truncate">{s.sector}</span>
@@ -266,7 +265,7 @@ export default function CyclePage() {
                       <span className={`num font-medium shrink-0 ml-2 ${s.avg_20d > 0 ? "positive" : "negative"}`}>
                         {fmtPct(s.avg_20d, 2)}
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -275,33 +274,24 @@ export default function CyclePage() {
         </div>
       </div>
 
-      {/* 방법론 */}
+      {/* 방법론 (간결) */}
       <details className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
         <summary className="cursor-pointer text-[12px] sm:text-[13px] font-medium text-[var(--text-secondary)] hover:text-white">
-          방법론 (HMM 모델 + 검증)
+          이 분석은 어떻게 만들어졌나요?
         </summary>
         <div className="mt-3 text-[11px] sm:text-[12px] text-[var(--text-secondary)] leading-relaxed space-y-2">
           <p>
-            <span className="text-white font-medium">Hidden Markov Model (HMM)</span>로 시장의 4개 hidden state를 식별합니다.
-            BIC criterion으로 2~4개 후보 중 4개가 최적으로 선택되었습니다.
+            과거 <span className="text-white font-medium">10년 시장 데이터 (2,300여 종목)</span>를 머신러닝(HMM)으로 분석해
+            4개 국면으로 분류했습니다. 시장 변동성, 수익률, 섹터 분산, 외국인·기관 자금 흐름을 종합한 결과입니다.
           </p>
           <p>
-            <span className="text-white font-medium">Features</span> (4개로 제한, parsimony):
-            (1) 시장 20일 realized volatility, (2) 시장 20일 누적 수익률,
-            (3) 섹터 간 cross-sectional dispersion, (4) 외인+기관 5일 flow z-score.
+            과최적화를 막기 위해 데이터를 2017~2021년(학습)과 2022~2026년(검증)으로 나눠 검증했습니다.
+            국면별 패턴이 학습·검증 양쪽에서 유사하게 나타났습니다.
           </p>
-          <p>
-            <span className="text-white font-medium">Walk-forward validation</span>: Train 2017-2021 (1,189일) / Test 2022-2026 (1,076일).
-            과최적화 방지를 위해 Train·Test sharpe 일관성을 검증했습니다.
-          </p>
-          <p>
-            <span className="text-white font-medium">한계</span>: 본 통계는 과거 데이터 기반이며 미래 수익을 보장하지 않습니다.
-            국면 라벨링은 통계적 분류이며, 실제 시장 단계와 정확히 일치하지 않을 수 있습니다.
-            특히 Crisis 국면은 Test 표본 90일로 추정 신뢰도가 다른 국면보다 낮습니다.
-          </p>
-          <p className="text-[var(--text-muted)] pt-1">
-            모델 학습 데이터: 2,327개 종목 × 10년 (2016-02 ~ 2026-05) × 24개 WICS 중분류 섹터.
-            매일 cron으로 최신 국면 갱신됩니다.
+          <p className="text-[var(--text-muted)]">
+            <span className="text-white font-medium">한계</span>: 과거 통계이며 미래 수익을 보장하지 않습니다.
+            특정 국면(고변동 하락기)은 표본이 다른 국면보다 적어 신뢰도가 상대적으로 낮습니다.
+            매일 자동으로 최신 국면을 다시 계산합니다.
           </p>
         </div>
       </details>
