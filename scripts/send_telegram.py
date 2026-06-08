@@ -73,20 +73,19 @@ def main():
         except Exception:
             pass
 
-    # 3. 수급 신호 카운트
-    big = [s for s in stocks if (s.get("market_cap") or 0) >= 1000]
-    signals = {"buy": 0, "sell": 0, "div": 0, "acc": 0}
-    for s in big:
-        c = s["combined"]
-        pc = s.get("price_change", {})
-        if c.get("3m", 0) < -5000 and c.get("1w", 0) > 500:
-            signals["buy"] += 1
-        if c.get("3m", 0) > 5000 and c.get("1w", 0) < -500:
-            signals["sell"] += 1
-        if c.get("1m", 0) > 5000 and (pc.get("1m", 0) or 0) < -5:
-            signals["div"] += 1
-        if c.get("1d", 0) > 50 and c.get("1w", 0) > 500 and c.get("1m", 0) > 5000:
-            signals["acc"] += 1
+    # 3. 수급 신호 카운트 — V3 signals.json (사이트와 동일)
+    signals = {"buy": 0, "sell": 0, "leader": 0, "acc": 0, "ai": 0}
+    try:
+        with open(DATA_DIR / "signals.json", "r", encoding="utf-8") as f:
+            v3 = json.load(f)
+        s_dict = v3.get("signals") or {}
+        signals["buy"] = len(s_dict.get("buy_reversal", []))
+        signals["sell"] = len(s_dict.get("sell_reversal", []))
+        signals["leader"] = len(s_dict.get("leader", []))
+        signals["acc"] = len(s_dict.get("accumulation", []))
+        signals["ai"] = len((v3.get("longterm") or {}).get("ai_screener", []))
+    except Exception as e:
+        print(f"  [WARN] signals.json 로드 실패: {e}")
 
     # 4. 섹터별 주도주 (중분류 TOP 3)
     sector_map = {}
@@ -155,8 +154,9 @@ def main():
     if idx_line:
         msg += f"{idx_line}\n\n"
 
-    msg += f"🔥 수급 신호\n"
-    msg += f"매수전환 {signals['buy']} | 매도전환 {signals['sell']} | 괴리 {signals['div']} | 단기수급상위 {signals['acc']}\n\n"
+    msg += f"🔥 수급 신호 (시총가중 V3)\n"
+    msg += f"매수전환 {signals['buy']} | 매도전환 {signals['sell']} | 주도주 {signals['leader']}\n"
+    msg += f"단기수급상위 {signals['acc']} | 장기수급상위 {signals['ai']}\n\n"
 
     msg += "⭐ 섹터별 주도주 (1개월)\n"
     msg += "\n".join(leader_lines)
