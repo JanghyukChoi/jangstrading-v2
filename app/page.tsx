@@ -622,7 +622,7 @@ function MarketSignals() {
     );
   }
 
-  const { trend, signals } = data;
+  const { trend } = data;
 
   // 금액 포매팅 (입력: 백만원)
   const fmtAmount = (mw: number) => {
@@ -649,11 +649,8 @@ function MarketSignals() {
     );
   };
 
-  const totalSignals = signals.buy_reversal + signals.sell_reversal + signals.accumulation;
-
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5 space-y-4">
-      {/* 시장별 추세 */}
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
           <div className="text-[11px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
@@ -670,24 +667,6 @@ function MarketSignals() {
           </div>
         </div>
       </div>
-
-      {/* 수급 신호 한 줄 링크 */}
-      {totalSignals > 0 && (
-        <Link
-          href="/stocks?signal=buy_reversal"
-          className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] rounded-xl px-3 py-2.5 transition"
-        >
-          <div className="flex items-center gap-3 text-[11px] sm:text-[12px]">
-            <span className="text-[var(--text-muted)]">수급 신호</span>
-            <span className="text-emerald-400 num">매수전환 {signals.buy_reversal}</span>
-            <span className="text-orange-400 num">매도전환 {signals.sell_reversal}</span>
-            <span className="text-rose-400 num">단기수급상위 {signals.accumulation}</span>
-          </div>
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]">
-            <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
-          </svg>
-        </Link>
-      )}
     </div>
   );
 }
