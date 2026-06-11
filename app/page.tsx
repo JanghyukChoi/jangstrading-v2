@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
+  Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
 
@@ -198,59 +198,6 @@ function IndexCard({ name, data }: { name: string; data: MarketData | null }) {
         </div>
       )}
       <div className="text-[9px] text-[var(--text-muted)] mt-2 text-center">당일 순매수</div>
-    </div>
-  );
-}
-
-/* ── 자금흐름 차트 ────────────────────────────── */
-function FlowChart({ title, data }: { title: string; data: MarketData | null }) {
-  if (!data?.flow) return null;
-  const labels: Record<string, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
-  const chartData = ["1d", "1w", "1m", "3m", "6m"]
-    .filter((p) => data.flow[p])
-    .map((p) => ({
-      period: labels[p],
-      foreign: Math.round(data.flow[p].foreign),
-      institution: Math.round(data.flow[p].institution),
-      individual: Math.round(data.flow[p].individual),
-    }));
-
-  const customTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload) return null;
-    return (
-      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl">
-        <div className="text-[var(--text-secondary)] mb-1.5">{label}</div>
-        {payload.map((p: any) => (
-          <div key={p.dataKey} className="flex justify-between gap-4 mb-0.5">
-            <span style={{ color: p.fill }}>{p.dataKey === "foreign" ? "외국인" : p.dataKey === "institution" ? "기관" : "개인"}</span>
-            <NumUnit v={p.value} cls="text-white" />
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">{title}</h3>
-      <p className="text-[10px] text-[var(--text-muted)] mb-3">기간별 투자자 순매수 금액</p>
-      <ResponsiveContainer width="100%" height={120}>
-        <BarChart data={chartData} barGap={2} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
-          <XAxis dataKey="period" tick={{ fill: "#484f58", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#484f58", fontSize: 9 }} axisLine={false} tickLine={false}
-            tickFormatter={(v) => fmtUnit(v)} />
-          <Tooltip content={customTooltip} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-          <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" />
-          <Bar dataKey="foreign" fill="#f85149" radius={[3, 3, 0, 0]} maxBarSize={20} />
-          <Bar dataKey="institution" fill="#58a6ff" radius={[3, 3, 0, 0]} maxBarSize={20} />
-          <Bar dataKey="individual" fill="#8b949e" radius={[3, 3, 0, 0]} maxBarSize={20} />
-        </BarChart>
-      </ResponsiveContainer>
-      <div className="flex justify-center gap-4 mt-2 text-[10px] text-[var(--text-secondary)]">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#f85149]" />외국인</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#58a6ff]" />기관</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#8b949e]" />개인</span>
-      </div>
     </div>
   );
 }
@@ -501,50 +448,110 @@ function regimeStyleEn(en?: string) {
   return { text: "text-[var(--text-secondary)]", dot: "bg-white/20", border: "border-white/[0.08]" };
 }
 
-function CycleMiniCard() {
-  const [data, setData] = useState<RegimeMini | null>(null);
+// 사실 서술 (자본시장법 안전 — 행동 권고 X, 객관 묘사)
+const REGIME_DESCRIPTION: Record<string, string> = {
+  Bull: "변동성이 낮고 상승 추세인 시기",
+  Quiet: "변동성이 낮고 완만한 흐름인 시기",
+  Transition: "변동성이 커지고 횡보 또는 약한 하락인 시기",
+  Crisis: "변동성이 크고 하락 추세인 시기",
+};
+
+interface HistoryEntry {
+  date: string;
+  regime: number;
+  label: string;
+}
+
+interface RegimeFull extends RegimeMini {
+  history?: HistoryEntry[];
+}
+
+function getCurrentRegimeDuration(history: HistoryEntry[], currentRegime: number): number {
+  if (!history || history.length === 0) return 0;
+  let days = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].regime === currentRegime) days++;
+    else break;
+  }
+  return days;
+}
+
+function CycleMainCard() {
+  const [data, setData] = useState<RegimeFull | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     fetch("/data/regime.json").then((r) => r.json()).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
   }, []);
-  if (loading) return <div className="h-28 bg-white/[0.04] rounded-2xl animate-pulse" />;
+  if (loading) return <div className="h-64 bg-white/[0.04] rounded-2xl animate-pulse" />;
   if (!data) return null;
+
   const cur = data.current_regime;
   const style = regimeStyleEn(cur.label_en);
-  const sectors = (data.sectors_by_regime[String(cur.regime)] || []).slice(0, 3);
+  const sectors = (data.sectors_by_regime[String(cur.regime)] || []).slice(0, 5);
   const per = cur.meta.per_episode_return;
-  const dur = cur.meta.avg_duration_days;
+  const avgDur = cur.meta.avg_duration_days;
+  const description = REGIME_DESCRIPTION[cur.label_en || ""] || "";
+  const curDur = getCurrentRegimeDuration(data.history || [], cur.regime);
+  const progressPct = Math.min((curDur / avgDur) * 100, 100);
+
   return (
-    <Link href="/cycle" className="block">
-      <div className={`bg-[var(--bg-card)] border ${style.border} rounded-2xl p-4 sm:p-5 hover:bg-white/[0.02] transition`}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${style.dot}`} />
-            <span className={`text-[14px] sm:text-[15px] font-semibold ${style.text}`}>
-              {cur.label_ko || cur.label}
-            </span>
+    <div className={`bg-[var(--bg-card)] border ${style.border} rounded-2xl p-4 sm:p-5`}>
+      {/* 상단: 라벨 + 자세히 보기 */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`inline-block w-2 h-2 rounded-full ${style.dot}`} />
+          <span className={`text-[16px] sm:text-[18px] font-semibold ${style.text}`}>
+            {cur.label_ko || cur.label}
+          </span>
+        </div>
+        <Link href="/cycle" className="text-[10px] sm:text-[11px] text-[var(--text-muted)] hover:text-white transition flex items-center gap-1">
+          자세히
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
+          </svg>
+        </Link>
+      </div>
+
+      {/* 사실 서술 */}
+      {description && (
+        <p className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] mb-3">{description}</p>
+      )}
+
+      {/* 큰 숫자 + 지속 정보 */}
+      <div className="flex items-baseline gap-3 mb-2">
+        <span className={`text-[28px] sm:text-[32px] font-bold num leading-none ${per > 0 ? "positive" : "negative"}`}>
+          {per > 0 ? "+" : ""}{(per * 100).toFixed(1)}%
+        </span>
+        <span className="text-[11px] sm:text-[12px] text-[var(--text-muted)]">
+          과거 평균 {avgDur.toFixed(0)}일간 시장 움직임
+        </span>
+      </div>
+
+      {/* 진행 바 (현재 N일째 / 평균 X일) */}
+      {curDur > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-1">
+            <span>현재 {curDur}일째</span>
+            <span>평균 {avgDur.toFixed(0)}일</span>
           </div>
-          <span className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
-            자세히
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
-            </svg>
-          </span>
+          <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
+            <div className={`h-full ${style.dot} opacity-70`} style={{ width: `${progressPct}%` }} />
+          </div>
         </div>
-        <div className="flex items-baseline gap-2 mb-3">
-          <span className={`text-[22px] sm:text-[26px] font-bold num leading-none ${per > 0 ? "positive" : "negative"}`}>
-            {per > 0 ? "+" : ""}{(per * 100).toFixed(1)}%
-          </span>
-          <span className="text-[11px] text-[var(--text-muted)]">
-            보통 {dur.toFixed(0)}일 지속
-          </span>
-        </div>
-        <div className="text-[10px] text-[var(--text-muted)] mb-1.5">
-          과거 이 국면에서 강했던 섹터
+      )}
+
+      {/* Top 5 섹터 (clickable) */}
+      <div className="border-t border-white/[0.05] pt-3">
+        <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-2">
+          과거 이 시기 강세를 보인 섹터 (10년 통계)
         </div>
         <div className="space-y-0.5">
           {sectors.map((s, i) => (
-            <div key={s.sector} className="flex items-center justify-between text-[11px] sm:text-[12px]">
+            <Link
+              key={s.sector}
+              href={`/sectors/${encodeURIComponent(s.sector)}`}
+              className="flex items-center justify-between text-[11px] sm:text-[12px] hover:bg-white/[0.03] rounded px-1 py-0.5 transition"
+            >
               <div className="flex items-center gap-2">
                 <span className="text-[var(--text-muted)] num w-3">{i + 1}</span>
                 <span className="text-white">{s.sector}</span>
@@ -552,11 +559,11 @@ function CycleMiniCard() {
               <span className={`num font-medium ${s.avg_20d > 0 ? "positive" : "negative"}`}>
                 {s.avg_20d > 0 ? "+" : ""}{(s.avg_20d * 100).toFixed(1)}%
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -615,7 +622,7 @@ function MarketSignals() {
     );
   }
 
-  const { trend, activity, signals, verdict } = data;
+  const { trend, signals } = data;
 
   // 금액 포매팅 (입력: 백만원)
   const fmtAmount = (mw: number) => {
@@ -627,7 +634,6 @@ function MarketSignals() {
     return `${sign}${Math.round(abs).toLocaleString()}원`;
   };
 
-  // 시장별 추세 한 줄 렌더
   const renderStreak = (label: string, days: number, amount: number) => {
     const direction = days > 0 ? "매수" : days < 0 ? "매도" : "관망";
     const color = days > 0 ? "text-[#f85149]" : days < 0 ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
@@ -643,102 +649,45 @@ function MarketSignals() {
     );
   };
 
-  // 신고/신저가 비율
-  const totalHL = activity.high_52w + activity.low_52w;
-  const highPct = totalHL > 0 ? (activity.high_52w / totalHL) * 100 : 50;
-  const activityLabel = activity.high_52w > activity.low_52w * 1.2
-    ? "신고가 우위 — 강세 종목 다수"
-    : activity.low_52w > activity.high_52w * 1.2
-    ? "신저가 우위 — 약세장 신호"
-    : "균형 — 종목별 변동성";
+  const totalSignals = signals.buy_reversal + signals.sell_reversal + signals.accumulation;
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 space-y-5">
-      {/* 추세 시그널 — 시장별 분리 */}
-      <div>
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">추세 시그널</h3>
-        <p className="text-[10px] text-[var(--text-muted)] mb-3">시장별 연속 매수·매도</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* KOSPI */}
-          <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
-            <div className="text-[11px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
-            <div className="space-y-2">
-              {renderStreak("외국인", trend.kospi.foreign_streak_days, trend.kospi.foreign_streak_amount)}
-              {renderStreak("기관", trend.kospi.inst_streak_days, trend.kospi.inst_streak_amount)}
-            </div>
+    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5 space-y-4">
+      {/* 시장별 추세 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
+          <div className="text-[11px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
+          <div className="space-y-2">
+            {renderStreak("외국인", trend.kospi.foreign_streak_days, trend.kospi.foreign_streak_amount)}
+            {renderStreak("기관", trend.kospi.inst_streak_days, trend.kospi.inst_streak_amount)}
           </div>
-          {/* KOSDAQ */}
-          <div className="bg-purple-500/[0.04] border border-purple-500/[0.1] rounded-xl p-3">
-            <div className="text-[11px] font-semibold text-purple-400 mb-2.5">KOSDAQ</div>
-            <div className="space-y-2">
-              {renderStreak("외국인", trend.kosdaq.foreign_streak_days, trend.kosdaq.foreign_streak_amount)}
-              {renderStreak("기관", trend.kosdaq.inst_streak_days, trend.kosdaq.inst_streak_amount)}
-            </div>
+        </div>
+        <div className="bg-purple-500/[0.04] border border-purple-500/[0.1] rounded-xl p-3">
+          <div className="text-[11px] font-semibold text-purple-400 mb-2.5">KOSDAQ</div>
+          <div className="space-y-2">
+            {renderStreak("외국인", trend.kosdaq.foreign_streak_days, trend.kosdaq.foreign_streak_amount)}
+            {renderStreak("기관", trend.kosdaq.inst_streak_days, trend.kosdaq.inst_streak_amount)}
           </div>
         </div>
       </div>
 
-      {/* 시장 활기 */}
-      <div>
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">시장 활기</h3>
-        <p className="text-[10px] text-[var(--text-muted)] mb-3">52주 신고가 vs 신저가</p>
-        <div className="flex items-baseline justify-between mb-2">
-          <span className="text-[12px]">
-            신고가 <span className="text-[#f85149] num font-semibold">{activity.high_52w}</span>
-          </span>
-          <span className="text-[12px]">
-            <span className="text-[#58a6ff] num font-semibold">{activity.low_52w}</span> 신저가
-          </span>
-        </div>
-        <div className="h-2 rounded-full overflow-hidden flex bg-white/[0.04]">
-          {activity.high_52w > 0 && <div className="bg-[#f85149]" style={{ width: `${highPct}%` }} />}
-          {activity.low_52w > 0 && <div className="bg-[#58a6ff]" style={{ width: `${100 - highPct}%` }} />}
-        </div>
-        <p className="text-[10px] text-[var(--text-muted)] mt-2">{activityLabel}</p>
-      </div>
-
-      {/* 수급 전환 알람 */}
-      <div>
-        <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">수급 전환 알람</h3>
-        <p className="text-[10px] text-[var(--text-muted)] mb-3">클릭하면 종목 보기</p>
-        <div className="grid grid-cols-3 gap-2">
-          <Link
-            href="/stocks?signal=buy_reversal"
-            className="bg-emerald-500/[0.08] border border-emerald-500/15 hover:border-emerald-500/30 rounded-xl px-3 py-2.5 transition"
-          >
-            <div className="flex items-baseline gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[10px] text-[var(--text-secondary)]">매수전환</span>
-            </div>
-            <div className="text-[18px] font-semibold text-emerald-400 num mt-0.5">{signals.buy_reversal}</div>
-          </Link>
-          <Link
-            href="/stocks?signal=sell_reversal"
-            className="bg-orange-500/[0.08] border border-orange-500/15 hover:border-orange-500/30 rounded-xl px-3 py-2.5 transition"
-          >
-            <div className="flex items-baseline gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
-              <span className="text-[10px] text-[var(--text-secondary)]">매도전환</span>
-            </div>
-            <div className="text-[18px] font-semibold text-orange-400 num mt-0.5">{signals.sell_reversal}</div>
-          </Link>
-          <Link
-            href="/stocks?signal=accumulation"
-            className="bg-rose-500/[0.08] border border-rose-500/15 hover:border-rose-500/30 rounded-xl px-3 py-2.5 transition"
-          >
-            <div className="flex items-baseline gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-400" />
-              <span className="text-[10px] text-[var(--text-secondary)]">단기수급상위</span>
-            </div>
-            <div className="text-[18px] font-semibold text-rose-400 num mt-0.5">{signals.accumulation}</div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Verdict */}
-      <p className="text-[11px] text-[var(--text-secondary)] pt-3 border-t border-white/[0.04] leading-relaxed">
-        💡 {verdict}
-      </p>
+      {/* 수급 신호 한 줄 링크 */}
+      {totalSignals > 0 && (
+        <Link
+          href="/stocks?signal=buy_reversal"
+          className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] rounded-xl px-3 py-2.5 transition"
+        >
+          <div className="flex items-center gap-3 text-[11px] sm:text-[12px]">
+            <span className="text-[var(--text-muted)]">수급 신호</span>
+            <span className="text-emerald-400 num">매수전환 {signals.buy_reversal}</span>
+            <span className="text-orange-400 num">매도전환 {signals.sell_reversal}</span>
+            <span className="text-rose-400 num">단기수급상위 {signals.accumulation}</span>
+          </div>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]">
+            <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
+          </svg>
+        </Link>
+      )}
     </div>
   );
 }
@@ -905,19 +854,19 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Section 2: 시장 신호 대시보드 */}
+      {/* Section 2: 시장 사이클 (확장) */}
       <section>
-        <SectionHeader title="시장 신호 대시보드" desc="추세 · 활기 · 수급 전환 알람" />
+        <SectionHeader title="시장 사이클" desc="과거 10년 통계 기반 시장 국면 분석" />
+        <CycleMainCard />
+      </section>
+
+      {/* Section 3: 수급 추세 (축소) */}
+      <section>
+        <SectionHeader title="수급 추세" desc="외국인·기관 연속 매수·매도" />
         <MarketSignals />
       </section>
 
-      {/* Section 2.5: 시장 사이클 (HMM 모델) */}
-      <section>
-        <SectionHeader title="시장 사이클" desc="HMM 모델 기반 4개 국면 식별" />
-        <CycleMiniCard />
-      </section>
-
-      {/* Section 3: 오늘의 주목 */}
+      {/* Section 4: 오늘의 주목 */}
       <section>
         <SectionHeader title="오늘의 주목" desc="주도 섹터·종목 분석" />
         <div className="space-y-4">
@@ -926,15 +875,6 @@ export default function Dashboard() {
             <TopTable title="1개월 순매수 TOP 10" desc="외국인+기관 합산 순매수 금액 기준" stocks={stocks} type="buy" />
             <TopTable title="1개월 순매도 TOP 10" desc="외국인+기관 합산 순매도 금액 기준" stocks={stocks} type="sell" />
           </div>
-        </div>
-      </section>
-
-      {/* Section 4: 투자자별 자금 흐름 */}
-      <section>
-        <SectionHeader title="투자자별 자금 흐름" desc="KOSPI·KOSDAQ 기간별" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <FlowChart title="KOSPI 투자자별 자금흐름" data={market?.KOSPI ?? null} />
-          <FlowChart title="KOSDAQ 투자자별 자금흐름" data={market?.KOSDAQ ?? null} />
         </div>
       </section>
 
