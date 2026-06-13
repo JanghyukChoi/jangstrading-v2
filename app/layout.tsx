@@ -29,7 +29,10 @@ export const metadata: Metadata = {
     follow: true,
   },
   verification: {
-    other: { "naver-site-verification": "279e4d3b77debaf01a1231d73f6965b7a0c3a66a" },
+    other: {
+      "naver-site-verification": "279e4d3b77debaf01a1231d73f6965b7a0c3a66a",
+      "google-adsense-account": "ca-pub-3284130465723516",
+    },
   },
 };
 
