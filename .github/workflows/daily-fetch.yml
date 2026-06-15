@@ -82,6 +82,8 @@ jobs:
       - name: Build market regime (HMM)
         run: python scripts/build_regime.py
         continue-on-error: true
+      - name: Build sector RRG
+        run: python scripts/build_rrg.py
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"

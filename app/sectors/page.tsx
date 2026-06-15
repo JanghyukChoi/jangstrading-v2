@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import SectorRRG from "../components/SectorRRG";
 
 export const dynamic = "force-static";
 
@@ -368,7 +369,7 @@ function SectorsPageInner() {
           </button>
         </div>
         <span className="text-[11px] text-[var(--text-muted)]">
-          {view === "large" ? "10개 산업 섹터" : view === "mid" ? "25개 세부 업종" : `${sectors.length}개 테마`}
+          {view === "large" ? `${sectors.length}개 산업 섹터` : view === "mid" ? `${sectors.length}개 세부 업종` : `${sectors.length}개 테마`}
         </span>
       </div>
 
@@ -399,8 +400,13 @@ function SectorsPageInner() {
       </div>
       {/* /Sticky 필터 영역 */}
 
-      {/* 섹터 순매수 TOP 리스트 */}
-      <SectorTopList sectors={sectors} investor={investor} periodLabel={periodLabels[period]} view={view} />
+      {/* 수급 RRG (대분류/중분류 — 테마 탭 제외) */}
+      {(view === "large" || view === "mid") && <SectorRRG level={view} period={period} investor={investor} />}
+
+      {/* 섹터 순매수 TOP 리스트 (테마 탭만 — 대분류/중분류는 위 RRG가 대체) */}
+      {view === "theme" && (
+        <SectorTopList sectors={sectors} investor={investor} periodLabel={periodLabels[period]} view={view} />
+      )}
 
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
