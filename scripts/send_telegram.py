@@ -9,8 +9,10 @@ GitHub Actions에서 generate_report.py 이후에 실행
   TELEGRAM_CHANNEL_ID: 채널 username (예: @jangstrading)
 """
 
+import html
 import json
 import os
+import re
 from pathlib import Path
 import requests
 
@@ -20,6 +22,71 @@ DATA_DIR = BASE_DIR / "public" / "data"
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "")
 SITE_URL = "https://www.jangstrading.com"
+
+TG_LIMIT = 3900  # 텔레그램 메시지 최대 4096자 — 여유 두고 분할
+
+
+def send_message(text, parse_mode="HTML"):
+    """텔레그램 채널에 메시지 1건 발송. 성공 여부 반환."""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    resp = requests.post(url, json={
+        "chat_id": CHANNEL_ID,
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
+    }, timeout=10)
+    if resp.status_code == 200:
+        print("✅ 텔레그램 발송 성공!")
+        return True
+    print(f"❌ 텔레그램 발송 실패: {resp.status_code} {resp.text}")
+    return False
+
+
+def send_ai_report():
+    """generate_report.py가 만든 AI 시황 전문을 두 번째 메시지로 발송.
+    4096자 제한 시 문단(\\n\\n) 단위로 나눠 발송."""
+    try:
+        with open(DATA_DIR / "reports" / "index.json", "r", encoding="utf-8") as f:
+            idx = json.load(f)
+        if not idx:
+            print("  [INFO] 리포트 인덱스 비어있음 — AI 시황 발송 생략")
+            return
+        rdate = idx[0].get("date", "")
+        with open(DATA_DIR / "reports" / f"{rdate}.json", "r", encoding="utf-8") as f:
+            report = json.load(f)
+    except Exception as e:
+        print(f"  [WARN] AI 리포트 로드 실패 — 발송 생략: {e}")
+        return
+
+    title = report.get("title", "")
+    body = report.get("body", "")
+    if not body.strip():
+        print("  [INFO] 리포트 본문 없음 — AI 시황 발송 생략")
+        return
+
+    def esc(s):
+        return html.escape(s, quote=False)  # & < > 만 이스케이프
+
+    # [섹션 제목] 줄을 볼드 처리 (이스케이프 후 태그 삽입)
+    body_fmt = re.sub(r"(?m)^(\[[^\]\n]+\])\s*$", r"<b>\1</b>", esc(body))
+    header = f"📝 <b>{esc(title)}</b>\n\n" if title else ""
+    footer = f"\n\n👉 {SITE_URL}/reports/{rdate}"
+    full = header + body_fmt + footer
+
+    # 문단 단위로 TG_LIMIT 이하 묶음 발송
+    messages, cur = [], ""
+    for para in full.split("\n\n"):
+        if cur and len(cur) + 2 + len(para) > TG_LIMIT:
+            messages.append(cur)
+            cur = para
+        else:
+            cur = f"{cur}\n\n{para}" if cur else para
+    if cur:
+        messages.append(cur)
+
+    print(f"📨 AI 시황 발송 ({len(messages)}개 메시지, 총 {len(full)}자)")
+    for m in messages:
+        send_message(m)
 
 
 def fmtUnit(n):
@@ -179,19 +246,11 @@ def main():
     print(msg)
     print()
 
-    # 8. 발송
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    resp = requests.post(url, json={
-        "chat_id": CHANNEL_ID,
-        "text": msg,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }, timeout=10)
+    # 8. 발송 — ① 수급 시황 요약
+    send_message(msg)
 
-    if resp.status_code == 200:
-        print("✅ 텔레그램 발송 성공!")
-    else:
-        print(f"❌ 텔레그램 발송 실패: {resp.status_code} {resp.text}")
+    # ② AI 시황 전문 (요약 메시지 다음에 이어서 발송)
+    send_ai_report()
 
 
 if __name__ == "__main__":
