@@ -80,6 +80,7 @@ export default function SectorRRG({ level, period, investor }: { level: Level; p
     sx: (v: number) => number;
     sy: (v: number) => number;
   } | null>(null);
+  const touchedRef = useRef(false); // 터치 직후 합성 click 무시용
 
   /* ── 데이터 로드 ─────────────────────────────── */
   useEffect(() => {
@@ -390,12 +391,15 @@ export default function SectorRRG({ level, period, investor }: { level: Level; p
   };
 
   const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // 터치 직후 따라오는 합성 click 무시 (안 그러면 선택→즉시 해제되어 궤적이 사라짐)
+    if (touchedRef.current) { touchedRef.current = false; return; }
     const r = e.currentTarget.getBoundingClientRect();
     handleInteract(e.clientX - r.left, e.clientY - r.top);
   };
 
   const onCanvasTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    touchedRef.current = true;
     const t = e.touches[0];
     const r = e.currentTarget.getBoundingClientRect();
     handleInteract(t.clientX - r.left, t.clientY - r.top);
