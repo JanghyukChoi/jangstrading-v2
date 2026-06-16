@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import SectorFundamentals from "../../components/SectorFundamentals";
 
 export const dynamic = "force-static";
 export const dynamicParams = true;
@@ -133,12 +134,6 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
 
   const leaderScores = useMemo(() => calcLeaderScores(sectorStocks, period), [sectorStocks, period]);
 
-  const totals = useMemo(() => ({
-    foreign: sectorStocks.reduce((sum, s) => sum + (s.foreign[period] ?? 0), 0),
-    institution: sectorStocks.reduce((sum, s) => sum + (s.institution[period] ?? 0), 0),
-    combined: sectorStocks.reduce((sum, s) => sum + (s.combined[period] ?? 0), 0),
-  }), [sectorStocks, period]);
-
   const tagCounts = useMemo(() => {
     let leader = 0, emerging = 0, laggard = 0;
     leaderScores.forEach((s) => {
@@ -160,14 +155,8 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
         <span className="text-[var(--text-muted)] text-sm num">{sectorStocks.length}종목</span>
       </div>
 
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-        <div className="text-[11px] text-[var(--text-muted)] mb-3">{sectorName} {periodLabels[period]} 순매수</div>
-        <div className="grid grid-cols-3 gap-4">
-          {[{ l: "외국인", v: totals.foreign }, { l: "기관", v: totals.institution }, { l: "합계", v: totals.combined }].map((d) => (
-            <div key={d.l} className="text-center"><div className="text-[10px] text-[var(--text-muted)] mb-1">{d.l}</div><div className="text-sm sm:text-base font-semibold"><CNum v={d.v} /></div></div>
-          ))}
-        </div>
-      </div>
+      {/* 섹터 실적 vs 가격 (펀더멘털) */}
+      <SectorFundamentals sectorName={sectorName} />
 
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
         <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">섹터 내 포지션 분석</h3>
