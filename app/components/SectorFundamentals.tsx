@@ -107,7 +107,6 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
   }
   if (!s) return null;
 
-  const rows = s.dates.map((d, i) => ({ date: d, price: s!.priceIdx[i], earn: s!.earnIdx[i], per: s!.per[i], roe: s!.roe[i] }));
   const info = interpret(s);
   const last = s.dates.length - 1;
 
@@ -117,6 +116,14 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
   const perSorted = [...perVals].sort((a, b) => a - b);
   const perMed = perSorted.length ? perSorted[Math.floor(perSorted.length / 2)] : 15;
   const perCap = Math.max(30, perMed * 3);
+  // PER이 cap을 넘으면 상단에 평탄화(연속선 유지) — per은 툴팁용 실제값, perC는 플롯용 클램프값
+  const rows = s.dates.map((d, i) => {
+    const p = s!.per[i];
+    return {
+      date: d, price: s!.priceIdx[i], earn: s!.earnIdx[i], roe: s!.roe[i],
+      per: p, perC: p != null && p > 0 ? Math.min(p, perCap) : p,
+    };
+  });
   // 상단 라벨 잘림 방지: 도메인 최댓값을 깔끔한 단위로 올림
   const niceCeil = (x: number) => {
     if (x <= 0) return 1;
@@ -187,15 +194,20 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
             <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
             <XAxis dataKey="date" tickFormatter={fmtX} tick={{ fontSize: 10, fill: "var(--text-muted)" }}
               minTickGap={40} axisLine={false} tickLine={false} />
-            <YAxis scale={view === "pe" ? "log" : "linear"} domain={yDomain} allowDataOverflow={view === "per"}
+            <YAxis scale={view === "pe" ? "log" : "linear"} domain={yDomain} allowDataOverflow={false}
               tick={{ fontSize: 10, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={40}
               tickFormatter={(v) => (view === "roe" ? `${v}%` : `${Math.round(v)}`)} />
             <Tooltip contentStyle={{ background: "rgba(12,14,20,0.95)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 12 }}
               labelStyle={{ color: "#fff" }}
-              formatter={(v, name) => [v == null ? "-" : (view === "roe" ? `${v}%` : view === "per" ? `${v}배` : v), name]} />
+              formatter={(v, name, item) => {
+                if (v == null) return ["-", name];
+                if (view === "roe") return [`${v}%`, name];
+                if (view === "per") { const real = item?.payload?.per; return [real != null ? `${real}배` : `${v}배`, name]; }
+                return [v, name];
+              }} />
             {view === "pe" && <Line type="linear" dataKey="price" name="가격지수" stroke="#4a8fe7" strokeWidth={2} dot={false} isAnimationActive={false} />}
             {view === "pe" && <Line type="linear" dataKey="earn" name="실적지수" stroke="#e3b341" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
-            {view === "per" && <Line type="linear" dataKey="per" name="PER" stroke="#a371f7" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
+            {view === "per" && <Line type="linear" dataKey="perC" name="PER" stroke="#a371f7" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
             {view === "roe" && <Line type="linear" dataKey="roe" name="ROE" stroke="#3fb950" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
             {view === "per" && <ReferenceLine y={s.per[last] ?? undefined} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />}
           </LineChart>
@@ -224,7 +236,7 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
       )}
       {view === "per" && (
         <p className="text-[10px] text-[var(--text-muted)] mt-3 leading-relaxed">
-          ⚠️ 경기민감 섹터는 <b className="text-[var(--text-secondary)]">실적이 바닥일 때 PER이 급등</b>합니다(시총÷순이익에서 분모↓). 그 구간엔 <b className="text-[var(--text-secondary)]">ROE</b>가 더 신뢰성 높음. (상위 스파이크는 축에서 잘림)
+          ⚠️ 경기민감 섹터는 <b className="text-[var(--text-secondary)]">실적이 바닥일 때 PER이 급등</b>합니다(시총÷순이익에서 분모↓). 그 구간엔 <b className="text-[var(--text-secondary)]">ROE</b>가 더 신뢰성 높음. (cap 초과 구간은 상단에 평탄화 — 실제값은 툴팁 참고)
         </p>
       )}
       {view === "roe" && (
