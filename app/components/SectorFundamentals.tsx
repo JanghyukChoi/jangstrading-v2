@@ -33,9 +33,24 @@ function fp(x: number | null | undefined) {
 }
 
 /* ── 자동 해석 ─────────────────────────────────── */
+// "YYYY-MM" → 월 일련번호
+function toMonthNum(d: string) { const [y, m] = d.split("-").map(Number); return y * 12 + m; }
+// 변화량을 사람이 읽는 과거형 절로 ("주가는 12% 상승했" / "순이익은 거의 그대로(0%)였")
+function chgClause(label: string, x: number | null, up: string, dn: string) {
+  if (x == null) return `${label} 알 수 없`;
+  if (Math.abs(x) < 3) return `${label} 거의 그대로(${fp(x)}%)였`;
+  return x > 0 ? `${label} ${fp(x)}% ${up}했` : `${label} ${fp(Math.abs(x))}% ${dn}했`;
+}
+
 function interpret(s: Series) {
   const n = s.dates.length;
-  const i0 = Math.max(0, n - 5); // ~1년 전 (분기 4개)
+  // 끝 날짜 기준 "정확히 12개월 전"에 가장 가까운 점을 비교 기준으로 (분기 샘플 + 끝점 보정으로 칸 수가 일정치 않음)
+  const targetM = toMonthNum(s.dates[n - 1]) - 12;
+  let i0 = 0, best = Infinity;
+  for (let i = 0; i < n - 1; i++) {
+    const diff = Math.abs(toMonthNum(s.dates[i]) - targetM);
+    if (diff < best) { best = diff; i0 = i; }
+  }
   const pChg = pct(s.priceIdx[n - 1], s.priceIdx[i0]);
   const eNow = s.earnIdx[n - 1], ePrev = s.earnIdx[i0];
   const eChg = eNow != null && ePrev != null ? pct(eNow, ePrev) : null;
@@ -47,27 +62,30 @@ function interpret(s: Series) {
     perPctile = (pers.filter((x) => x < curPer).length / pers.length) * 100;
   }
 
+  const P = chgClause("주가는", pChg, "상승", "하락");
+  const E = chgClause("순이익은", eChg, "증가", "감소");
+
   let title = "", tone = "neutral", body = "";
   if (eChg == null) {
     title = "실적 적자 구간";
-    body = "섹터 합산 순이익이 적자라 PER 해석이 어렵습니다. 흑자 전환 여부가 관건.";
+    body = "섹터 전체를 합산한 순이익이 적자라 PER 해석이 어렵습니다. 흑자 전환 여부가 관건.";
     tone = "warn";
   } else if (pChg != null && pChg > 15 && eChg < pChg - 15) {
-    title = "가격이 실적을 앞서감";
+    title = "주가가 실적을 앞서감";
     tone = "warn";
-    body = `최근 1년 가격 ${fp(pChg)}% vs 실적 ${fp(eChg)}%. 밸류에이션(기대)이 실적보다 빠르게 확장 — 실적이 따라와야 정당화됩니다.`;
+    body = `지난 1년 ${P}는데, ${E}어요. 이익이 따라오는 속도보다 주가(기대)가 빨리 올랐다는 뜻 — 실적이 받쳐줘야 정당화됩니다.`;
   } else if (eChg > 15 && (pChg == null || eChg > pChg + 15)) {
-    title = "실적이 가격을 앞섬 (저평가 여지)";
+    title = "실적이 주가를 앞섬 (저평가 여지)";
     tone = "good";
-    body = `최근 1년 실적 ${fp(eChg)}% vs 가격 ${fp(pChg)}%. 실적 개선을 가격이 아직 덜 반영.`;
+    body = `지난 1년 ${E}는데, ${P}어요. 이익은 늘었는데 주가가 덜 올라, 개선이 아직 주가에 덜 반영됐다는 뜻.`;
   } else if (pChg != null && pChg < -10 && eChg < -10) {
-    title = "실적·가격 동반 약화";
+    title = "실적·주가 동반 약화";
     tone = "bad";
-    body = `가격 ${fp(pChg)}% · 실적 ${fp(eChg)}% 동반 하락 — 구조적 부진. 단순 저PER이 아니라 밸류트랩 주의.`;
+    body = `지난 1년 ${P}고, ${E}어요. 둘 다 꺾인 구조적 부진 — 단순히 PER이 낮다고 사면 밸류트랩일 수 있어 주의.`;
   } else {
-    title = "실적이 가격을 받쳐줌";
+    title = "실적이 주가를 받쳐줌";
     tone = "good";
-    body = `가격과 실적이 함께 움직이는 건강한 구간 (가격 ${fp(pChg)}% · 실적 ${fp(eChg)}%).`;
+    body = `지난 1년 ${P}고, ${E}어요. 주가와 이익이 같은 방향으로 움직이는 건강한 구간.`;
   }
   return { title, tone, body, perPctile, curPer };
 }
