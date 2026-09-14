@@ -61,3 +61,6 @@ scripts/__pycache__/
 
 # .env.example 은 필요한 시크릿 목록이라 커밋한다
 !.env.example
+
+# KIS 원시응답 캐시 (scripts/kis_fetch.py)
+.kis_cache/
