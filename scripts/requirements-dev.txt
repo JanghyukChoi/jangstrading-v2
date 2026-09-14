@@ -1,0 +1,5 @@
+# backtest/research only. CI does not install this.
+#   pip install -r scripts/requirements.txt -r scripts/requirements-dev.txt
+-r requirements.txt
+hmmlearn
+scikit-learn

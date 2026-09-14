@@ -2,10 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import {
-  Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
-} from "recharts";
 
 export const dynamic = "force-static";
 
@@ -70,109 +66,6 @@ function NumUnit({ v, cls = "" }: { v: number; cls?: string }) {
   );
 }
 
-/* ── 외국인 vs 기관 방향 일치 ─────────────────── */
-function ConsensusChart({ stocks, period = "1m" }: { stocks: StockRanking[]; period?: string }) {
-  // 시총 1000억 이상만
-  const filtered = stocks.filter((s) => (s.market_cap ?? 0) >= 1000);
-
-  let bothBuy = 0, bothSell = 0, mixed = 0;
-  for (const s of filtered) {
-    const f = s.foreign[period] ?? 0;
-    const i = s.institution[period] ?? 0;
-    if (f > 0 && i > 0) bothBuy++;
-    else if (f < 0 && i < 0) bothSell++;
-    else mixed++;
-  }
-
-  const data = [
-    { name: "동시 순매수", value: bothBuy, color: "#f85149" },
-    { name: "엇갈림", value: mixed, color: "#484f58" },
-    { name: "동시 순매도", value: bothSell, color: "#58a6ff" },
-  ];
-
-  const total = bothBuy + bothSell + mixed;
-
-  const customTooltip = ({ active, payload }: any) => {
-    if (!active || !payload?.[0]) return null;
-    const d = payload[0].payload;
-    const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
-    return (
-      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl">
-        <span style={{ color: d.color }}>{d.name}</span>
-        <span className="text-white ml-2 num">{d.value}종목 ({pct}%)</span>
-      </div>
-    );
-  };
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">외국인 vs 기관 방향 일치</h3>
-      <p className="text-[10px] text-[var(--text-muted)] mb-4">1개월 기준 · 시총 1천억 이상</p>
-
-      <div className="flex items-center gap-6">
-        {/* 도넛 차트 */}
-        <div className="w-32 h-32 sm:w-40 sm:h-40 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius="55%"
-                outerRadius="85%"
-                paddingAngle={3}
-                dataKey="value"
-                stroke="none"
-              >
-                {data.map((d, i) => (
-                  <Cell key={i} fill={d.color} />
-                ))}
-              </Pie>
-              <Tooltip content={customTooltip} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 범례 */}
-        <div className="flex-1 space-y-3">
-          {data.map((d) => {
-            const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : "0";
-            return (
-              <div key={d.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: d.color }} />
-                  <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)]">{d.name}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[13px] sm:text-sm text-white font-semibold num">{d.value}</span>
-                  <span className="text-[11px] text-[var(--text-muted)] ml-1">({pct}%)</span>
-                </div>
-              </div>
-            );
-          })}
-          <div className="pt-2 border-t border-white/[0.04]">
-            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-              <span>전체</span>
-              <span className="num">{total}종목</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 해석 */}
-      <p className="text-[11px] text-[var(--text-secondary)] mt-4 leading-relaxed border-t border-white/[0.04] pt-3">
-        💡 {(() => {
-          const buyPct = total > 0 ? bothBuy / total * 100 : 0;
-          const sellPct = total > 0 ? bothSell / total * 100 : 0;
-          if (buyPct > sellPct && buyPct > 35) return `외국인과 기관이 동시에 매수하는 종목이 ${bothBuy}개로, 시장 전반에 매수 합의가 형성되고 있습니다. 두 투자 주체가 같은 방향으로 움직일 때 추세가 강해지는 경향이 있습니다.`;
-          if (sellPct > buyPct && sellPct > 35) return `외국인과 기관이 동시에 매도하는 종목이 ${bothSell}개로, 시장 전반에 매도 압력이 강합니다. 양쪽 모두 빠져나가는 구간에서는 방어적 포지션이 유리할 수 있습니다.`;
-          return `외국인과 기관의 방향이 엇갈린 종목이 ${mixed}개(${total > 0 ? (mixed / total * 100).toFixed(0) : 0}%)로, 두 주체의 시각이 갈리고 있습니다. 이런 구간에서는 한쪽의 방향이 확정될 때까지 관망하거나, 엇갈림 속에서 기회를 찾을 수 있습니다.`;
-        })()}
-      </p>
-    </div>
-  );
-}
-
 /* ── 인덱스 카드 ──────────────────────────────── */
 function IndexCard({ name, data }: { name: string; data: MarketData | null }) {
   if (!data) return null;
@@ -201,81 +94,6 @@ function IndexCard({ name, data }: { name: string; data: MarketData | null }) {
         </div>
       )}
       <div className="text-[9px] text-[var(--text-muted)] mt-2 text-center">당일 순매수</div>
-    </div>
-  );
-}
-
-/* ── 수급 집중도 ──────────────────────────────── */
-function ConcentrationCard({ title, stocks, investorKey, color }: {
-  title: string;
-  stocks: StockRanking[];
-  investorKey: "foreign" | "institution";
-  color: string;
-}) {
-  // 순매수 양수인 종목만 대상
-  const buyers = stocks
-    .filter((s) => s[investorKey]["1m"] > 0)
-    .sort((a, b) => b[investorKey]["1m"] - a[investorKey]["1m"]);
-
-  const totalBuy = buyers.reduce((sum, s) => sum + s[investorKey]["1m"], 0);
-  const top5 = buyers.slice(0, 5);
-  const top5Sum = top5.reduce((sum, s) => sum + s[investorKey]["1m"], 0);
-  const pct = totalBuy > 0 ? Math.round(top5Sum / totalBuy * 1000) / 10 : 0;
-
-  const badgeLabel = pct >= 70 ? "집중 매수" : pct >= 40 ? "보통" : "분산 매수";
-  const badgeColor = pct >= 70
-    ? "bg-red-500/[0.12] text-[#f85149]"
-    : pct >= 40
-    ? "bg-amber-500/[0.12] text-[#d29922]"
-    : "bg-green-500/[0.12] text-[#3fb950]";
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6 flex-1 min-w-0">
-      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mb-1">{title}</p>
-      <div className="flex items-baseline gap-2 mb-1">
-        <span className="text-2xl sm:text-3xl font-semibold num">{pct}%</span>
-        <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md font-medium ${badgeColor}`}>{badgeLabel}</span>
-      </div>
-      <p className="text-[10px] text-[var(--text-muted)] mb-3">상위 5종목이 전체 순매수의 {pct}%</p>
-
-      {/* 바 */}
-      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden flex mb-3">
-        <div className="h-full rounded-l-full" style={{ width: `${pct}%`, background: color }} />
-        <div className="h-full" style={{ width: `${100 - pct}%`, background: "rgba(255,255,255,0.06)" }} />
-      </div>
-
-      {/* 상위 5 종목 */}
-      <div className="space-y-0">
-        {top5.map((s, i) => {
-          const stockPct = totalBuy > 0 ? (s[investorKey]["1m"] / totalBuy * 100).toFixed(1) : "0";
-          return (
-            <div key={s.name} className="flex items-center justify-between py-1.5 border-t border-white/[0.03] first:border-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[var(--text-muted)] num text-[10px] w-4 shrink-0">{i + 1}</span>
-                {s.ticker ? (
-                  <Link href={`/stocks/${s.ticker}`} className="text-[12px] sm:text-[13px] text-white font-medium hover:text-[var(--accent-blue)] transition truncate">
-                    {s.name}
-                  </Link>
-                ) : (
-                  <span className="text-[12px] sm:text-[13px] text-white font-medium truncate">{s.name}</span>
-                )}
-                <span className="text-[10px] text-[var(--text-muted)] shrink-0">{fmtUnit(s[investorKey]["1m"])}</span>
-              </div>
-              <span className="num text-[12px] font-medium shrink-0" style={{ color }}>{stockPct}%</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 해석 */}
-      <p className="text-[11px] text-[var(--text-secondary)] mt-3 leading-relaxed border-t border-white/[0.04] pt-3">
-        💡 {pct >= 70
-          ? `${pct}%는 높은 집중도입니다. ${investorKey === "foreign" ? "외국인" : "기관"}이 소수 종목에 확신을 갖고 집중 매수 중입니다.`
-          : pct >= 40
-          ? `${pct}%는 보통 수준입니다. ${investorKey === "foreign" ? "외국인" : "기관"}이 특정 종목과 시장 전체를 혼합하여 매수 중입니다.`
-          : `${pct}%는 낮은 집중도입니다. ${investorKey === "foreign" ? "외국인" : "기관"}이 시장 전체에 분산 매수 중이며, 인덱스 추종 가능성이 높습니다.`
-        }
-      </p>
     </div>
   );
 }

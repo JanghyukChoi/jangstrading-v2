@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import SectorRRG from "../components/SectorRRG";
 
 export const dynamic = "force-static";
 
@@ -81,18 +80,6 @@ function FilterGroup<T extends string>({
     </div>
   );
 }
-function SectorBar({ value, max }: { value: number; max: number }) {
-  const pct = max === 0 ? 0 : Math.min(Math.abs(value) / max * 100, 100);
-  const bg = value >= 0
-    ? "bg-gradient-to-r from-red-500/70 to-red-500/10"
-    : "bg-gradient-to-l from-blue-400/70 to-blue-400/10";
-  return (
-    <div className="w-20 h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
-      <div className={`h-full rounded-full ${bg}`} style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
-
 /* ── 섹터 TOP 리스트 섹션 (재사용) ── */
 function TopListSection({ items, label, color }: {
   items: { name: string; value: number }[];
@@ -401,7 +388,6 @@ function SectorsPageInner() {
       {/* /Sticky 필터 영역 */}
 
       {/* 수급 RRG (대분류/중분류 — 테마 탭 제외) */}
-      {(view === "large" || view === "mid") && <SectorRRG level={view} period={period} investor={investor} />}
 
       {/* 섹터 순매수 TOP 리스트 (테마 탭만 — 대분류/중분류는 위 RRG가 대체) */}
       {view === "theme" && (

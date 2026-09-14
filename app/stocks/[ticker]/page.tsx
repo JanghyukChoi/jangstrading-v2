@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
   LineChart, Line, CartesianGrid,
 } from "recharts";
 
@@ -93,55 +93,6 @@ function MetricCard({ label, value, unit }: { label: string; value: string | nul
         )}
       </div>
       {unit && value && <div className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{unit}</div>}
-    </div>
-  );
-}
-
-/* ── 수급 바 차트 ─────────────────────────────── */
-function SupplyChart({ title, data }: { title: string; data: Record<string, number> }) {
-  const periods = ["1d", "1w", "1m", "3m", "6m"];
-  const labels: Record<string, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
-  const chartData = periods.map((p) => ({ period: labels[p], value: Math.round(data[p]) }));
-
-  const customTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.[0]) return null;
-    const v = payload[0].value;
-    return (
-      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl">
-        <div className="text-[var(--text-secondary)] mb-1">{label}</div>
-        <div className={`font-medium ${v > 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>
-          <NumUnit v={v} />
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-      <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-          <XAxis dataKey="period" tick={{ fill: "#484f58", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: "#484f58", fontSize: 9 }} axisLine={false} tickLine={false}
-            tickFormatter={(v) => {
-              const won = v * 1_000_000;
-              const abs = Math.abs(won);
-              if (abs >= 1_000_000_000_000) return `${(won / 1_000_000_000_000).toFixed(0)}조`;
-              if (abs >= 100_000_000) return `${Math.round(won / 100_000_000)}억`;
-              if (abs >= 10_000) return `${Math.round(won / 10_000)}만`;
-              if (abs === 0) return "0";
-              return `${Math.round(won)}`;
-            }}
-          />
-          <Tooltip content={customTooltip} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-          <ReferenceLine y={0} stroke="rgba(255,255,255,0.08)" />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={36}>
-            {chartData.map((entry, i) => (
-              <Cell key={i} fill={entry.value >= 0 ? "#f85149" : "#58a6ff"} fillOpacity={0.85} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
     </div>
   );
 }

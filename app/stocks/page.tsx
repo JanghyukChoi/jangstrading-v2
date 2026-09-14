@@ -53,18 +53,6 @@ function calcRatio(combined: number, marketCap: number | null | undefined): numb
   if (!marketCap || marketCap <= 0) return null;
   return combined / marketCap;
 }
-function PurchaseBar({ value, max }: { value: number; max: number }) {
-  const pct = max === 0 ? 0 : Math.min(Math.abs(value) / max * 100, 100);
-  const bg = value >= 0
-    ? "bg-gradient-to-r from-red-500/70 to-red-500/10"
-    : "bg-gradient-to-l from-blue-400/70 to-blue-400/10";
-  return (
-    <div className="w-16 h-[5px] rounded-full bg-white/[0.04] overflow-hidden">
-      <div className={`h-full rounded-full ${bg}`} style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
-
 /* ── V3 시그널 lookup ─────────────────────────── */
 // signals.json 구조: { date, signals: { buy_reversal: ticker[], sell_reversal: [], leader: [], accumulation: [] } }
 interface V3Signals {
