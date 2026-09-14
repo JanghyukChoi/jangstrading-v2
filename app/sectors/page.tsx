@@ -33,7 +33,7 @@ interface SectorData {
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-type View = "large" | "mid";
+type View = "large" | "mid" | "theme";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function fmtUnit(n: number) {
@@ -151,7 +151,7 @@ function SectorTopList({ sectors, investor, periodLabel, view }: {
     return { positives: pos, negatives: neg };
   }, [sectors, investor]);
 
-  const groupLabel = view === "mid" ? "중분류 섹터" : "대분류 섹터";
+  const groupLabel = view === "theme" ? "테마" : view === "mid" ? "중분류 섹터" : "대분류 섹터";
   // 대분류는 10개뿐이라 매수/매도 둘 다 표시. 중분류·테마는 매수만.
   const showNegatives = view === "large";
 
@@ -192,6 +192,7 @@ function SectorsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
+  const [themeMap, setThemeMap] = useState<Record<string, string[]>>({});
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [view, setViewState] = useState<View>((searchParams.get("view") as View) || "large");
@@ -227,8 +228,9 @@ function SectorsPageInner() {
     Promise.all([
       fetch("/data/stock-rankings.json").then((r) => r.json()),
       fetch("/data/meta.json").then((r) => r.json()),
+      fetch("/data/theme-map.json").then((r) => r.json()).catch(() => ({})),
     ])
-      .then(([s, m]) => { setAllStocks(s.data); setMeta(m); })
+      .then(([s, m, t]) => { setAllStocks(s.data); setMeta(m); setThemeMap(t); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -236,23 +238,44 @@ function SectorsPageInner() {
   const sectors = useMemo(() => {
     const map: Record<string, { foreign: number; institution: number; combined: number; pension: number; totalCap: number; weightedReturnSum: number; count: number }> = {};
 
-    const groupKey = view === "large" ? "sector" : "sector_mid";
-    for (const s of allStocks) {
-      const key = (s as any)[groupKey] || s.sector || "기타";
-      if (key === "기타") continue;
-      if (!map[key]) map[key] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
-      const cap = s.market_cap ?? 0;
-      const pc = s.price_change?.[period] ?? 0;
-      map[key].foreign += s.foreign[period] ?? 0;
-      map[key].institution += s.institution[period] ?? 0;
-      map[key].combined += s.combined[period] ?? 0;
-      map[key].pension += s.pension?.[period] ?? 0;
-      map[key].totalCap += cap;
-      map[key].weightedReturnSum += pc * cap;
-      map[key].count++;
+    if (view === "theme") {
+      const tickerIndex: Record<string, StockRanking> = {};
+      for (const s of allStocks) {
+        if (s.ticker) tickerIndex[s.ticker] = s;
+      }
+      for (const [themeName, tickers] of Object.entries(themeMap)) {
+        if (!map[themeName]) map[themeName] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
+        for (const ticker of tickers) {
+          const s = tickerIndex[ticker];
+          if (!s) continue;
+          const cap = s.market_cap ?? 0;
+          const pc = s.price_change?.[period] ?? 0;
+          map[themeName].foreign += s.foreign[period] ?? 0;
+          map[themeName].institution += s.institution[period] ?? 0;
+          map[themeName].combined += s.combined[period] ?? 0;
+          map[themeName].pension += s.pension?.[period] ?? 0;
+          map[themeName].totalCap += cap;
+          map[themeName].weightedReturnSum += pc * cap;
+          map[themeName].count++;
+        }
+      }
+    } else {
+      const groupKey = view === "large" ? "sector" : "sector_mid";
+      for (const s of allStocks) {
+        const key = (s as any)[groupKey] || s.sector || "기타";
+        if (key === "기타") continue;
+        if (!map[key]) map[key] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
+        const cap = s.market_cap ?? 0;
+        const pc = s.price_change?.[period] ?? 0;
+        map[key].foreign += s.foreign[period] ?? 0;
+        map[key].institution += s.institution[period] ?? 0;
+        map[key].combined += s.combined[period] ?? 0;
+        map[key].pension += s.pension?.[period] ?? 0;
+        map[key].totalCap += cap;
+        map[key].weightedReturnSum += pc * cap;
+        map[key].count++;
+      }
     }
-  
-
 
     const result: SectorData[] = Object.entries(map)
       .filter(([, data]) => data.count > 0)
@@ -278,7 +301,7 @@ function SectorsPageInner() {
       return bv - av;
     });
     return result;
-  }, [allStocks, investor, period, sortBy, view]);
+  }, [allStocks, themeMap, investor, period, sortBy, view]);
 
   const maxVal = sectors.length > 0 ? Math.max(...sectors.map((s) => Math.abs(
     investor === "foreign" ? s.foreign : investor === "institution" ? s.institution : investor === "pension" ? s.pension : s.combined
@@ -323,9 +346,17 @@ function SectorsPageInner() {
           >
             중분류
           </button>
+          <button
+            onClick={() => setView("theme")}
+            className={`px-4 py-2 text-[14px] font-medium transition ${
+              view === "theme" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
+            }`}
+          >
+            테마
+          </button>
         </div>
         <span className="text-[13px] text-[var(--text-muted)]">
-          {view === "large" ? `${sectors.length}개 산업 섹터` : `${sectors.length}개 세부 업종`}
+          {view === "large" ? `${sectors.length}개 산업 섹터` : view === "mid" ? `${sectors.length}개 세부 업종` : `${sectors.length}개 테마`}
         </span>
       </div>
 
@@ -355,6 +386,13 @@ function SectorsPageInner() {
       </div>
       </div>
       {/* /Sticky 필터 영역 */}
+
+      {/* 수급 RRG (대분류/중분류 — 테마 탭 제외) */}
+
+      {/* 섹터 순매수 TOP 리스트 (테마 탭만 — 대분류/중분류는 위 RRG가 대체) */}
+      {view === "theme" && (
+        <SectorTopList sectors={sectors} investor={investor} periodLabel={periodLabels[period]} view={view} />
+      )}
 
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
