@@ -55,3 +55,9 @@ scripts/ml_artifacts/
 # python
 scripts/__pycache__/
 *.pyc
+
+# KIS 접근토큰 캐시 (scripts/kis_api.py)
+.kis_token.json
+
+# .env.example 은 필요한 시크릿 목록이라 커밋한다
+!.env.example
