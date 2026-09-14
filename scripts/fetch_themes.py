@@ -7,6 +7,7 @@
 """
 
 import json
+import sys
 import re
 import time
 import requests
@@ -89,6 +90,17 @@ def main():
 
     # 3. 저장
     theme_path = DATA_DIR / "theme-map.json"
+
+    # 수집이 실패했는데 그대로 쓰면 멀쩡하던 테마 데이터가 빈 파일로 날아간다.
+    # 네이버 금융이 SPA(Npay 증권)로 개편되면서 실제로 0개가 나오는 중이라
+    # 기존 파일을 지키고 실패로 끝낸다.
+    if not theme_map:
+        print("❌ 수집된 테마가 0개입니다. 기존 theme-map.json 을 보존합니다.")
+        if theme_path.exists():
+            prev = json.loads(theme_path.read_text(encoding="utf-8"))
+            print(f"   (기존 {len(prev)}개 테마 유지)")
+        return 1
+
     with open(theme_path, "w", encoding="utf-8") as f:
         json.dump(theme_map, f, ensure_ascii=False)
 
@@ -99,7 +111,8 @@ def main():
     total_stocks = sum(len(v) for v in theme_map.values())
     avg = total_stocks / len(theme_map) if theme_map else 0
     print(f"📊 테마당 평균 {avg:.1f}개 종목, 총 {total_stocks}개 매핑")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
