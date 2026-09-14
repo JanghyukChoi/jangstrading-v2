@@ -164,7 +164,7 @@ OHLC_DIR = DATA_DIR / "ohlc"
 OHLC_KEEP = 250  # 보관 영업일 (약 1년)
 
 
-def append_ohlc(ticker, rows):
+def append_ohlc(ticker, rows, basis=None):
     """일봉 파일에 새 날짜만 덧붙인다. 파일이 없으면 가진 만큼으로 새로 만든다.
 
     차트용 데이터는 timeseries 와 분리해 둔다. 합치면 종목 상세 페이지가
@@ -205,6 +205,17 @@ def append_ohlc(ticker, rows):
     order = sorted(range(len(cur["d"])), key=lambda i: cur["d"][i])[-OHLC_KEEP:]
     for k in ("d", "o", "h", "l", "c", "v"):
         cur[k] = [cur[k][i] for i in order]
+
+    # 매물대(가격 구간별 비중)를 같은 파일에 넣는다. 종목당 361바이트라
+    # 차트가 이미 받는 파일에 얹으면 추가 요청이 없다.
+    # cost-basis.json 은 3.9MB 라 클라이언트가 통째로 받을 수 없다.
+    if basis:
+        for key in ("fb", "ib"):
+            cur.pop(key, None)
+        if basis.get("f"):
+            cur["fb"] = [[b["price"], b["weight"]] for b in basis["f"]]
+        if basis.get("i"):
+            cur["ib"] = [[b["price"], b["weight"]] for b in basis["i"]]
 
     OHLC_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cur, separators=(",", ":")), encoding="utf-8")
@@ -754,7 +765,13 @@ def main():
             if avg:
                 item["avg_cost"] = avg
 
-        ohlc_added += append_ohlc(ticker, rows)
+        basis = None
+        if entry:
+            close_now = item["_close"]
+            fb = cb.summarize(entry.get("f"), close_now)
+            ib = cb.summarize(entry.get("i"), close_now)
+            basis = {"f": fb["basis"] if fb else None, "i": ib["basis"] if ib else None}
+        ohlc_added += append_ohlc(ticker, rows, basis)
 
         results.append(item)
 

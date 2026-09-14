@@ -24,7 +24,12 @@ interface Raw {
   t: string;
   d: number[]; // YYMMDD
   o: number[]; h: number[]; l: number[]; c: number[]; v: number[];
+  /** 매물대 — [가격, 비중%]. fb=외국인, ib=기관 */
+  fb?: [number, number][];
+  ib?: [number, number][];
 }
+
+type Bucket = { price: number; weight: number; top: number };
 
 const UP = "#f04251";    // 한국 관행: 빨강 상승
 const DOWN = "#3485fa";  // 파랑 하락
@@ -91,6 +96,9 @@ export default function PriceChart({
   const [raw, setRaw] = useState<Raw | null>(null);
   const [frame, setFrame] = useState<Frame>("D");
   const [state, setState] = useState<"loading" | "ready" | "empty">("loading");
+  const [showBasis, setShowBasis] = useState(true);
+  // 매물대 막대는 차트 좌표계에 얹어야 해서, 가격->y좌표 변환 후 위치를 잡는다.
+  const [buckets, setBuckets] = useState<Bucket[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -169,6 +177,22 @@ export default function PriceChart({
       }
 
       chart.timeScale().fitContent();
+
+      // 매물대: 가격을 y좌표로 바꿔 오버레이 막대를 놓는다.
+      // lightweight-charts 에 volume-profile 이 없어서 직접 얹는다.
+      const src = raw.fb?.length ? raw.fb : raw.ib;
+      const redraw = () => {
+        if (!src?.length) { setBuckets([]); return; }
+        const next: Bucket[] = [];
+        for (const [price, weight] of src) {
+          const y = candle.priceToCoordinate(price);
+          if (y == null) continue;
+          next.push({ price, weight, top: y });
+        }
+        setBuckets(next);
+      };
+      redraw();
+      chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
     })();
 
     return () => {
@@ -176,6 +200,8 @@ export default function PriceChart({
       if (chart) chart.remove();
     };
   }, [state, raw, frame, foreignAvg, institutionAvg]);
+
+  const maxWeight = buckets.reduce((m, b) => Math.max(m, b.weight), 0) || 1;
 
   if (state === "empty") return null;
 
@@ -185,7 +211,7 @@ export default function PriceChart({
         <div>
           <h3 className="text-[15px] sm:text-[17px] font-semibold text-white">주가 차트</h3>
           <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
-            점선은 외국인·기관 추정 평균 매입가
+            점선은 추정 평균 매입가 · 오른쪽 막대는 매물대
           </p>
         </div>
         <div className="flex rounded-lg overflow-hidden bg-[var(--bg-sunken)] shrink-0">
@@ -208,7 +234,34 @@ export default function PriceChart({
       {state === "loading" ? (
         <div className="h-[340px] rounded-xl bg-white/[0.02] animate-pulse" />
       ) : (
-        <div ref={box} className="h-[340px] w-full" />
+        <div className="relative">
+          <div ref={box} className="h-[340px] w-full" />
+          {showBasis && buckets.length > 0 && (
+            <div className="pointer-events-none absolute inset-y-0 right-[58px] w-[86px]">
+              {buckets.map((b) => (
+                <div
+                  key={b.price}
+                  className="absolute right-0 rounded-l-[2px]"
+                  style={{
+                    top: `${b.top - 3}px`,
+                    height: "6px",
+                    width: `${Math.max(6, (b.weight / maxWeight) * 100)}%`,
+                    background: `${UP}38`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {buckets.length > 0 && (
+        <button
+          onClick={() => setShowBasis((v) => !v)}
+          className="mt-3 text-[12px] text-[var(--text-muted)] hover:text-white transition"
+        >
+          매물대 {showBasis ? "숨기기" : "보기"}
+        </button>
       )}
     </div>
   );
