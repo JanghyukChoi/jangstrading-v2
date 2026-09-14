@@ -49,15 +49,16 @@ jobs:
       - name: Fetch themes
         run: python scripts/fetch_themes.py
         continue-on-error: true
-      # AI 시황 리포트(generate_report.py)와 텔레그램 발송(send_telegram.py)은
-      # 2026-09-14 부터 중단. 리포트는 Anthropic API 비용 때문에 뺐고, 텔레그램은
-      # 리포트를 실어 보내는 용도라 같이 멈춘다.
-      # 스크립트와 시크릿은 그대로 두었으니 되살리려면 이 두 스텝만 복구하면 된다.
-      #
-      # - name: Generate AI report
-      #   env:
-      #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      #   run: python scripts/generate_report.py
+      # Gemini 무료 티어로 생성한다(비용 0). 무료 티어는 붐비면 503 이 나므로
+      # 스크립트가 재시도 + 하위 모델 폴백을 한다. 그래도 실패하면 그날 리포트만
+      # 건너뛰고 데이터 커밋은 진행한다.
+      - name: Generate AI report (Gemini)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/generate_report.py
+        continue-on-error: true
+
+      # 텔레그램은 사용자 요청으로 중단. 되살리려면 주석만 풀면 된다.
       # - name: Send Telegram
       #   env:
       #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

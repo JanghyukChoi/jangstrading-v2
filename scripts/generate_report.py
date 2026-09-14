@@ -4,12 +4,13 @@
 1. stock-rankings.json에서 핵심 수급 데이터 추출 (토큰 절약)
 2. 네이버 금융 뉴스 최대 20건의 제목 + 본문 크롤링
    (n.news.naver.com/mnews/... 모바일 URL → #dic_area 셀렉터)
-3. Claude Sonnet 4.6 API 호출 → 5섹션 구조 시황 글 생성
+3. Gemini API 호출 → 5섹션 구조 시황 글 생성
    (한 줄 요약 / 핵심 숫자 / 구조적 해석 / 주목할 신호 / 종합 판단)
 4. public/data/reports/YYYY-MM-DD.json 저장
 
 실행: python scripts/generate_report.py
-비용: 하루 약 $0.10~0.20 (Sonnet 4.6, 입력 ~20K + 출력 ~3~4K 토큰)
+환경변수: GEMINI_API_KEY (https://aistudio.google.com/apikey)
+비용: 무료. Gemini 무료 티어는 하루 수백 건까지 되는데 여기선 하루 1 건만 쓴다.
 """
 
 import json
@@ -26,7 +27,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "public" / "data"
 REPORTS_DIR = DATA_DIR / "reports"
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+# 2026-09-14: Anthropic -> Gemini 무료 티어로 이전 (크레딧 소진, 비용 0)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+# 붐빌 때 503 이 나므로 위에서부터 차례로 시도한다
+GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash"]
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
@@ -239,11 +244,77 @@ def crawl_news(max_items: int = 20):
     return result
 
 
-def generate_with_claude(date, data_summary, news_items):
-    """Claude Sonnet 4.6 API로 시황 분석 글 생성 (제목+본문 뉴스 컨텍스트 활용)"""
-    if not ANTHROPIC_API_KEY:
-        print("  ❌ ANTHROPIC_API_KEY가 설정되지 않았습니다.")
+def call_gemini(prompt):
+    """Gemini 로 텍스트 생성. 실패하면 None.
+
+    무료 티어는 인기 모델이 붐비면 503 UNAVAILABLE 을 돌려준다(실측). 같은 모델로
+    몇 번 재시도하고, 그래도 안 되면 한 단계씩 낮은 모델로 내려간다.
+    """
+    if not GEMINI_API_KEY:
+        print("  ❌ GEMINI_API_KEY가 설정되지 않았습니다.")
         return None
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": 5000, "temperature": 1.0},
+    }
+    headers = {"x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json"}
+
+    for model in GEMINI_MODELS:
+        url = f"{GEMINI_BASE}/models/{model}:generateContent"
+        for attempt in range(1, 4):
+            try:
+                r = requests.post(url, headers=headers, json=payload, timeout=120)
+            except requests.RequestException as e:
+                print(f"  ⚠️ {model} 네트워크 오류({attempt}/3): {e!r}")
+                time.sleep(3 * attempt)
+                continue
+
+            if r.status_code == 200:
+                body = r.json()
+                cands = body.get("candidates") or []
+                if not cands:
+                    # 안전필터 등으로 후보가 없을 수 있다
+                    print(f"  ⚠️ {model} 응답에 후보 없음: {str(body)[:200]}")
+                    break
+                parts = cands[0].get("content", {}).get("parts") or []
+                text = "".join(p.get("text", "") for p in parts)
+                usage = body.get("usageMetadata", {})
+                print(
+                    f"  🤖 {model} 생성 완료 "
+                    f"(입력 {usage.get('promptTokenCount', '?')} / "
+                    f"출력 {usage.get('candidatesTokenCount', '?')} 토큰)"
+                )
+                if cands[0].get("finishReason") not in (None, "STOP"):
+                    print(f"  ⚠️ finishReason={cands[0].get('finishReason')}")
+                return text
+
+            status = ""
+            try:
+                status = r.json().get("error", {}).get("status", "")
+            except ValueError:
+                pass
+
+            # 503(과부하) / 429(한도)는 잠깐 쉬면 풀린다
+            if r.status_code in (429, 503):
+                print(f"  ⚠️ {model} {r.status_code} {status} ({attempt}/3)")
+                time.sleep(5 * attempt)
+                continue
+
+            print(f"  ❌ {model} API 오류: {r.status_code} {r.text[:200]}")
+            break
+
+        print(f"  ↩️ {model} 실패 — 다음 모델로")
+
+    print("  ❌ 모든 Gemini 모델 실패")
+    return None
+
+
+def generate_with_claude(date, data_summary, news_items):
+    """Gemini 로 시황 분석 글 생성 (제목+본문 뉴스 컨텍스트 활용)
+
+    함수명은 호출부 호환을 위해 유지한다.
+    """
 
     if news_items:
         news_blocks = []
@@ -330,29 +401,11 @@ def generate_with_claude(date, data_summary, news_items):
 </body>
 """
 
+    text = call_gemini(prompt)
+    if text is None:
+        return None
+
     try:
-        r = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-sonnet-4-6",
-                "max_tokens": 5000,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=120,
-        )
-
-        if r.status_code != 200:
-            print(f"  ❌ API 오류: {r.status_code} {r.text[:200]}")
-            return None
-
-        response = r.json()
-        text = response["content"][0]["text"]
-
         # XML 태그 추출 (<title>...</title>, <body>...</body>)
         title_match = re.search(r"<title>\s*(.+?)\s*</title>", text, re.DOTALL)
         body_match = re.search(r"<body>\s*([\s\S]+?)\s*</body>", text)
