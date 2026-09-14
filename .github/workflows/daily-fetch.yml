@@ -6,6 +6,8 @@ on:
 jobs:
   fetch-data:
     runs-on: ubuntu-latest
+    # 전 종목 수집이 약 45분. 기본 360분 안에 충분히 들어가지만 명시해 둔다.
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -15,43 +17,38 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
-      - name: Fetch stock data
+
+      # 배당수익률용 주당배당금. 분기에 한 번 바뀌는 값이라 7일 지난 경우에만
+      # 실제로 조회하고, 그 외에는 즉시 끝난다.
+      - name: Refresh dividends (weekly)
         env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
-        run: python scripts/fetch_data.py
-      - name: Add ticker codes
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+        run: python scripts/kis_dividends.py
+
+      # 수급/시세/재무/평균단가/기관세부 + 시장지수 + 스냅샷을 한 번에 수집.
+      # 기존의 fetch_data / add_tickers / add_fundamentals / add_price_changes /
+      # add_avg_cost / add_inst_detail / save_snapshot / augment_snapshots /
+      # fetch_kospi_history 9개 스텝을 대체한다.
+      - name: Fetch all (KIS Open API)
         env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_tickers.py
-      - name: Add PER/PBR
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_fundamentals.py
-      - name: Add price changes
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_price_changes.py
-      - name: Add avg cost
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_avg_cost.py
-      - name: Add inst detail
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_inst_detail.py
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+        # CI 는 매 실행이 새 워크스페이스라 캐시를 읽을 일이 없다. 쓰기만 하면
+        # 원시 응답 700MB 가 그냥 버려지므로 끈다. (로컬 재실행 때만 유용)
+        run: python scripts/kis_fetch.py --no-cache
+
       - name: Add sectors
         run: |
           python scripts/fetch_wics.py
           python scripts/add_sectors.py
+      # 네이버 금융이 SPA(Npay 증권)로 개편되면서 HTML 스크래핑 경로가 죽었다.
+      # 스크립트가 기존 theme-map.json 을 보존하고 exit 1 로 알리므로, 여기서는
+      # 경고로만 남기고 파이프라인은 계속 간다. 테마 데이터는 마지막 수집분으로
+      # 고정된 상태다.
       - name: Fetch themes
         run: python scripts/fetch_themes.py
+        continue-on-error: true
       - name: Generate AI report
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -60,19 +57,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-        run: python scripts/send_telegram.py  
-      - name: Save snapshot
-        run: python scripts/save_snapshot.py
-      - name: Augment snapshot (market_cap + trade_value)
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/augment_snapshots.py --input public/data/snapshots
-      - name: Fetch KOSPI history (regime filter용)
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/fetch_kospi_history.py
+        run: python scripts/send_telegram.py
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
       - name: Build V3 signals

@@ -30,9 +30,9 @@ CONFIGS = {
 
 def main():
     # 1. 섹터맵 & 시총 로드
-    with open(SECTOR_MAP) as f:
+    with open(SECTOR_MAP, encoding="utf-8") as f:
         sector_map = json.load(f)
-    with open(STOCK_RANKINGS) as f:
+    with open(STOCK_RANKINGS, encoding="utf-8") as f:
         sr = json.load(f)
 
     mcap_map = {}
@@ -68,7 +68,7 @@ def main():
     dates = []
 
     for idx, sf in enumerate(snap_files):
-        with open(sf) as f:
+        with open(sf, encoding="utf-8") as f:
             snap = json.load(f)
         dates.append(snap.get("date", os.path.basename(sf).replace(".json", "")))
         foreign_1d = snap.get("foreign_1d", {})
