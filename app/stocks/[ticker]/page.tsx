@@ -414,8 +414,10 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       {/* 추정 평균단가 */}
       {stockData.avg_cost && (stockData.avg_cost.foreign || stockData.avg_cost.institution) && (
         <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
-          <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">추정 평균단가</h3>
-          <p className="text-[12px] text-[var(--text-muted)] mb-4">최근 6개월 이동평균 원가법 기준 · 현재가 {stockData.avg_cost.price.toLocaleString()}원</p>
+          <h3 className="text-[15px] sm:text-[17px] font-semibold text-white mb-1">사 모은 평균 가격대</h3>
+          <p className="text-[12px] sm:text-[13px] text-[var(--text-muted)] mb-4">
+            최근 1년 매매를 회전율로 가중한 추정치 · 현재가 <span className="num">{stockData.avg_cost.price.toLocaleString()}</span>원
+          </p>
 
           <div className="flex flex-col sm:flex-row gap-3">
             {([
@@ -434,7 +436,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
                   <div className="flex items-end justify-between mb-3">
                     <div>
-                      <div className="text-[12px] text-[var(--text-muted)] mb-1">추정 평균단가</div>
+                      <div className="text-[12px] text-[var(--text-muted)] mb-1">평균 매입가</div>
                       <div className="text-lg sm:text-xl font-semibold text-white"><span className="num">{d.avg_cost.toLocaleString()}</span>원</div>
                     </div>
                     <div className={`text-right px-3 py-1.5 rounded-lg ${
@@ -444,7 +446,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                         {isProfit ? "+" : ""}{d.pnl_pct}%
                       </div>
                       <div className="text-[12px] text-[var(--text-muted)]">
-                        {isProfit ? "수익 중" : "손실 중"}
+                        {isProfit ? "평균가보다 높음" : "평균가보다 낮음"}
                       </div>
                     </div>
                   </div>
