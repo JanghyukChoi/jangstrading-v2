@@ -405,15 +405,15 @@ function StocksPageInner() {
           <table className="w-full text-[13px] sm:text-[14px]">
             <thead>
               <tr className="text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06]">
-                <th className="text-left px-3 sm:px-5 py-3 font-normal w-8">#</th>
-                <th className="text-left px-2 sm:px-3 py-3 font-normal">종목</th>
-                <th className="text-left px-2 py-3 font-normal w-14 hidden sm:table-cell">시장</th>
-                {hasPer && <th className="text-right px-2 py-3 font-normal hidden md:table-cell">PER</th>}
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">{investor === "pension" ? "연기금" : "합계"}{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal hidden sm:table-cell">시총대비</th>
-                {signalFilter !== "ai_screener" && <th className="text-right px-2 sm:px-3 py-3 font-normal">수익률</th>}
+                <th className="text-left px-3 sm:px-5 py-4 font-normal w-8">#</th>
+                <th className="text-left px-2 sm:px-3 py-4 font-normal">종목</th>
+                <th className="text-left px-2 py-4 font-normal w-14 hidden sm:table-cell">시장</th>
+                {hasPer && <th className="text-right px-2 py-4 font-normal hidden md:table-cell">PER</th>}
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">외국인{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">{investor === "pension" ? "연기금" : "합계"}{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal hidden sm:table-cell">시총대비</th>
+                {signalFilter !== "ai_screener" && <th className="text-right px-2 sm:px-3 py-4 font-normal">수익률</th>}
               </tr>
             </thead>
             <tbody>
@@ -485,7 +485,7 @@ function StocksPageInner() {
             const ratio = calcRatio(getInvVal(s, investor, displayPeriod), s.market_cap);
             const signals = getSignals(s, v3Signals);
             const inner = (
-              <div className="px-4 py-3.5">
+              <div className="px-4 py-4.5">
                 {/* 상단: 순위 + 종목명 + 수익률 */}
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[var(--text-muted)] num text-[13px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>

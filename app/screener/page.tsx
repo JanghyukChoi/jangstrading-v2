@@ -415,8 +415,8 @@ function ScreenerInner() {
 
       {/* 결과 */}
       <div className="bg-[var(--bg-card)] rounded-2xl">
-        <div className="px-3 sm:px-4 py-3 border-b border-white/[0.06] flex items-baseline justify-between">
-          <h3 className="text-[14px] sm:text-[15px] font-semibold text-white">
+        <div className="px-3 sm:px-4 py-4 border-b border-white/[0.06] flex items-baseline justify-between">
+          <h3 className="text-[15px] sm:text-[17px] font-semibold text-white">
             검색 결과 <span className="num text-[var(--text-secondary)] font-normal">{filtered.length.toLocaleString()}</span>
             <span className="text-[13px] text-[var(--text-muted)] font-normal ml-1">종목</span>
           </h3>
@@ -430,16 +430,16 @@ function ScreenerInner() {
           <table className="w-full text-[13px] sm:text-[14px]">
             <thead>
               <tr className="text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06]">
-                <th className="text-left px-3 sm:px-5 py-3 font-normal w-8">#</th>
-                <th className="text-left px-2 sm:px-3 py-3 font-normal">종목</th>
-                <th className="text-left px-2 py-3 font-normal w-14">시장</th>
-                <th className="text-right px-2 py-3 font-normal">PER</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">시가총액</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">외국인 ({periodLabels[filters.period]})</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">기관 ({periodLabels[filters.period]})</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">연기금 ({periodLabels[filters.period]})</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">합계 ({periodLabels[filters.period]})</th>
-                <th className="text-right px-2 sm:px-3 py-3 font-normal">변동률 ({periodLabels[filters.period]})</th>
+                <th className="text-left px-3 sm:px-5 py-4 font-normal w-8">#</th>
+                <th className="text-left px-2 sm:px-3 py-4 font-normal">종목</th>
+                <th className="text-left px-2 py-4 font-normal w-14">시장</th>
+                <th className="text-right px-2 py-4 font-normal">PER</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">시가총액</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">외국인 ({periodLabels[filters.period]})</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">기관 ({periodLabels[filters.period]})</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">연기금 ({periodLabels[filters.period]})</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">합계 ({periodLabels[filters.period]})</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">변동률 ({periodLabels[filters.period]})</th>
               </tr>
             </thead>
             <tbody>
@@ -491,7 +491,7 @@ function ScreenerInner() {
           {paged.map((s, i) => {
             const pm = s.price_change?.[filters.period];
             const inner = (
-              <div className="px-4 py-3">
+              <div className="px-4 py-4">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-[var(--text-muted)] num text-[13px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
                   <span className="text-white font-medium text-[15px] flex-1 truncate">{s.name}</span>

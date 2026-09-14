@@ -155,7 +155,7 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
           {olderReport ? (
             <Link
               href={`/reports/${olderReport.date}`}
-              className="group flex flex-col gap-1 bg-[var(--bg-card)] rounded-2xl px-4 py-3.5 hover:border-white/[0.15] transition min-w-0"
+              className="group flex flex-col gap-1 bg-[var(--bg-card)] rounded-2xl px-4 py-4.5 hover:border-white/[0.15] transition min-w-0"
             >
               <span className="text-[13px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">← 이전 시황</span>
               <span className="text-[13px] sm:text-[14px] text-white font-medium line-clamp-1">{olderReport.title}</span>
@@ -165,7 +165,7 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
           {newerReport ? (
             <Link
               href={`/reports/${newerReport.date}`}
-              className="group flex flex-col gap-1 bg-[var(--bg-card)] rounded-2xl px-4 py-3.5 hover:border-white/[0.15] transition min-w-0 text-right"
+              className="group flex flex-col gap-1 bg-[var(--bg-card)] rounded-2xl px-4 py-4.5 hover:border-white/[0.15] transition min-w-0 text-right"
             >
               <span className="text-[13px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">다음 시황 →</span>
               <span className="text-[13px] sm:text-[14px] text-white font-medium line-clamp-1">{newerReport.title}</span>

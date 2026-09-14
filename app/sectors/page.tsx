@@ -95,7 +95,7 @@ function TopListSection({ items, label, color }: {
     <div>
       {label && (
         <div className="flex items-baseline gap-2 mb-3">
-          <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">{label}</h4>
+          <h4 className="text-[15px] sm:text-[16px] font-semibold text-white">{label}</h4>
           <span className="text-[12px] text-[var(--text-muted)]">{items.length}개</span>
         </div>
       )}
@@ -166,7 +166,7 @@ function SectorTopList({ sectors, investor, periodLabel, view }: {
   return (
     <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
       <div className="flex items-baseline gap-2 mb-1">
-        <h3 className="text-[14px] sm:text-[15px] font-semibold text-white tracking-tight">
+        <h3 className="text-[15px] sm:text-[17px] font-semibold text-white tracking-tight">
           {showNegatives ? `${groupLabel} 수급 현황` : "순매수 상위"}
         </h3>
         <span className="text-[12px] text-[var(--text-muted)]">{periodLabel}</span>
@@ -303,7 +303,7 @@ function SectorsPageInner() {
       </div>
 
       {/* Sticky 필터 영역 */}
-      <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#17171c]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
+      <div className="sticky top-14 z-30 -mx-5 px-5 py-4 bg-[#17171c]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
       {/* 대분류 / 중분류 / 테마 탭 */}
       <div className="flex items-center gap-3">
         <div className="flex rounded-xl overflow-hidden border border-white/[0.08] bg-[var(--bg-card)]">
@@ -359,7 +359,7 @@ function SectorsPageInner() {
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-        <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
+        <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-4">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="min-w-[80px] sm:min-w-0 sm:flex-1">업종</span>
           <span className="w-12 text-right hidden sm:block">종목수</span>
@@ -376,7 +376,7 @@ function SectorsPageInner() {
             <Link
               key={s.name}
               href={`/sectors/${encodeURIComponent(s.name)}`}
-              className="flex items-center px-3 sm:px-5 py-3 border-t border-white/[0.03] hover:bg-white/[0.02] transition"
+              className="flex items-center px-3 sm:px-5 py-4 border-t border-white/[0.03] hover:bg-white/[0.02] transition"
             >
               <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs hidden sm:block">{i + 1}</span>
               <span className="min-w-[80px] sm:min-w-0 sm:flex-1 flex items-center gap-1">

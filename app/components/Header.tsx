@@ -71,7 +71,7 @@ export default function Header() {
       {/* 모바일 메뉴 */}
       {menuOpen && (
         <div className="sm:hidden border-t border-white/[0.06] bg-[#17171c]/95 backdrop-blur-xl">
-          <nav className="max-w-7xl mx-auto px-5 py-3 flex flex-col gap-1">
+          <nav className="max-w-7xl mx-auto px-5 py-4 flex flex-col gap-1">
             <Link href="/" onClick={() => setMenuOpen(false)}
               className="px-3 py-2.5 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06] transition text-[15px]">
               대시보드

@@ -184,7 +184,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
       </div>
 
       <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
-        <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
+        <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-4">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="flex-1 min-w-0">종목</span>
           <span className="w-14 text-left hidden sm:block">시장</span>

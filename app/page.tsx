@@ -197,7 +197,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.sectorLeaders.length > 0 && (
         <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[14px] sm:text-[15px] font-semibold text-white">주도 섹터 & 주도주</h4>
+            <h4 className="text-[15px] sm:text-[17px] font-semibold text-white">주도 섹터 & 주도주</h4>
             <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
           <div className="space-y-3">
@@ -226,7 +226,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.pensionTop.length > 0 && (
         <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[14px] sm:text-[15px] font-semibold text-white">연기금 집중</h4>
+            <h4 className="text-[15px] sm:text-[17px] font-semibold text-white">연기금 집중</h4>
             <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -319,7 +319,7 @@ function MarketSignals() {
     return (
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[13px] text-white font-medium w-12 shrink-0">{label}</span>
-        <span className={`text-[13px] sm:text-[14px] font-semibold ${color}`}>
+        <span className={`text-[15px] sm:text-[16px] font-semibold ${color}`}>
           {prefix}{direction} <span className="num">{Math.abs(days)}</span>일
         </span>
         <span className={`text-[12px] sm:text-[13px] num ml-auto ${color}`}>{fmtAmount(amount)}</span>
@@ -357,7 +357,7 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
 
   return (
     <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
-      <h3 className="text-[14px] sm:text-[15px] font-semibold text-white">{title}</h3>
+      <h3 className="text-[15px] sm:text-[17px] font-semibold text-white">{title}</h3>
       <p className="text-[12px] text-[var(--text-muted)] mb-3">{desc}</p>
       <div className="space-y-0">
         {sorted.map((s, i) => (
