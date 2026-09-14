@@ -68,7 +68,7 @@ function FilterGroup<T extends string>({
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`px-3 py-[7px] text-[13px] sm:text-[13px] transition-all ${
+          className={`px-2.5 sm:px-3 py-[5px] sm:py-[7px] text-[12px] sm:text-[13px] transition-all ${
             value === o.key
               ? "bg-[var(--accent-blue)] text-white font-medium"
               : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"
