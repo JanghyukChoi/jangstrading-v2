@@ -177,7 +177,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
 
       <div className="flex flex-wrap gap-2 items-center">
         <select value={investor} onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer">
+          className="bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer">
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <FilterGroup options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))} value={period} onChange={setPeriod} />

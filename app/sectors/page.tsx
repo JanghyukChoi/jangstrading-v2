@@ -225,7 +225,7 @@ function SectorsPageInner() {
         <div className="flex rounded-xl overflow-hidden border border-white/[0.08] bg-[var(--bg-card)]">
           <button
             onClick={() => setView("large")}
-            className={`px-4 py-2 text-[14px] font-medium transition ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[13px] sm:text-[14px] font-medium transition ${
               view === "large" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
             }`}
           >
@@ -233,7 +233,7 @@ function SectorsPageInner() {
           </button>
           <button
             onClick={() => setView("mid")}
-            className={`px-4 py-2 text-[14px] font-medium transition ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[13px] sm:text-[14px] font-medium transition ${
               view === "mid" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
             }`}
           >
@@ -241,7 +241,7 @@ function SectorsPageInner() {
           </button>
           <button
             onClick={() => setView("theme")}
-            className={`px-4 py-2 text-[14px] font-medium transition ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[13px] sm:text-[14px] font-medium transition ${
               view === "theme" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
             }`}
           >
@@ -258,7 +258,7 @@ function SectorsPageInner() {
         <select
           value={investor}
           onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
+          className="bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
         >
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -268,7 +268,7 @@ function SectorsPageInner() {
         />
         <button
           onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
-          className={`border rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] transition cursor-pointer ${
+          className={`border rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] transition cursor-pointer ${
             sortBy === "ratio"
               ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
               : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"

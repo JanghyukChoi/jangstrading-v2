@@ -311,7 +311,7 @@ function StocksPageInner() {
       {/* 필터 영역 (sticky 제거 — 스크롤 시 자연스럽게 위로) */}
       <div className="space-y-3">
       {/* 신호 필터 — 모바일은 가로 스크롤 한 줄, 데스크톱은 wrap */}
-      <div className="flex sm:flex-wrap gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar">
+      <div className="flex sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {([
           { key: "all" as Signal, label: "전체", count: null, dot: "" },
           { key: "buy_reversal" as Signal, label: "매수전환", count: signalCounts.buy_reversal, dot: "bg-emerald-400" },
@@ -323,7 +323,7 @@ function StocksPageInner() {
           <button
             key={s.key}
             onClick={() => setSignalFilter(s.key)}
-            className={`shrink-0 px-3 py-1.5 rounded-xl text-[13px] sm:text-[13px] border transition inline-flex items-center gap-1.5 ${
+            className={`shrink-0 px-2.5 py-1 rounded-lg text-[12px] sm:text-[13px] border transition inline-flex items-center gap-1.5 ${
               signalFilter === s.key
                 ? "bg-white/[0.08] border-white/[0.15] text-white font-medium"
                 : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:border-white/[0.12]"
@@ -337,12 +337,12 @@ function StocksPageInner() {
       </div>
 
       {/* 필터 바 (투자자/기간/정렬) — 모바일 가로 스크롤, 데스크톱 wrap */}
-      <div className="flex sm:flex-wrap gap-2 items-center overflow-x-auto sm:overflow-x-visible no-scrollbar">
+      <div className="flex sm:flex-wrap gap-1.5 sm:gap-2 items-center overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {signalFilter === "all" && (
             <select
               value={investor}
               onChange={(e) => setInvestor(e.target.value as Investor)}
-              className="shrink-0 bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
+              className="shrink-0 bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
             >
               {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -357,13 +357,13 @@ function StocksPageInner() {
             <>
             <button
               onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
             >
               {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
             </button>
             <button
               onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
-              className={`shrink-0 whitespace-nowrap border rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] transition cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap border rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] transition cursor-pointer ${
                 sortBy === "ratio"
                   ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
                   : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"

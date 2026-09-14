@@ -88,10 +88,14 @@ select optgroup {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* 모바일이 방문자의 64% (iOS 35% / Android 29%).
-   터치 타깃은 최소 40px 을 확보한다. */
+   다만 40px 일괄 적용은 필터 칩까지 키워서 화면 위쪽을 필터가 차지했다.
+   칩은 36px 로 두고(충분히 눌린다), 주요 동작 버튼만 44px 을 준다. */
 @media (max-width: 640px) {
   button, a[role="button"], select {
-    min-height: 40px;
+    min-height: 36px;
+  }
+  button[data-primary], a[data-primary] {
+    min-height: 44px;
   }
 }
 
