@@ -58,12 +58,14 @@ jobs:
         run: python scripts/generate_report.py
         continue-on-error: true
 
-      # 텔레그램은 사용자 요청으로 중단. 되살리려면 주석만 풀면 된다.
-      # - name: Send Telegram
-      #   env:
-      #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      #     TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-      #   run: python scripts/send_telegram.py
+      # 리포트가 실패한 날에도 수급 요약은 보낼 가치가 있으므로 리포트 스텝과
+      # 독립적으로 돌린다. 발송 실패가 데이터 커밋을 막아서도 안 된다.
+      - name: Send Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: python scripts/send_telegram.py
+        continue-on-error: true
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
       - name: Build V3 signals
