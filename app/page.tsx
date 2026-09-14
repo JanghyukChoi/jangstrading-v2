@@ -643,8 +643,12 @@ export default function Dashboard() {
         <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)]">외국인·기관이 어디에 돈을 넣고 있는지, 어떤 종목이 주도하는지 한눈에</p>
         {meta && (
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            기준일 {meta.business_date} {(() => {
+            기준일 {meta.business_date ?? ""} {(() => {
+            // meta.json 의 필드가 비어도 페이지 전체가 죽지 않게 한다.
+            // (last_updated 가 undefined 였을 때 .includes 에서 TypeError 가 나
+            //  홈이 통째로 렌더링 실패한 적이 있다)
             const t = meta.last_updated;
+            if (typeof t !== "string" || t === "") return "";
             if (t.includes("시")) return t;
             try {
               const d = new Date(t);

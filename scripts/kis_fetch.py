@@ -642,12 +642,20 @@ def main():
     out_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     print(f"  stock-rankings.json ({out_path.stat().st_size/1024:.1f} KB, {len(results)}종목)")
 
+    # 필드명을 바꾸면 안 된다. app/page.tsx:646-647 이 meta.business_date 와
+    # meta.last_updated 를 직접 읽고, last_updated 에 .includes() 를 호출한다.
+    # (한 번 date/updated_at 으로 바꿨다가 홈 전체가 TypeError 로 죽었다)
+    now = datetime.now()
+    hour = now.hour
+    ampm = "오전" if hour < 12 else "오후"
+    hour12 = hour if hour <= 12 else hour - 12
     meta_path = DATA_DIR / "meta.json"
     meta_path.write_text(
         json.dumps(
             {
-                "date": date_iso,
-                "updated_at": datetime.now().isoformat(timespec="seconds"),
+                "last_updated": f"{ampm} {hour12 or 12}시 {now.minute:02d}분",
+                "business_date": date_iso,
+                "version": "2.0",
                 "count": len(results),
                 "source": "KIS Open API",
             },
