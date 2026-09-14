@@ -13,7 +13,10 @@ export const dynamic = "force-static";
 interface Flow { foreign: number; institution: number; individual: number }
 interface MarketData {
   index: number | null;
+  /** 전일 대비 지수 포인트 (예: -124.01) */
   change: number | null;
+  /** 전일 대비 등락률 % (예: -1.76) */
+  change_pct: number | null;
   flow: Record<string, Flow>;
 }
 interface StockRanking {
@@ -178,9 +181,9 @@ function IndexCard({ name, data }: { name: string; data: MarketData | null }) {
     <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm text-[var(--text-secondary)]">{name}</span>
-        {data.change != null && (
-          <span className={`num text-sm ${data.change > 0 ? "positive" : data.change < 0 ? "negative" : ""}`}>
-            {data.change > 0 ? "+" : ""}{data.change.toFixed(2)}%
+        {data.change_pct != null && (
+          <span className={`num text-sm ${data.change_pct > 0 ? "positive" : data.change_pct < 0 ? "negative" : ""}`}>
+            {data.change_pct > 0 ? "+" : ""}{data.change_pct.toFixed(2)}%
           </span>
         )}
       </div>
