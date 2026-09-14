@@ -281,7 +281,7 @@ function StocksPageInner() {
           <div className="h-8 w-24 bg-white/[0.04] rounded-xl animate-pulse" />
         </div>
         {/* 테이블 스켈레톤 */}
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 space-y-3">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-4 space-y-3">
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between gap-3 py-1">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -342,7 +342,7 @@ function StocksPageInner() {
             <select
               value={investor}
               onChange={(e) => setInvestor(e.target.value as Investor)}
-              className="shrink-0 bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
+              className="shrink-0 bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
             >
               {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -357,7 +357,7 @@ function StocksPageInner() {
             <>
             <button
               onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
             >
               {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
             </button>
@@ -399,7 +399,7 @@ function StocksPageInner() {
       )}
 
       {/* 테이블 + 모바일 카드 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
         {/* 데스크톱 테이블 */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-[13px] sm:text-[14px]">

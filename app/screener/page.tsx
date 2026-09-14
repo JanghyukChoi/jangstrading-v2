@@ -276,7 +276,7 @@ function ScreenerInner() {
       </div>
 
       {/* 프리셋 (시작점 제공) */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-3 sm:p-4">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-3 sm:p-4">
         <div className="flex items-baseline justify-between mb-2">
           <span className="text-[13px] sm:text-[13px] font-medium text-[var(--text-secondary)]">조건 프리셋 (시작값, 자유롭게 수정 가능)</span>
         </div>
@@ -300,7 +300,7 @@ function ScreenerInner() {
       </div>
 
       {/* 조건 입력 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-3 sm:p-4 space-y-3">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-3 sm:p-4 space-y-3">
         <span className="text-[13px] sm:text-[13px] font-medium text-[var(--text-secondary)]">검색 조건</span>
 
         {/* 1행: 시장 / 기간 */}
@@ -414,7 +414,7 @@ function ScreenerInner() {
       </div>
 
       {/* 결과 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl">
+      <div className="bg-[var(--bg-card)] rounded-2xl">
         <div className="px-3 sm:px-4 py-3 border-b border-white/[0.06] flex items-baseline justify-between">
           <h3 className="text-[14px] sm:text-[15px] font-semibold text-white">
             검색 결과 <span className="num text-[var(--text-secondary)] font-normal">{filtered.length.toLocaleString()}</span>

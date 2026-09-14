@@ -63,7 +63,7 @@ export default function ReportsPage() {
       </div>
 
       {reports.length === 0 ? (
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-8 text-center">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-8 text-center">
           <p className="text-[var(--text-muted)] text-sm">아직 생성된 리포트가 없습니다.</p>
           <p className="text-[var(--text-muted)] text-xs mt-1">평일 오후 5시경 자동 생성됩니다.</p>
         </div>
@@ -104,7 +104,7 @@ export default function ReportsPage() {
                   <Link
                     key={r.date}
                     href={`/reports/${r.date}`}
-                    className="flex items-start gap-3 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-5 py-4 hover:bg-white/[0.02] transition"
+                    className="flex items-start gap-3 bg-[var(--bg-card)] rounded-2xl px-5 py-4 hover:bg-white/[0.02] transition"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1.5">

@@ -158,7 +158,7 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
       {/* 섹터 실적 vs 가격 (펀더멘털) */}
       <SectorFundamentals sectorName={sectorName} />
 
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
         <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-3">섹터 내 포지션 분석</h3>
         <div className="flex flex-wrap gap-3">
           {[
@@ -177,13 +177,13 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
 
       <div className="flex flex-wrap gap-2 items-center">
         <select value={investor} onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer">
+          className="bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer">
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <FilterGroup options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))} value={period} onChange={setPeriod} />
       </div>
 
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
         <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="flex-1 min-w-0">종목</span>

@@ -81,7 +81,7 @@ function NumUnit({ v, cls = "" }: { v: number; cls?: string }) {
 function MetricCard({ label, value, unit }: { label: string; value: string | null; unit?: string }) {
   const m = value?.match(/^(.+?)([가-힣]+)$/);
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl p-3 sm:p-4 text-center">
+    <div className="bg-[var(--bg-card)] rounded-xl p-3 sm:p-4 text-center">
       <div className="text-[12px] sm:text-[13px] text-[var(--text-muted)] mb-1.5">{label}</div>
       <div className="text-sm sm:text-lg font-semibold text-white truncate">
         {value == null ? (
@@ -124,7 +124,7 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
 
   if (loading) {
     return (
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
         <div className="h-6 w-40 bg-white/[0.04] rounded animate-pulse mb-3" />
         <div className="h-60 bg-white/[0.04] rounded animate-pulse" />
       </div>
@@ -196,7 +196,7 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
   ];
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
       <div className="flex items-baseline justify-between gap-2 mb-4 flex-wrap">
         <div>
           <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">외국인·기관 누적 순매수</h3>
@@ -365,7 +365,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
       {/* 업종 · 테마 */}
       {(stockData.sector || stockThemes.length > 0) && (
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-4">업종 · 테마 분류</h3>
 
           <div className="flex flex-wrap gap-2">
@@ -413,7 +413,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
 
       {/* 추정 평균단가 */}
       {stockData.avg_cost && (stockData.avg_cost.foreign || stockData.avg_cost.institution) && (
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">추정 평균단가</h3>
           <p className="text-[12px] text-[var(--text-muted)] mb-4">최근 6개월 이동평균 원가법 기준 · 현재가 {stockData.avg_cost.price.toLocaleString()}원</p>
 
@@ -504,7 +504,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         const total = entries.reduce((sum, [, v]) => sum + v, 0);
 
         return (
-          <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+          <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
             <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기관 세부 주체별 순매수</h3>
             <p className="text-[12px] text-[var(--text-muted)] mb-3">기관 합계 {fmtUnit(total)}</p>
             {isNested && (
@@ -540,7 +540,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       })()}
 
       {/* 상세 테이블 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
         <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기간별 수급 vs 주가</h3>
         <p className="text-[12px] text-[var(--text-muted)] mb-3">같은 기간 수급 금액과 주가 변동률을 비교하여 수급 대비 주가 반응을 확인</p>
         <table className="w-full text-[13px] sm:text-[14px]">

@@ -71,7 +71,7 @@ function IndexCard({ name, data }: { name: string; data: MarketData | null }) {
   if (!data) return null;
   const f = data.flow?.["1d"];
   return (
-    <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+    <div className="flex-1 min-w-0 bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm text-[var(--text-secondary)]">{name}</span>
         {data.change_pct != null && (
@@ -195,7 +195,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
     <>
       {/* 주도 섹터 & 주도주 */}
       {data.sectorLeaders.length > 0 && (
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
             <h4 className="text-[14px] sm:text-[15px] font-semibold text-white">주도 섹터 & 주도주</h4>
             <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
@@ -224,7 +224,7 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
 
       {/* 연기금 집중 */}
       {data.pensionTop.length > 0 && (
-        <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
             <h4 className="text-[14px] sm:text-[15px] font-semibold text-white">연기금 집중</h4>
             <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
@@ -289,7 +289,7 @@ function MarketSignals() {
 
   if (loading || !data) {
     return (
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
         <div className="h-6 w-40 bg-white/[0.04] rounded animate-pulse mb-4" />
         <div className="space-y-3">
           <div className="h-12 bg-white/[0.04] rounded animate-pulse" />
@@ -328,7 +328,7 @@ function MarketSignals() {
   };
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
           <div className="text-[13px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
@@ -356,7 +356,7 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
     .slice(0, 10);
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
       <h3 className="text-[14px] sm:text-[15px] font-semibold text-white">{title}</h3>
       <p className="text-[12px] text-[var(--text-muted)] mb-3">{desc}</p>
       <div className="space-y-0">
@@ -385,10 +385,9 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
 /* ── 섹션 헤더 ────────────────────────────────── */
 function SectionHeader({ title, desc }: { title: string; desc?: string }) {
   return (
-    <div className="mb-4">
-      <h2 className="text-[20px] sm:text-[20px] font-semibold text-white tracking-tight leading-tight">{title}</h2>
-      {desc && <p className="text-[13px] text-[var(--text-muted)] mt-1.5">{desc}</p>}
-      <div className="h-px bg-white/[0.1] mt-3" />
+    <div className="mb-5">
+      <h2 className="text-[21px] sm:text-[24px] font-bold text-white tracking-tight leading-tight">{title}</h2>
+      {desc && <p className="text-[13px] sm:text-[14px] text-[var(--text-muted)] mt-1.5">{desc}</p>}
     </div>
   );
 }
@@ -422,7 +421,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-12 sm:space-y-14">
         {/* Intro 스켈레톤 */}
         <div className="space-y-2">
           <div className="h-3 w-80 max-w-full bg-white/[0.04] rounded animate-pulse" />

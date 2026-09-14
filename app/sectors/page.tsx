@@ -33,7 +33,7 @@ interface SectorData {
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-type View = "large" | "mid" | "theme";
+type View = "large" | "mid";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function fmtUnit(n: number) {
@@ -151,20 +151,20 @@ function SectorTopList({ sectors, investor, periodLabel, view }: {
     return { positives: pos, negatives: neg };
   }, [sectors, investor]);
 
-  const groupLabel = view === "theme" ? "테마" : view === "mid" ? "중분류 섹터" : "대분류 섹터";
+  const groupLabel = view === "mid" ? "중분류 섹터" : "대분류 섹터";
   // 대분류는 10개뿐이라 매수/매도 둘 다 표시. 중분류·테마는 매수만.
   const showNegatives = view === "large";
 
   if (positives.length === 0 && (!showNegatives || negatives.length === 0)) {
     return (
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-6 text-center">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-6 text-center">
         <p className="text-[13px] text-[var(--text-muted)]">표시할 {groupLabel} 데이터가 없습니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
+    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
       <div className="flex items-baseline gap-2 mb-1">
         <h3 className="text-[14px] sm:text-[15px] font-semibold text-white tracking-tight">
           {showNegatives ? `${groupLabel} 수급 현황` : "순매수 상위"}
@@ -176,7 +176,7 @@ function SectorTopList({ sectors, investor, periodLabel, view }: {
       </p>
 
       {showNegatives ? (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <TopListSection items={positives} label="매수 우위" color="red" />
           {negatives.length > 0 && <TopListSection items={negatives} label="매도 우위" color="blue" />}
         </div>
@@ -192,7 +192,6 @@ function SectorsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
-  const [themeMap, setThemeMap] = useState<Record<string, string[]>>({});
   const [meta, setMeta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [view, setViewState] = useState<View>((searchParams.get("view") as View) || "large");
@@ -228,9 +227,8 @@ function SectorsPageInner() {
     Promise.all([
       fetch("/data/stock-rankings.json").then((r) => r.json()),
       fetch("/data/meta.json").then((r) => r.json()),
-      fetch("/data/theme-map.json").then((r) => r.json()).catch(() => ({})),
     ])
-      .then(([s, m, t]) => { setAllStocks(s.data); setMeta(m); setThemeMap(t); })
+      .then(([s, m]) => { setAllStocks(s.data); setMeta(m); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -238,44 +236,23 @@ function SectorsPageInner() {
   const sectors = useMemo(() => {
     const map: Record<string, { foreign: number; institution: number; combined: number; pension: number; totalCap: number; weightedReturnSum: number; count: number }> = {};
 
-    if (view === "theme") {
-      const tickerIndex: Record<string, StockRanking> = {};
-      for (const s of allStocks) {
-        if (s.ticker) tickerIndex[s.ticker] = s;
-      }
-      for (const [themeName, tickers] of Object.entries(themeMap)) {
-        if (!map[themeName]) map[themeName] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
-        for (const ticker of tickers) {
-          const s = tickerIndex[ticker];
-          if (!s) continue;
-          const cap = s.market_cap ?? 0;
-          const pc = s.price_change?.[period] ?? 0;
-          map[themeName].foreign += s.foreign[period] ?? 0;
-          map[themeName].institution += s.institution[period] ?? 0;
-          map[themeName].combined += s.combined[period] ?? 0;
-          map[themeName].pension += s.pension?.[period] ?? 0;
-          map[themeName].totalCap += cap;
-          map[themeName].weightedReturnSum += pc * cap;
-          map[themeName].count++;
-        }
-      }
-    } else {
-      const groupKey = view === "large" ? "sector" : "sector_mid";
-      for (const s of allStocks) {
-        const key = (s as any)[groupKey] || s.sector || "기타";
-        if (key === "기타") continue;
-        if (!map[key]) map[key] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
-        const cap = s.market_cap ?? 0;
-        const pc = s.price_change?.[period] ?? 0;
-        map[key].foreign += s.foreign[period] ?? 0;
-        map[key].institution += s.institution[period] ?? 0;
-        map[key].combined += s.combined[period] ?? 0;
-        map[key].pension += s.pension?.[period] ?? 0;
-        map[key].totalCap += cap;
-        map[key].weightedReturnSum += pc * cap;
-        map[key].count++;
-      }
+    const groupKey = view === "large" ? "sector" : "sector_mid";
+    for (const s of allStocks) {
+      const key = (s as any)[groupKey] || s.sector || "기타";
+      if (key === "기타") continue;
+      if (!map[key]) map[key] = { foreign: 0, institution: 0, combined: 0, pension: 0, totalCap: 0, weightedReturnSum: 0, count: 0 };
+      const cap = s.market_cap ?? 0;
+      const pc = s.price_change?.[period] ?? 0;
+      map[key].foreign += s.foreign[period] ?? 0;
+      map[key].institution += s.institution[period] ?? 0;
+      map[key].combined += s.combined[period] ?? 0;
+      map[key].pension += s.pension?.[period] ?? 0;
+      map[key].totalCap += cap;
+      map[key].weightedReturnSum += pc * cap;
+      map[key].count++;
     }
+  
+
 
     const result: SectorData[] = Object.entries(map)
       .filter(([, data]) => data.count > 0)
@@ -301,7 +278,7 @@ function SectorsPageInner() {
       return bv - av;
     });
     return result;
-  }, [allStocks, themeMap, investor, period, sortBy, view]);
+  }, [allStocks, investor, period, sortBy, view]);
 
   const maxVal = sectors.length > 0 ? Math.max(...sectors.map((s) => Math.abs(
     investor === "foreign" ? s.foreign : investor === "institution" ? s.institution : investor === "pension" ? s.pension : s.combined
@@ -346,17 +323,9 @@ function SectorsPageInner() {
           >
             중분류
           </button>
-          <button
-            onClick={() => setView("theme")}
-            className={`px-4 py-2 text-[14px] font-medium transition ${
-              view === "theme" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
-            }`}
-          >
-            테마
-          </button>
         </div>
         <span className="text-[13px] text-[var(--text-muted)]">
-          {view === "large" ? `${sectors.length}개 산업 섹터` : view === "mid" ? `${sectors.length}개 세부 업종` : `${sectors.length}개 테마`}
+          {view === "large" ? `${sectors.length}개 산업 섹터` : `${sectors.length}개 세부 업종`}
         </span>
       </div>
 
@@ -365,7 +334,7 @@ function SectorsPageInner() {
         <select
           value={investor}
           onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
+          className="bg-[var(--bg-card)] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
         >
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -387,15 +356,8 @@ function SectorsPageInner() {
       </div>
       {/* /Sticky 필터 영역 */}
 
-      {/* 수급 RRG (대분류/중분류 — 테마 탭 제외) */}
-
-      {/* 섹터 순매수 TOP 리스트 (테마 탭만 — 대분류/중분류는 위 RRG가 대체) */}
-      {view === "theme" && (
-        <SectorTopList sectors={sectors} investor={investor} periodLabel={periodLabels[period]} view={view} />
-      )}
-
       {/* 테이블 */}
-      <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
+      <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
           <span className="w-8 shrink-0 hidden sm:block">#</span>

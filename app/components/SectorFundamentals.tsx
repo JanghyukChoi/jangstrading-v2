@@ -141,7 +141,7 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
   const fmtX = (d: string) => d.slice(2, 4) + "." + d.slice(5, 7);
 
   return (
-    <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5 mb-6">
+    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-5 mb-6">
       {/* 헤더 */}
       <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
         <div>
