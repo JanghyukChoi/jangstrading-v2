@@ -125,24 +125,24 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-5 sm:p-8">
         {/* 메타 */}
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] text-[var(--text-muted)] num">{report.date}</span>
-          <span className="text-[10px] text-[var(--text-muted)]">·</span>
-          <span className="text-[10px] text-[var(--text-muted)]">뉴스 {report.news_count}건 참고</span>
-          <span className="text-[10px] text-[var(--text-muted)]">·</span>
-          <span className="text-[10px] text-[var(--text-muted)]">AI 자동 생성</span>
+          <span className="text-[13px] text-[var(--text-muted)] num">{report.date}</span>
+          <span className="text-[12px] text-[var(--text-muted)]">·</span>
+          <span className="text-[12px] text-[var(--text-muted)]">뉴스 {report.news_count}건 참고</span>
+          <span className="text-[12px] text-[var(--text-muted)]">·</span>
+          <span className="text-[12px] text-[var(--text-muted)]">AI 자동 생성</span>
         </div>
 
         {/* 제목 */}
         <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug mb-6">{report.title}</h1>
 
         {/* 본문 */}
-        <div className="text-[14px] sm:text-[15px] text-[var(--text-secondary)] leading-[1.85] whitespace-pre-line">
+        <div className="text-[15px] sm:text-[16px] text-[var(--text-secondary)] leading-[1.85] whitespace-pre-line">
           {linkifyStocks(report.body, stocks)}
         </div>
 
         {/* 면책 */}
         <div className="mt-8 pt-4 border-t border-white/[0.04]">
-          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+          <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
             본 시황 분석은 AI가 수급 데이터와 뉴스를 기반으로 자동 생성한 참고 자료이며, 투자 권유나 추천이 아닙니다.
             투자 판단의 책임은 투자자 본인에게 있습니다.
           </p>
@@ -157,9 +157,9 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
               href={`/reports/${olderReport.date}`}
               className="group flex flex-col gap-1 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-4 py-3.5 hover:border-white/[0.15] transition min-w-0"
             >
-              <span className="text-[11px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">← 이전 시황</span>
-              <span className="text-[12px] sm:text-[13px] text-white font-medium line-clamp-1">{olderReport.title}</span>
-              <span className="text-[10px] text-[var(--text-muted)] num">{olderReport.date}</span>
+              <span className="text-[13px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">← 이전 시황</span>
+              <span className="text-[13px] sm:text-[14px] text-white font-medium line-clamp-1">{olderReport.title}</span>
+              <span className="text-[12px] text-[var(--text-muted)] num">{olderReport.date}</span>
             </Link>
           ) : <div />}
           {newerReport ? (
@@ -167,9 +167,9 @@ export default function ReportDetailPage({ params }: { params: Promise<{ date: s
               href={`/reports/${newerReport.date}`}
               className="group flex flex-col gap-1 bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl px-4 py-3.5 hover:border-white/[0.15] transition min-w-0 text-right"
             >
-              <span className="text-[11px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">다음 시황 →</span>
-              <span className="text-[12px] sm:text-[13px] text-white font-medium line-clamp-1">{newerReport.title}</span>
-              <span className="text-[10px] text-[var(--text-muted)] num">{newerReport.date}</span>
+              <span className="text-[13px] text-[var(--text-muted)] group-hover:text-[var(--accent-blue)] transition">다음 시황 →</span>
+              <span className="text-[13px] sm:text-[14px] text-white font-medium line-clamp-1">{newerReport.title}</span>
+              <span className="text-[12px] text-[var(--text-muted)] num">{newerReport.date}</span>
             </Link>
           ) : <div />}
         </div>

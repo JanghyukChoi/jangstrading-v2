@@ -265,35 +265,35 @@ function ScreenerInner() {
       {/* 헤더 */}
       <div className="flex items-baseline justify-between gap-2">
         <div>
-          <h2 className="text-[16px] sm:text-[18px] font-semibold text-white">스크리너</h2>
-          <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+          <h2 className="text-[17px] sm:text-[20px] font-semibold text-white">스크리너</h2>
+          <p className="text-[13px] text-[var(--text-muted)] mt-0.5">
             조건을 직접 설정해서 종목을 발굴하세요. KRX 공시 데이터 기반.
           </p>
         </div>
         {meta?.date && (
-          <span className="text-[10px] text-[var(--text-muted)] num shrink-0">{meta.date} 기준</span>
+          <span className="text-[12px] text-[var(--text-muted)] num shrink-0">{meta.date} 기준</span>
         )}
       </div>
 
       {/* 프리셋 (시작점 제공) */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-3 sm:p-4">
         <div className="flex items-baseline justify-between mb-2">
-          <span className="text-[11px] sm:text-[12px] font-medium text-[var(--text-secondary)]">조건 프리셋 (시작값, 자유롭게 수정 가능)</span>
+          <span className="text-[13px] sm:text-[13px] font-medium text-[var(--text-secondary)]">조건 프리셋 (시작값, 자유롭게 수정 가능)</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <button onClick={() => applyPreset("longterm")} className="px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition text-[11px]">
+          <button onClick={() => applyPreset("longterm")} className="px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition text-[13px]">
             장기 보유 후보
           </button>
-          <button onClick={() => applyPreset("shortterm")} className="px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition text-[11px]">
+          <button onClick={() => applyPreset("shortterm")} className="px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 transition text-[13px]">
             단기 모멘텀
           </button>
-          <button onClick={() => applyPreset("value")} className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition text-[11px]">
+          <button onClick={() => applyPreset("value")} className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition text-[13px]">
             저PER + 매수세
           </button>
-          <button onClick={() => applyPreset("pension")} className="px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition text-[11px]">
+          <button onClick={() => applyPreset("pension")} className="px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition text-[13px]">
             연기금 매집
           </button>
-          <button onClick={resetFilters} className="px-3 py-1.5 rounded-lg bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] transition text-[11px] ml-auto">
+          <button onClick={resetFilters} className="px-3 py-1.5 rounded-lg bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] transition text-[13px] ml-auto">
             초기화
           </button>
         </div>
@@ -301,16 +301,16 @@ function ScreenerInner() {
 
       {/* 조건 입력 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-3 sm:p-4 space-y-3">
-        <span className="text-[11px] sm:text-[12px] font-medium text-[var(--text-secondary)]">검색 조건</span>
+        <span className="text-[13px] sm:text-[13px] font-medium text-[var(--text-secondary)]">검색 조건</span>
 
         {/* 1행: 시장 / 기간 */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-[10px] text-[var(--text-muted)] mb-1">시장</label>
+            <label className="block text-[12px] text-[var(--text-muted)] mb-1">시장</label>
             <select
               value={filters.market}
               onChange={(e) => updateFilter("market", e.target.value as Filters["market"])}
-              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-[var(--accent-blue)]"
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-[var(--accent-blue)]"
             >
               <option value="ALL">전체</option>
               <option value="KOSPI">KOSPI</option>
@@ -318,11 +318,11 @@ function ScreenerInner() {
             </select>
           </div>
           <div>
-            <label className="block text-[10px] text-[var(--text-muted)] mb-1">기간</label>
+            <label className="block text-[12px] text-[var(--text-muted)] mb-1">기간</label>
             <select
               value={filters.period}
               onChange={(e) => updateFilter("period", e.target.value as Period)}
-              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-[var(--accent-blue)]"
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-[var(--accent-blue)]"
             >
               <option value="1d">1일</option>
               <option value="1w">1주</option>
@@ -385,11 +385,11 @@ function ScreenerInner() {
         {/* 정렬 옵션 */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           <div>
-            <label className="block text-[10px] text-[var(--text-muted)] mb-1">정렬 기준</label>
+            <label className="block text-[12px] text-[var(--text-muted)] mb-1">정렬 기준</label>
             <select
               value={filters.sortBy}
               onChange={(e) => updateFilter("sortBy", e.target.value as Filters["sortBy"])}
-              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-[var(--accent-blue)]"
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-[var(--accent-blue)]"
             >
               <option value="combined">외인+기관 합계</option>
               <option value="foreign">외국인 순매수</option>
@@ -400,11 +400,11 @@ function ScreenerInner() {
             </select>
           </div>
           <div>
-            <label className="block text-[10px] text-[var(--text-muted)] mb-1">정렬 방향</label>
+            <label className="block text-[12px] text-[var(--text-muted)] mb-1">정렬 방향</label>
             <select
               value={filters.sortDir}
               onChange={(e) => updateFilter("sortDir", e.target.value as Filters["sortDir"])}
-              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-[var(--accent-blue)]"
+              className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-[var(--accent-blue)]"
             >
               <option value="desc">큰 순서</option>
               <option value="asc">작은 순서</option>
@@ -416,20 +416,20 @@ function ScreenerInner() {
       {/* 결과 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl">
         <div className="px-3 sm:px-4 py-3 border-b border-white/[0.06] flex items-baseline justify-between">
-          <h3 className="text-[13px] sm:text-[14px] font-semibold text-white">
+          <h3 className="text-[14px] sm:text-[15px] font-semibold text-white">
             검색 결과 <span className="num text-[var(--text-secondary)] font-normal">{filtered.length.toLocaleString()}</span>
-            <span className="text-[11px] text-[var(--text-muted)] font-normal ml-1">종목</span>
+            <span className="text-[13px] text-[var(--text-muted)] font-normal ml-1">종목</span>
           </h3>
           {totalPages > 1 && (
-            <span className="text-[10px] text-[var(--text-muted)] num">{page + 1} / {totalPages}</span>
+            <span className="text-[12px] text-[var(--text-muted)] num">{page + 1} / {totalPages}</span>
           )}
         </div>
 
         {/* 데스크톱 테이블 */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-[12px] sm:text-[13px]">
+          <table className="w-full text-[13px] sm:text-[14px]">
             <thead>
-              <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
+              <tr className="text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06]">
                 <th className="text-left px-3 sm:px-5 py-3 font-normal w-8">#</th>
                 <th className="text-left px-2 sm:px-3 py-3 font-normal">종목</th>
                 <th className="text-left px-2 py-3 font-normal w-14">시장</th>
@@ -458,7 +458,7 @@ function ScreenerInner() {
                       )}
                     </td>
                     <td className="px-2 py-2.5">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
+                      <span className={`text-[12px] px-2 py-0.5 rounded-md font-medium ${
                         s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
                       }`}>{s.market}</span>
                     </td>
@@ -493,13 +493,13 @@ function ScreenerInner() {
             const inner = (
               <div className="px-4 py-3">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[var(--text-muted)] num text-[11px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
-                  <span className="text-white font-medium text-[14px] flex-1 truncate">{s.name}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
+                  <span className="text-[var(--text-muted)] num text-[13px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
+                  <span className="text-white font-medium text-[15px] flex-1 truncate">{s.name}</span>
+                  <span className={`text-[12px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
                     s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
                   }`}>{s.market}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] pl-7">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[13px] pl-7">
                   <div className="flex justify-between">
                     <span className="text-[var(--text-muted)]">합계</span>
                     <CNum v={s.combined[filters.period]} />
@@ -544,7 +544,7 @@ function ScreenerInner() {
         </div>
 
         {filtered.length === 0 && (
-          <div className="px-4 py-12 text-center text-[var(--text-muted)] text-[12px]">
+          <div className="px-4 py-12 text-center text-[var(--text-muted)] text-[13px]">
             조건에 맞는 종목이 없습니다. 조건을 완화해보세요.
           </div>
         )}
@@ -555,17 +555,17 @@ function ScreenerInner() {
             <button
               onClick={() => setPage(Math.max(0, page - 1))}
               disabled={page === 0}
-              className="px-3 py-1.5 rounded-lg text-[11px] bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed transition"
+              className="px-3 py-1.5 rounded-lg text-[13px] bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed transition"
             >
               이전
             </button>
-            <span className="text-[11px] text-[var(--text-muted)] px-2 num">
+            <span className="text-[13px] text-[var(--text-muted)] px-2 num">
               {page + 1} / {totalPages}
             </span>
             <button
               onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 rounded-lg text-[11px] bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed transition"
+              className="px-3 py-1.5 rounded-lg text-[13px] bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed transition"
             >
               다음
             </button>
@@ -590,7 +590,7 @@ function NumInput({ label, value, onChange, placeholder, allowNegative = false }
   }, [value, allowNegative]);
   return (
     <div>
-      <label className="block text-[10px] text-[var(--text-muted)] mb-1">{label}</label>
+      <label className="block text-[12px] text-[var(--text-muted)] mb-1">{label}</label>
       <input
         type="text"
         inputMode="decimal"
@@ -611,7 +611,7 @@ function NumInput({ label, value, onChange, placeholder, allowNegative = false }
           const n = parseFloat(v);
           if (!isNaN(n)) onChange(n);
         }}
-        className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[12px] text-white outline-none focus:border-[var(--accent-blue)] num"
+        className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-[13px] text-white outline-none focus:border-[var(--accent-blue)] num"
       />
     </div>
   );

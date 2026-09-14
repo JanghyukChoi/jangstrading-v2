@@ -86,14 +86,14 @@ function IndexCard({ name, data }: { name: string; data: MarketData | null }) {
           {([["외국인", f.foreign], ["기관", f.institution], ["개인", f.individual]] as const).map(
             ([label, val]) => (
               <div key={label} className="text-center">
-                <div className="text-[10px] text-[var(--text-muted)] mb-1">{label}</div>
-                <div className="text-[11px] sm:text-xs"><CNum v={val as number} /></div>
+                <div className="text-[12px] text-[var(--text-muted)] mb-1">{label}</div>
+                <div className="text-[13px] sm:text-xs"><CNum v={val as number} /></div>
               </div>
             )
           )}
         </div>
       )}
-      <div className="text-[9px] text-[var(--text-muted)] mt-2 text-center">당일 순매수</div>
+      <div className="text-[11px] text-[var(--text-muted)] mt-2 text-center">당일 순매수</div>
     </div>
   );
 }
@@ -197,21 +197,21 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.sectorLeaders.length > 0 && (
         <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">주도 섹터 & 주도주</h4>
-            <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
+            <h4 className="text-[14px] sm:text-[15px] font-semibold text-white">주도 섹터 & 주도주</h4>
+            <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
           <div className="space-y-3">
             {data.sectorLeaders.map((s) => (
               <div key={s.name}>
                 <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 mb-1.5 group">
-                  <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
-                  <NumUnit v={s.total} cls="text-[11px] positive" />
+                  <span className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
+                  <NumUnit v={s.total} cls="text-[13px] positive" />
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
                 </Link>
                 <div className="flex flex-wrap gap-1.5">
                   {s.leaders.map((st) => (
                     <Link key={st.name} href={st.ticker ? `/stocks/${st.ticker}` : "#"}
-                      className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
+                      className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[13px] sm:text-[13px]">
                       <span className="text-white font-medium">{st.name}</span>
                     </Link>
                   ))}
@@ -226,15 +226,15 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.pensionTop.length > 0 && (
         <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">연기금 집중</h4>
-            <span className="text-[10px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
+            <h4 className="text-[14px] sm:text-[15px] font-semibold text-white">연기금 집중</h4>
+            <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.pensionTop.map((s) => (
               <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[11px] sm:text-[12px]">
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[13px] sm:text-[13px]">
                 <span className="text-white font-medium">{s.name}</span>
-                <NumUnit v={s.pension?.[data.pensionPeriod] ?? 0} cls="text-[10px] positive" />
+                <NumUnit v={s.pension?.[data.pensionPeriod] ?? 0} cls="text-[12px] positive" />
               </Link>
             ))}
           </div>
@@ -314,15 +314,15 @@ function MarketSignals() {
 
   const renderStreak = (label: string, days: number, amount: number) => {
     const direction = days > 0 ? "매수" : days < 0 ? "매도" : "관망";
-    const color = days > 0 ? "text-[#f85149]" : days < 0 ? "text-[#58a6ff]" : "text-[var(--text-muted)]";
+    const color = days > 0 ? "text-[#f04251]" : days < 0 ? "text-[#3485fa]" : "text-[var(--text-muted)]";
     const prefix = days !== 0 ? "연속 " : "";
     return (
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[12px] text-white font-medium w-12 shrink-0">{label}</span>
-        <span className={`text-[12px] sm:text-[13px] font-semibold ${color}`}>
+        <span className="text-[13px] text-white font-medium w-12 shrink-0">{label}</span>
+        <span className={`text-[13px] sm:text-[14px] font-semibold ${color}`}>
           {prefix}{direction} <span className="num">{Math.abs(days)}</span>일
         </span>
-        <span className={`text-[10px] sm:text-[11px] num ml-auto ${color}`}>{fmtAmount(amount)}</span>
+        <span className={`text-[12px] sm:text-[13px] num ml-auto ${color}`}>{fmtAmount(amount)}</span>
       </div>
     );
   };
@@ -331,14 +331,14 @@ function MarketSignals() {
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-blue-500/[0.04] border border-blue-500/[0.1] rounded-xl p-3">
-          <div className="text-[11px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
+          <div className="text-[13px] font-semibold text-blue-400 mb-2.5">KOSPI</div>
           <div className="space-y-2">
             {renderStreak("외국인", trend.kospi.foreign_streak_days, trend.kospi.foreign_streak_amount)}
             {renderStreak("기관", trend.kospi.inst_streak_days, trend.kospi.inst_streak_amount)}
           </div>
         </div>
         <div className="bg-purple-500/[0.04] border border-purple-500/[0.1] rounded-xl p-3">
-          <div className="text-[11px] font-semibold text-purple-400 mb-2.5">KOSDAQ</div>
+          <div className="text-[13px] font-semibold text-purple-400 mb-2.5">KOSDAQ</div>
           <div className="space-y-2">
             {renderStreak("외국인", trend.kosdaq.foreign_streak_days, trend.kosdaq.foreign_streak_amount)}
             {renderStreak("기관", trend.kosdaq.inst_streak_days, trend.kosdaq.inst_streak_amount)}
@@ -357,22 +357,22 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
-      <h3 className="text-[13px] sm:text-[14px] font-semibold text-white">{title}</h3>
-      <p className="text-[10px] text-[var(--text-muted)] mb-3">{desc}</p>
+      <h3 className="text-[14px] sm:text-[15px] font-semibold text-white">{title}</h3>
+      <p className="text-[12px] text-[var(--text-muted)] mb-3">{desc}</p>
       <div className="space-y-0">
         {sorted.map((s, i) => (
           <div key={s.name} className="flex items-center gap-2 py-2.5 border-t border-white/[0.03] first:border-0">
             <span className="text-[var(--text-muted)] num text-xs w-5 shrink-0 text-center">{i + 1}</span>
             <div className="flex-1 min-w-0">
               {s.ticker ? (
-                <Link href={`/stocks/${s.ticker}`} className="text-white text-[13px] font-medium hover:text-[var(--accent-blue)] transition truncate block">
+                <Link href={`/stocks/${s.ticker}`} className="text-white text-[14px] font-medium hover:text-[var(--accent-blue)] transition truncate block">
                   {s.name}
                 </Link>
               ) : (
-                <span className="text-white text-[13px] font-medium truncate block">{s.name}</span>
+                <span className="text-white text-[14px] font-medium truncate block">{s.name}</span>
               )}
             </div>
-            <div className="text-right shrink-0 text-[12px] sm:text-[13px]">
+            <div className="text-right shrink-0 text-[13px] sm:text-[14px]">
               <CNum v={s.combined["1m"]} />
             </div>
           </div>
@@ -386,8 +386,8 @@ function TopTable({ title, desc, stocks, type }: { title: string; desc: string; 
 function SectionHeader({ title, desc }: { title: string; desc?: string }) {
   return (
     <div className="mb-4">
-      <h2 className="text-[18px] sm:text-[20px] font-semibold text-white tracking-tight leading-tight">{title}</h2>
-      {desc && <p className="text-[12px] text-[var(--text-muted)] mt-1.5">{desc}</p>}
+      <h2 className="text-[20px] sm:text-[20px] font-semibold text-white tracking-tight leading-tight">{title}</h2>
+      {desc && <p className="text-[13px] text-[var(--text-muted)] mt-1.5">{desc}</p>}
       <div className="h-px bg-white/[0.1] mt-3" />
     </div>
   );
@@ -458,9 +458,9 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Intro */}
       <div>
-        <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)]">외국인·기관이 어디에 돈을 넣고 있는지, 어떤 종목이 주도하는지 한눈에</p>
+        <p className="text-[14px] sm:text-[15px] text-[var(--text-secondary)]">외국인·기관이 어디에 돈을 넣고 있는지, 어떤 종목이 주도하는지 한눈에</p>
         {meta && (
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+          <p className="text-[13px] text-[var(--text-muted)] mt-1">
             기준일 {meta.business_date ?? ""} {(() => {
             // meta.json 의 필드가 비어도 페이지 전체가 죽지 않게 한다.
             // (last_updated 가 undefined 였을 때 .includes 에서 TypeError 가 나
@@ -488,21 +488,21 @@ export default function Dashboard() {
         <div className="space-y-4">
           {latestReport && (
             <Link href={`/reports/${latestReport.date}`}
-              className="block bg-gradient-to-br from-[var(--bg-card)] to-[#161b22] border border-white/[0.08] rounded-2xl p-5 sm:p-7 hover:border-white/[0.18] transition group"
+              className="block bg-gradient-to-br from-[var(--bg-card)] to-[#2c2c35] border border-white/[0.08] rounded-2xl p-5 sm:p-7 hover:border-white/[0.18] transition group"
             >
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
-                <span className="text-[10px] text-[var(--text-muted)] num">{latestReport.date}</span>
+                <span className="text-[12px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
+                <span className="text-[12px] text-[var(--text-muted)] num">{latestReport.date}</span>
               </div>
-              <h3 className="text-[17px] sm:text-[21px] font-semibold text-white leading-snug mb-2.5 tracking-tight">
+              <h3 className="text-[18px] sm:text-[22px] font-semibold text-white leading-snug mb-2.5 tracking-tight">
                 {latestReport.title}
               </h3>
               {latestReport.body && (
-                <p className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
+                <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
                   {latestReport.body}
                 </p>
               )}
-              <div className="flex items-center gap-1 mt-4 text-[12px] text-[var(--accent-blue)] group-hover:gap-2 transition-all">
+              <div className="flex items-center gap-1 mt-4 text-[13px] text-[var(--accent-blue)] group-hover:gap-2 transition-all">
                 <span>자세히 보기</span>
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
               </div>

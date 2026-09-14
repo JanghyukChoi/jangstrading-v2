@@ -96,7 +96,7 @@ function FilterGroup<T extends string>({
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`shrink-0 whitespace-nowrap px-3 py-[7px] text-[11px] sm:text-[12px] transition-all ${
+          className={`shrink-0 whitespace-nowrap px-3 py-[7px] text-[13px] sm:text-[13px] transition-all ${
             value === o.key
               ? "bg-[var(--accent-blue)] text-white font-medium"
               : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"
@@ -303,7 +303,7 @@ function StocksPageInner() {
       <div className="flex items-end justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">종목별 순매수 랭킹</h1>
-          {meta && <p className="text-[11px] text-[var(--text-muted)] mt-1">기준일 {meta.business_date}</p>}
+          {meta && <p className="text-[13px] text-[var(--text-muted)] mt-1">기준일 {meta.business_date}</p>}
         </div>
         <div className="text-xs text-[var(--text-muted)] num">{filtered.length}개 종목</div>
       </div>
@@ -323,7 +323,7 @@ function StocksPageInner() {
           <button
             key={s.key}
             onClick={() => setSignalFilter(s.key)}
-            className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] sm:text-[12px] border transition inline-flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 py-1.5 rounded-xl text-[13px] sm:text-[13px] border transition inline-flex items-center gap-1.5 ${
               signalFilter === s.key
                 ? "bg-white/[0.08] border-white/[0.15] text-white font-medium"
                 : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:border-white/[0.12]"
@@ -342,7 +342,7 @@ function StocksPageInner() {
             <select
               value={investor}
               onChange={(e) => setInvestor(e.target.value as Investor)}
-              className="shrink-0 bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
+              className="shrink-0 bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
             >
               {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
@@ -357,13 +357,13 @@ function StocksPageInner() {
             <>
             <button
               onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
             >
               {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
             </button>
             <button
               onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
-              className={`shrink-0 whitespace-nowrap border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap border rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] transition cursor-pointer ${
                 sortBy === "ratio"
                   ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
                   : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
@@ -402,9 +402,9 @@ function StocksPageInner() {
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
         {/* 데스크톱 테이블 */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-[12px] sm:text-[13px]">
+          <table className="w-full text-[13px] sm:text-[14px]">
             <thead>
-              <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
+              <tr className="text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06]">
                 <th className="text-left px-3 sm:px-5 py-3 font-normal w-8">#</th>
                 <th className="text-left px-2 sm:px-3 py-3 font-normal">종목</th>
                 <th className="text-left px-2 py-3 font-normal w-14 hidden sm:table-cell">시장</th>
@@ -434,14 +434,14 @@ function StocksPageInner() {
                           <span className="text-white font-medium">{s.name}</span>
                         )}
                         {signals.map((sig) => (
-                          <span key={sig.key} className={`text-[9px] px-1.5 py-0.5 rounded-md ${sig.color}`}>
+                          <span key={sig.key} className={`text-[11px] px-1.5 py-0.5 rounded-md ${sig.color}`}>
                             {sig.label}
                           </span>
                         ))}
                       </div>
                     </td>
                     <td className="px-2 py-2.5 hidden sm:table-cell">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
+                      <span className={`text-[12px] px-2 py-0.5 rounded-md font-medium ${
                         s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
                       }`}>{s.market}</span>
                     </td>
@@ -488,10 +488,10 @@ function StocksPageInner() {
               <div className="px-4 py-3.5">
                 {/* 상단: 순위 + 종목명 + 수익률 */}
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[var(--text-muted)] num text-[11px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
-                  <span className="text-white font-medium text-[14px] flex-1 truncate">{s.name}</span>
+                  <span className="text-[var(--text-muted)] num text-[13px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
+                  <span className="text-white font-medium text-[15px] flex-1 truncate">{s.name}</span>
                   {pc != null && signalFilter !== "ai_screener" && (
-                    <span className={`text-[12px] font-medium ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
+                    <span className={`text-[13px] font-medium ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
                       <span className="num">{pc > 0 ? "+" : ""}{pc.toFixed(1)}%</span>
                     </span>
                   )}
@@ -499,14 +499,14 @@ function StocksPageInner() {
 
                 {/* 시장/PER/신호 배지들 */}
                 <div className="flex items-center gap-1.5 ml-7 mb-3 flex-wrap">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
                     s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
                   }`}>{s.market}</span>
                   {hasPer && s.per != null && (
-                    <span className="text-[10px] text-[var(--text-muted)]">PER <span className="num">{s.per.toFixed(1)}</span></span>
+                    <span className="text-[12px] text-[var(--text-muted)]">PER <span className="num">{s.per.toFixed(1)}</span></span>
                   )}
                   {signals.map((sig) => (
-                    <span key={sig.key} className={`text-[9px] px-1.5 py-0.5 rounded-md ${sig.color}`}>{sig.label}</span>
+                    <span key={sig.key} className={`text-[11px] px-1.5 py-0.5 rounded-md ${sig.color}`}>{sig.label}</span>
                   ))}
                 </div>
 
@@ -514,7 +514,7 @@ function StocksPageInner() {
                 <div className="h-px bg-white/[0.04] mb-3 ml-7" />
 
                 {/* 값 영역 */}
-                <div className="ml-7 grid grid-cols-2 gap-y-1.5 gap-x-4 text-[12px]">
+                <div className="ml-7 grid grid-cols-2 gap-y-1.5 gap-x-4 text-[13px]">
                   <div className="flex justify-between gap-2">
                     <span className="text-[var(--text-muted)] shrink-0">외국인</span>
                     <CNum v={s.foreign[displayPeriod]} />

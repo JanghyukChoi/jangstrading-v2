@@ -95,13 +95,13 @@ export default function SearchBar() {
           onFocus={() => query.trim() && results.length > 0 && setOpen(true)}
           onKeyDown={handleKey}
           placeholder="종목명 · 티커 검색"
-          className="w-40 sm:w-48 bg-white/[0.06] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-[12px] text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-blue)] transition"
+          className="w-40 sm:w-48 bg-white/[0.06] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-[13px] text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-blue)] transition"
         />
       </div>
 
       {/* 드롭다운 */}
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-72 bg-[#161b22] border border-white/[0.1] rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute top-full left-0 mt-1.5 w-72 bg-[#2c2c35] border border-white/[0.1] rounded-xl shadow-2xl overflow-hidden z-50">
           {results.map((s, i) => (
             <button
               key={s.ticker}
@@ -111,12 +111,12 @@ export default function SearchBar() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-[13px] text-white font-medium">{s.name}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+                <span className="text-[14px] text-white font-medium">{s.name}</span>
+                <span className={`text-[12px] px-1.5 py-0.5 rounded-md ${
                   s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
                 }`}>{s.market}</span>
               </div>
-              <span className="text-[11px] text-[var(--text-muted)] num">{s.ticker}</span>
+              <span className="text-[13px] text-[var(--text-muted)] num">{s.ticker}</span>
             </button>
           ))}
         </div>

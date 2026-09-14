@@ -1,26 +1,55 @@
 @import "tailwindcss";
 
+/*
+  색상 체계 — 토스증권 다크 팔레트 기준 (2026-09-14 개편)
+
+  이전 값은 접근성 기준에 미달했다. --text-muted(#484f58)가 배경 대비 2.4:1 로
+  WCAG AA 본문 기준(4.5:1)의 절반이었고, 배경(#06080d)은 거의 순흑이라 장시간
+  보기 힘들었다. 토스 실제 CSS 에서 추출한 값으로 교체했다.
+
+  명암비(배경 #17171c 대비)
+    text-primary   #ffffff  17.9:1
+    text-secondary #c3c3c6  10.2:1   (이전 6.5:1)
+    text-muted     #9e9ea4   6.7:1   (이전 2.4:1 — 기준 미달이었음)
+*/
 :root {
-  --bg-primary: #06080d;
-  --bg-card: #0d1117;
-  --bg-card-hover: #161b22;
-  --bg-elevated: #131920;
-  --border: rgba(255,255,255,0.06);
-  --border-hover: rgba(255,255,255,0.12);
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
-  --accent-blue: #58a6ff;
-  --accent-red: #f85149;
-  --accent-green: #3fb950;
-  --accent-amber: #d29922;
+  --bg-primary: #17171c;
+  --bg-card: #202027;
+  --bg-card-hover: #2c2c35;
+  --bg-elevated: #2c2c35;
+  --bg-sunken: #101013;
+
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c3c6;
+  --text-muted: #9e9ea4;
+  --text-disabled: #7e7e87;
+
+  /* 한국 증시 관행: 빨강=상승, 파랑=하락 */
+  --accent-red: #f04251;
+  --accent-blue: #3485fa;
+  --accent-green: #16bb76;
+  --accent-amber: #d6a441;
+
+  /* 타이포 스케일 — 토스는 12~14px 을 본문으로 쓴다.
+     이전에는 10~11px 이 가장 흔해서 두 단계 작았다. */
+  --fs-caption: 12px;
+  --fs-body-sm: 13px;
+  --fs-body: 14px;
+  --fs-body-lg: 15px;
+  --fs-title: 17px;
 }
 
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: "Pretendard Variable","Pretendard",-apple-system,system-ui,sans-serif;
+  font-size: var(--fs-body);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .num {
@@ -32,9 +61,17 @@ body {
 .positive { color: var(--accent-red); }
 .negative { color: var(--accent-blue); }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #3c3c47; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4d4d59; }
+
+/* 키보드 포커스가 보이게 — 이전에는 표시가 없었다 */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 /* Select 옵션 — 다크 배경 + 밝은 글씨 (브라우저 기본 흰 배경 덮어쓰기) */
 select option {
@@ -49,3 +86,18 @@ select optgroup {
 /* 가로 스크롤 영역의 스크롤바 숨김 (모바일 필터 칩 가로 스크롤용) */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* 모바일이 방문자의 64% (iOS 35% / Android 29%).
+   터치 타깃은 최소 40px 을 확보한다. */
+@media (max-width: 640px) {
+  button, a[role="button"], select {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

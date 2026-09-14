@@ -73,9 +73,9 @@ function interpret(s: Series) {
 }
 
 const TONE: Record<string, string> = {
-  good: "border-[#3fb950]/30 bg-[#3fb950]/[0.06]",
-  warn: "border-[#d29922]/30 bg-[#d29922]/[0.06]",
-  bad: "border-[#f85149]/30 bg-[#f85149]/[0.06]",
+  good: "border-[#16bb76]/30 bg-[#16bb76]/[0.06]",
+  warn: "border-[#d6a441]/30 bg-[#d6a441]/[0.06]",
+  bad: "border-[#f04251]/30 bg-[#f04251]/[0.06]",
   neutral: "border-white/[0.08] bg-white/[0.02]",
 };
 
@@ -146,20 +146,20 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
       <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
         <div>
           <h3 className="text-sm sm:text-base font-semibold tracking-tight">{detail ? `${sectorName} · 실적 vs 가격` : "섹터 실적 vs 가격"}</h3>
-          <p className="text-[11px] text-[var(--text-muted)] mt-0.5">밸류에이션이 실적으로 정당화되는지 — 가격과 이익을 분리해서</p>
+          <p className="text-[13px] text-[var(--text-muted)] mt-0.5">밸류에이션이 실적으로 정당화되는지 — 가격과 이익을 분리해서</p>
         </div>
         {!detail && (
           <div className="flex items-center gap-2 flex-wrap">
             <div className="inline-flex rounded-lg border border-white/[0.06] overflow-hidden">
               {(Object.keys(LVL_LABEL) as Lvl[]).map((k) => (
                 <button key={k} onClick={() => setLvl(k)}
-                  className={`px-2.5 py-1 text-[11px] cursor-pointer border-none ${lvl === k ? "bg-white/[0.1] text-white font-medium" : "bg-transparent text-[var(--text-secondary)] hover:text-white"}`}>
+                  className={`px-2.5 py-1 text-[13px] cursor-pointer border-none ${lvl === k ? "bg-white/[0.1] text-white font-medium" : "bg-transparent text-[var(--text-secondary)] hover:text-white"}`}>
                   {LVL_LABEL[k]}
                 </button>
               ))}
             </div>
             <select value={browseSec} onChange={(e) => setUserSec(e.target.value)}
-              className="bg-[var(--bg-card)] border border-white/[0.06] rounded-lg px-2.5 py-[5px] text-[11px] text-[var(--text-secondary)] outline-none cursor-pointer max-w-[160px]">
+              className="bg-[var(--bg-card)] border border-white/[0.06] rounded-lg px-2.5 py-[5px] text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer max-w-[160px]">
               {sectors.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           </div>
@@ -171,7 +171,7 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
         <div className="text-[12.5px] font-semibold text-white">{info.title}</div>
         <div className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed mt-0.5">{info.body}</div>
         {info.curPer != null && info.perPctile != null && (
-          <div className="text-[11px] text-[var(--text-muted)] mt-1">
+          <div className="text-[13px] text-[var(--text-muted)] mt-1">
             현재 PER <span className="num text-[var(--text-secondary)]">{info.curPer}배</span> · 10년 범위의 <span className="num text-[var(--text-secondary)]">{info.perPctile.toFixed(0)}%</span> 지점{info.perPctile > 75 ? " (역사적 고평가권)" : info.perPctile < 25 ? " (역사적 저평가권)" : ""}
           </div>
         )}
@@ -181,7 +181,7 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
       <div className="inline-flex rounded-lg border border-white/[0.06] overflow-hidden mb-2">
         {(Object.keys(VIEW_LABEL) as View[]).map((k) => (
           <button key={k} onClick={() => setView(k)}
-            className={`px-3 py-1 text-[11px] cursor-pointer border-none ${view === k ? "bg-[#4a8fe7] text-white font-medium" : "bg-transparent text-[var(--text-secondary)] hover:text-white"}`}>
+            className={`px-3 py-1 text-[13px] cursor-pointer border-none ${view === k ? "bg-[#2970d9] text-white font-medium" : "bg-transparent text-[var(--text-secondary)] hover:text-white"}`}>
             {VIEW_LABEL[k]}
           </button>
         ))}
@@ -205,10 +205,10 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
                 if (view === "per") { const real = item?.payload?.per; return [real != null ? `${real}배` : `${v}배`, name]; }
                 return [v, name];
               }} />
-            {view === "pe" && <Line type="linear" dataKey="price" name="가격지수" stroke="#4a8fe7" strokeWidth={2} dot={false} isAnimationActive={false} />}
-            {view === "pe" && <Line type="linear" dataKey="earn" name="실적지수" stroke="#e3b341" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
+            {view === "pe" && <Line type="linear" dataKey="price" name="가격지수" stroke="#2970d9" strokeWidth={2} dot={false} isAnimationActive={false} />}
+            {view === "pe" && <Line type="linear" dataKey="earn" name="실적지수" stroke="#d6a441" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
             {view === "per" && <Line type="linear" dataKey="perC" name="PER" stroke="#a371f7" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
-            {view === "roe" && <Line type="linear" dataKey="roe" name="ROE" stroke="#3fb950" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
+            {view === "roe" && <Line type="linear" dataKey="roe" name="ROE" stroke="#16bb76" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls />}
             {view === "per" && <ReferenceLine y={s.per[last] ?? undefined} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />}
           </LineChart>
         </ResponsiveContainer>
@@ -223,24 +223,24 @@ export default function SectorFundamentals({ sectorName }: { sectorName?: string
           { l: "ROE", v: s.roe[last] != null ? `${s.roe[last]}%` : "-" },
         ].map((x) => (
           <div key={x.l} className="bg-white/[0.02] rounded-lg py-2">
-            <div className="text-[10px] text-[var(--text-muted)]">{x.l}</div>
-            <div className="num text-[13px] text-white font-medium mt-0.5">{x.v}</div>
+            <div className="text-[12px] text-[var(--text-muted)]">{x.l}</div>
+            <div className="num text-[14px] text-white font-medium mt-0.5">{x.v}</div>
           </div>
         ))}
       </div>
 
       {view === "pe" && (
-        <p className="text-[10px] text-[var(--text-muted)] mt-3 leading-relaxed">
-          <span className="text-[#4a8fe7]">가격지수</span>·<span className="text-[#e3b341]">실적지수</span> 모두 시작점 100 기준 · 둘이 벌어지면 밸류에이션 확장(가격↑)/축소 · 실적=섹터 합산 순이익(TTM) · 분기 데이터 · 분할보정 · {data.asof} 기준
+        <p className="text-[12px] text-[var(--text-muted)] mt-3 leading-relaxed">
+          <span className="text-[#2970d9]">가격지수</span>·<span className="text-[#d6a441]">실적지수</span> 모두 시작점 100 기준 · 둘이 벌어지면 밸류에이션 확장(가격↑)/축소 · 실적=섹터 합산 순이익(TTM) · 분기 데이터 · 분할보정 · {data.asof} 기준
         </p>
       )}
       {view === "per" && (
-        <p className="text-[10px] text-[var(--text-muted)] mt-3 leading-relaxed">
+        <p className="text-[12px] text-[var(--text-muted)] mt-3 leading-relaxed">
           ⚠️ 경기민감 섹터는 <b className="text-[var(--text-secondary)]">실적이 바닥일 때 PER이 급등</b>합니다(시총÷순이익에서 분모↓). 그 구간엔 <b className="text-[var(--text-secondary)]">ROE</b>가 더 신뢰성 높음. (cap 초과 구간은 상단에 평탄화 — 실제값은 툴팁 참고)
         </p>
       )}
       {view === "roe" && (
-        <p className="text-[10px] text-[var(--text-muted)] mt-3 leading-relaxed">
+        <p className="text-[12px] text-[var(--text-muted)] mt-3 leading-relaxed">
           ROE = 섹터 합산 순이익 ÷ 자기자본 · 수익성·턴어라운드 (PER과 달리 실적 바닥에서도 안정적) · {data.asof} 기준
         </p>
       )}

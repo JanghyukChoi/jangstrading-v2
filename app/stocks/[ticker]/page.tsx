@@ -82,7 +82,7 @@ function MetricCard({ label, value, unit }: { label: string; value: string | nul
   const m = value?.match(/^(.+?)([가-힣]+)$/);
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl p-3 sm:p-4 text-center">
-      <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-1.5">{label}</div>
+      <div className="text-[12px] sm:text-[13px] text-[var(--text-muted)] mb-1.5">{label}</div>
       <div className="text-sm sm:text-lg font-semibold text-white truncate">
         {value == null ? (
           <span className="text-[var(--text-muted)]">-</span>
@@ -92,7 +92,7 @@ function MetricCard({ label, value, unit }: { label: string; value: string | nul
           <span className="num">{value}</span>
         )}
       </div>
-      {unit && value && <div className="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{unit}</div>}
+      {unit && value && <div className="text-[11px] sm:text-[12px] text-[var(--text-muted)] mt-0.5">{unit}</div>}
     </div>
   );
 }
@@ -170,18 +170,18 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
       ? `${dateStr.slice(0, 4)}.${dateStr.slice(5, 7)}.${dateStr.slice(8, 10)}`
       : dateStr;
     return (
-      <div className="bg-[#1c2128] border border-white/10 rounded-xl px-3 py-2 text-[11px] shadow-xl space-y-0.5">
+      <div className="bg-[#2c2c35] border border-white/10 rounded-xl px-3 py-2 text-[13px] shadow-xl space-y-0.5">
         <div className="text-white mb-1">{displayDate}</div>
         {f != null && (
           <div className="flex justify-between gap-4">
-            <span className="text-[#d29922]">외국인</span>
-            <span className={`num ${f >= 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>{formatY(f)}원</span>
+            <span className="text-[#d6a441]">외국인</span>
+            <span className={`num ${f >= 0 ? "text-[#f04251]" : "text-[#3485fa]"}`}>{formatY(f)}원</span>
           </div>
         )}
         {i != null && (
           <div className="flex justify-between gap-4">
             <span className="text-[#06b6d4]">기관</span>
-            <span className={`num ${i >= 0 ? "text-[#f85149]" : "text-[#58a6ff]"}`}>{formatY(i)}원</span>
+            <span className={`num ${i >= 0 ? "text-[#f04251]" : "text-[#3485fa]"}`}>{formatY(i)}원</span>
           </div>
         )}
       </div>
@@ -200,7 +200,7 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
       <div className="flex items-baseline justify-between gap-2 mb-4 flex-wrap">
         <div>
           <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)]">외국인·기관 누적 순매수</h3>
-          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+          <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
             기간 시작점 = 0, 일별 순매수 누적
           </p>
         </div>
@@ -209,7 +209,7 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
             <button
               key={p.key}
               onClick={() => setPeriod(p.key)}
-              className={`px-2.5 py-1 text-[11px] transition ${
+              className={`px-2.5 py-1 text-[13px] transition ${
                 period === p.key
                   ? "bg-[var(--accent-blue)] text-white font-medium"
                   : "text-[var(--text-secondary)] hover:text-white"
@@ -228,7 +228,7 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
             dataKey="idx"
             type="number"
             domain={[0, chartData.length - 1]}
-            tick={{ fill: "#484f58", fontSize: 10 }}
+            tick={{ fill: "#9e9ea4", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
@@ -239,7 +239,7 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
             }}
           />
           <YAxis
-            tick={{ fill: "#484f58", fontSize: 9 }}
+            tick={{ fill: "#9e9ea4", fontSize: 9 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={formatY}
@@ -247,20 +247,20 @@ function CumulativeFlowChart({ ticker }: { ticker: string }) {
           />
           <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" />
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(255,255,255,0.1)", strokeWidth: 1 }} />
-          <Line type="monotone" dataKey="foreign" stroke="#d29922" strokeWidth={2} dot={{ r: 1.2, fill: "#d29922", stroke: "none" }} activeDot={{ r: 4 }} name="외국인" isAnimationActive={false} />
+          <Line type="monotone" dataKey="foreign" stroke="#d6a441" strokeWidth={2} dot={{ r: 1.2, fill: "#d6a441", stroke: "none" }} activeDot={{ r: 4 }} name="외국인" isAnimationActive={false} />
           <Line type="monotone" dataKey="inst" stroke="#06b6d4" strokeWidth={2} dot={{ r: 1.2, fill: "#06b6d4", stroke: "none" }} activeDot={{ r: 4 }} name="기관" isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
 
-      <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-[var(--text-secondary)]">
+      <div className="flex items-center justify-center gap-4 mt-2 text-[12px] text-[var(--text-secondary)]">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-[#d29922]" />외국인
+          <span className="w-3 h-0.5 bg-[#d6a441]" />외국인
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 bg-[#06b6d4]" />기관
         </span>
       </div>
-      <p className="text-[10px] text-[var(--text-muted)] text-center mt-2">
+      <p className="text-[12px] text-[var(--text-muted)] text-center mt-2">
         라인 위로 = 누적 매수 · 아래로 = 누적 매도 (색상은 투자자 구분)
       </p>
     </div>
@@ -337,7 +337,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         {/* 중단: 종목명 + 시장 + 티커 */}
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{stockData.name}</h1>
-          <span className={`text-[10px] px-2 py-0.5 rounded-lg font-medium ${
+          <span className={`text-[12px] px-2 py-0.5 rounded-lg font-medium ${
             stockData.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
           }`}>{stockData.market}</span>
           <span className="text-[var(--text-muted)] text-xs num">{stockData.ticker}</span>
@@ -348,17 +348,17 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="text-[32px] sm:text-[42px] font-bold text-white tracking-tight leading-none">
               <span className="num">{stockData.avg_cost.price.toLocaleString()}</span>
-              <span className="text-[18px] sm:text-[22px] font-medium text-[var(--text-secondary)] ml-1">원</span>
+              <span className="text-[20px] sm:text-[22px] font-medium text-[var(--text-secondary)] ml-1">원</span>
             </span>
             {stockData.price_change?.["1d"] != null && (
-              <span className={`text-[15px] sm:text-[17px] font-semibold ${
+              <span className={`text-[16px] sm:text-[18px] font-semibold ${
                 stockData.price_change["1d"] > 0 ? "positive" : stockData.price_change["1d"] < 0 ? "negative" : "text-[var(--text-secondary)]"
               }`}>
                 {stockData.price_change["1d"] > 0 ? "▲ " : stockData.price_change["1d"] < 0 ? "▼ " : ""}
                 <span className="num">{stockData.price_change["1d"] > 0 ? "+" : ""}{stockData.price_change["1d"].toFixed(2)}%</span>
               </span>
             )}
-            <span className="text-[11px] text-[var(--text-muted)]">전일대비</span>
+            <span className="text-[13px] text-[var(--text-muted)]">전일대비</span>
           </div>
         )}
       </div>
@@ -372,18 +372,18 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
             {stockData.sector && stockData.sector !== "기타" && (
               <Link
                 href={`/sectors/${encodeURIComponent(stockData.sector)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.15] hover:border-blue-500/[0.3] transition text-[12px]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/[0.08] border border-blue-500/[0.15] hover:border-blue-500/[0.3] transition text-[13px]"
               >
-                <span className="text-[10px] text-blue-400/60">대분류</span>
+                <span className="text-[12px] text-blue-400/60">대분류</span>
                 <span className="text-blue-400 font-medium">{stockData.sector}</span>
               </Link>
             )}
             {stockData.sector_mid && stockData.sector_mid !== "기타" && (
               <Link
                 href={`/sectors/${encodeURIComponent(stockData.sector_mid)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/[0.08] border border-purple-500/[0.15] hover:border-purple-500/[0.3] transition text-[12px]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/[0.08] border border-purple-500/[0.15] hover:border-purple-500/[0.3] transition text-[13px]"
               >
-                <span className="text-[10px] text-purple-400/60">중분류</span>
+                <span className="text-[12px] text-purple-400/60">중분류</span>
                 <span className="text-purple-400 font-medium">{stockData.sector_mid}</span>
               </Link>
             )}
@@ -391,9 +391,9 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
               <Link
                 key={theme}
                 href={`/sectors/${encodeURIComponent(theme)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] transition text-[12px]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] transition text-[13px]"
               >
-                <span className="text-[10px] text-[var(--text-muted)]">테마</span>
+                <span className="text-[12px] text-[var(--text-muted)]">테마</span>
                 <span className="text-[var(--text-secondary)] font-medium">{theme}</span>
               </Link>
             ))}
@@ -415,12 +415,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       {stockData.avg_cost && (stockData.avg_cost.foreign || stockData.avg_cost.institution) && (
         <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
           <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">추정 평균단가</h3>
-          <p className="text-[10px] text-[var(--text-muted)] mb-4">최근 6개월 이동평균 원가법 기준 · 현재가 {stockData.avg_cost.price.toLocaleString()}원</p>
+          <p className="text-[12px] text-[var(--text-muted)] mb-4">최근 6개월 이동평균 원가법 기준 · 현재가 {stockData.avg_cost.price.toLocaleString()}원</p>
 
           <div className="flex flex-col sm:flex-row gap-3">
             {([
-              { key: "foreign" as const, label: "외국인", color: "#f85149" },
-              { key: "institution" as const, label: "기관", color: "#58a6ff" },
+              { key: "foreign" as const, label: "외국인", color: "#f04251" },
+              { key: "institution" as const, label: "기관", color: "#3485fa" },
             ]).map(({ key, label, color }) => {
               const d = stockData.avg_cost?.[key];
               if (!d) return null;
@@ -429,12 +429,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                 <div key={key} className="flex-1 rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-2 h-2 rounded-full" style={{ background: color }} />
-                    <span className="text-[13px] text-[var(--text-secondary)]">{label}</span>
+                    <span className="text-[14px] text-[var(--text-secondary)]">{label}</span>
                   </div>
 
                   <div className="flex items-end justify-between mb-3">
                     <div>
-                      <div className="text-[10px] text-[var(--text-muted)] mb-1">추정 평균단가</div>
+                      <div className="text-[12px] text-[var(--text-muted)] mb-1">추정 평균단가</div>
                       <div className="text-lg sm:text-xl font-semibold text-white"><span className="num">{d.avg_cost.toLocaleString()}</span>원</div>
                     </div>
                     <div className={`text-right px-3 py-1.5 rounded-lg ${
@@ -443,7 +443,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                       <div className={`text-lg font-bold num ${isProfit ? "positive" : "negative"}`}>
                         {isProfit ? "+" : ""}{d.pnl_pct}%
                       </div>
-                      <div className="text-[10px] text-[var(--text-muted)]">
+                      <div className="text-[12px] text-[var(--text-muted)]">
                         {isProfit ? "수익 중" : "손실 중"}
                       </div>
                     </div>
@@ -462,13 +462,13 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                         <div className="absolute top-2.5 left-0 right-0 h-1 rounded-full bg-white/[0.06]" />
                         {/* 평균단가 마커 */}
                         <div className="absolute top-0" style={{ left: `${costPos}%`, transform: "translateX(-50%)" }}>
-                          <div className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: color, background: "#0d1117" }} />
-                          <div className="text-[8px] text-[var(--text-muted)] mt-0.5 whitespace-nowrap" style={{ transform: "translateX(-30%)" }}>매수가</div>
+                          <div className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: color, background: "#202027" }} />
+                          <div className="text-[11px] text-[var(--text-muted)] mt-0.5 whitespace-nowrap" style={{ transform: "translateX(-30%)" }}>매수가</div>
                         </div>
                         {/* 현재가 마커 */}
                         <div className="absolute top-0" style={{ left: `${pricePos}%`, transform: "translateX(-50%)" }}>
                           <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                          <div className="text-[8px] text-[var(--text-muted)] mt-0.5 whitespace-nowrap" style={{ transform: "translateX(-30%)" }}>현재가</div>
+                          <div className="text-[11px] text-[var(--text-muted)] mt-0.5 whitespace-nowrap" style={{ transform: "translateX(-30%)" }}>현재가</div>
                         </div>
                         {/* 영역 */}
                         <div className="absolute top-2.5 h-1 rounded-full" style={{
@@ -506,12 +506,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
         return (
           <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
             <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기관 세부 주체별 순매수</h3>
-            <p className="text-[10px] text-[var(--text-muted)] mb-3">기관 합계 {fmtUnit(total)}</p>
+            <p className="text-[12px] text-[var(--text-muted)] mb-3">기관 합계 {fmtUnit(total)}</p>
             {isNested && (
               <div className="flex rounded-xl overflow-hidden border border-white/[0.06] bg-[var(--bg-card)] mb-4 w-fit">
                 {(["1d","1w","1m","3m","6m"] as const).map((p) => (
                   <button key={p} onClick={() => setInstPeriod(p)}
-                    className={`px-3 py-[6px] text-[11px] transition-all ${instPeriod === p ? "bg-[var(--accent-blue)] text-white font-medium" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"}`}>
+                    className={`px-3 py-[6px] text-[13px] transition-all ${instPeriod === p ? "bg-[var(--accent-blue)] text-white font-medium" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"}`}>
                     {periodLabels[p]}
                   </button>
                 ))}
@@ -523,14 +523,14 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                 const isPos = value > 0;
                 return (
                   <div key={name} className="flex items-center gap-3">
-                    <span className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] w-16 sm:w-20 shrink-0">{name}</span>
+                    <span className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] w-16 sm:w-20 shrink-0">{name}</span>
                     <div className="flex-1 h-4 rounded-full bg-white/[0.04] overflow-hidden">
                       <div
                         className={`h-full rounded-full ${isPos ? "bg-gradient-to-r from-red-500/60 to-red-500/20" : "bg-gradient-to-r from-blue-400/60 to-blue-400/20"}`}
                         style={{ width: `${Math.max(pct, 2)}%` }}
                       />
                     </div>
-                    <NumUnit v={value} cls={`text-[12px] sm:text-[13px] font-medium w-24 text-right shrink-0 ${isPos ? "positive" : value < 0 ? "negative" : ""}`} />
+                    <NumUnit v={value} cls={`text-[13px] sm:text-[14px] font-medium w-24 text-right shrink-0 ${isPos ? "positive" : value < 0 ? "negative" : ""}`} />
                   </div>
                 );
               })}
@@ -542,10 +542,10 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       {/* 상세 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
         <h3 className="text-xs sm:text-sm font-medium text-[var(--text-secondary)] mb-1">기간별 수급 vs 주가</h3>
-        <p className="text-[10px] text-[var(--text-muted)] mb-3">같은 기간 수급 금액과 주가 변동률을 비교하여 수급 대비 주가 반응을 확인</p>
-        <table className="w-full text-[12px] sm:text-[13px]">
+        <p className="text-[12px] text-[var(--text-muted)] mb-3">같은 기간 수급 금액과 주가 변동률을 비교하여 수급 대비 주가 반응을 확인</p>
+        <table className="w-full text-[13px] sm:text-[14px]">
           <thead>
-            <tr className="text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06]">
+            <tr className="text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06]">
               <th className="text-left py-2 font-normal">기간</th>
               <th className="text-right py-2 font-normal">외국인</th>
               <th className="text-right py-2 font-normal">기관</th>

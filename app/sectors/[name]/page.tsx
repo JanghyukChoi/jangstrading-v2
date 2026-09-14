@@ -43,7 +43,7 @@ function FilterGroup<T extends string>({ options, value, onChange }: { options: 
     <div className="flex rounded-xl overflow-hidden border border-white/[0.06] bg-[var(--bg-card)]">
       {options.map((o) => (
         <button key={o.key} onClick={() => onChange(o.key)}
-          className={`px-3 py-[7px] text-[11px] sm:text-[12px] transition-all ${value === o.key ? "bg-[var(--accent-blue)] text-white font-medium" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"}`}>{o.label}</button>
+          className={`px-3 py-[7px] text-[13px] sm:text-[13px] transition-all ${value === o.key ? "bg-[var(--accent-blue)] text-white font-medium" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"}`}>{o.label}</button>
       ))}
     </div>
   );
@@ -168,8 +168,8 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
           ].map((d) => (
             <div key={d.l} className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${d.c}`} />
-              <span className={`text-[12px] ${d.tc}`}>{d.l}</span>
-              <span className="text-[12px] text-white font-semibold num">{d.n}</span>
+              <span className={`text-[13px] ${d.tc}`}>{d.l}</span>
+              <span className="text-[13px] text-white font-semibold num">{d.n}</span>
             </div>
           ))}
         </div>
@@ -177,14 +177,14 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
 
       <div className="flex flex-wrap gap-2 items-center">
         <select value={investor} onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer">
+          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer">
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <FilterGroup options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))} value={period} onChange={setPeriod} />
       </div>
 
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
+        <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="flex-1 min-w-0">종목</span>
           <span className="w-14 text-left hidden sm:block">시장</span>
@@ -201,18 +201,18 @@ export default function SectorDetailPage({ params }: { params: Promise<{ name: s
               <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs hidden sm:block">{i + 1}</span>
               <div className="flex-1 min-w-0 flex items-center gap-1.5">
                 {s.ticker ? (
-                  <Link href={`/stocks/${s.ticker}`} className="text-white text-[11px] sm:text-[13px] font-medium hover:text-[var(--accent-blue)] transition truncate">{s.name}</Link>
-                ) : <span className="text-white text-[11px] sm:text-[13px] font-medium truncate">{s.name}</span>}
+                  <Link href={`/stocks/${s.ticker}`} className="text-white text-[13px] sm:text-[14px] font-medium hover:text-[var(--accent-blue)] transition truncate">{s.name}</Link>
+                ) : <span className="text-white text-[13px] sm:text-[14px] font-medium truncate">{s.name}</span>}
                 {score && score.tagLabel && (
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-md shrink-0 ${score.tagBg} ${score.tagColor}`}>{score.tagLabel}</span>
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded-md shrink-0 ${score.tagBg} ${score.tagColor}`}>{score.tagLabel}</span>
                 )}
               </div>
               <span className="w-14 hidden sm:block">
-                <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"}`}>{s.market}</span>
+                <span className={`text-[12px] px-2 py-0.5 rounded-md font-medium ${s.market === "KOSPI" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"}`}>{s.market}</span>
               </span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.foreign[period]} /></span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.institution[period]} /></span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={investor === "pension" ? (s.pension?.[period] ?? 0) : s.combined[period]} /></span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[13px] sm:text-[14px]"><CNum v={s.foreign[period]} /></span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[13px] sm:text-[14px]"><CNum v={s.institution[period]} /></span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[13px] sm:text-[14px] font-medium"><CNum v={investor === "pension" ? (s.pension?.[period] ?? 0) : s.combined[period]} /></span>
               <span className="w-14 text-right shrink-0 hidden sm:block">
                 {pc != null ? <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>{pc > 0 ? "+" : ""}{pc.toFixed(1)}%</span> : <span className="text-[var(--text-muted)]">-</span>}
               </span>

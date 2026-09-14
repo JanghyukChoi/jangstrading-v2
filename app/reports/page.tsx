@@ -59,7 +59,7 @@ export default function ReportsPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg sm:text-xl font-semibold tracking-tight">AI 시황 분석</h1>
-        <p className="text-[11px] text-[var(--text-muted)] mt-1">매일 수급 데이터 + 뉴스 기반 자동 생성</p>
+        <p className="text-[13px] text-[var(--text-muted)] mt-1">매일 수급 데이터 + 뉴스 기반 자동 생성</p>
       </div>
 
       {reports.length === 0 ? (
@@ -73,22 +73,22 @@ export default function ReportsPage() {
           {latest && (
             <Link
               href={`/reports/${latest.date}`}
-              className="block bg-gradient-to-br from-[var(--bg-card)] to-[#161b22] border border-white/[0.08] rounded-2xl p-5 sm:p-7 hover:border-white/[0.18] transition group"
+              className="block bg-gradient-to-br from-[var(--bg-card)] to-[#2c2c35] border border-white/[0.08] rounded-2xl p-5 sm:p-7 hover:border-white/[0.18] transition group"
             >
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
-                <span className="text-[10px] text-[var(--text-muted)] num">{latest.date}</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 font-medium">최신</span>
+                <span className="text-[12px] px-1.5 py-0.5 rounded-md bg-[var(--accent-blue)]/20 text-[var(--accent-blue)] font-medium">AI 시황</span>
+                <span className="text-[12px] text-[var(--text-muted)] num">{latest.date}</span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 font-medium">최신</span>
               </div>
-              <h2 className="text-[17px] sm:text-[21px] font-semibold text-white leading-snug mb-2.5 tracking-tight">
+              <h2 className="text-[18px] sm:text-[22px] font-semibold text-white leading-snug mb-2.5 tracking-tight">
                 {latest.title}
               </h2>
               {latest.body && (
-                <p className="text-[12px] sm:text-[13px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
+                <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] leading-relaxed line-clamp-2">
                   {latest.body}
                 </p>
               )}
-              <div className="flex items-center gap-1 mt-4 text-[12px] text-[var(--accent-blue)] group-hover:gap-2 transition-all">
+              <div className="flex items-center gap-1 mt-4 text-[13px] text-[var(--accent-blue)] group-hover:gap-2 transition-all">
                 <span>자세히 보기</span>
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
               </div>
@@ -98,7 +98,7 @@ export default function ReportsPage() {
           {/* 이전 시황 리스트 */}
           {rest.length > 0 && (
             <div>
-              <h3 className="text-[12px] text-[var(--text-muted)] mt-6 mb-3">이전 시황</h3>
+              <h3 className="text-[13px] text-[var(--text-muted)] mt-6 mb-3">이전 시황</h3>
               <div className="space-y-2">
                 {rest.map((r) => (
                   <Link
@@ -108,11 +108,11 @@ export default function ReportsPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[11px] text-[var(--text-muted)] num">{r.date}</span>
+                        <span className="text-[13px] text-[var(--text-muted)] num">{r.date}</span>
                       </div>
-                      <h4 className="text-[14px] sm:text-[15px] text-white font-medium leading-snug mb-1.5">{r.title}</h4>
+                      <h4 className="text-[15px] sm:text-[16px] text-white font-medium leading-snug mb-1.5">{r.title}</h4>
                       {r.body && (
-                        <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-1">{r.body}</p>
+                        <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed line-clamp-1">{r.body}</p>
                       )}
                     </div>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)] shrink-0 mt-1">

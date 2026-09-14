@@ -68,7 +68,7 @@ function FilterGroup<T extends string>({
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
-          className={`px-3 py-[7px] text-[11px] sm:text-[12px] transition-all ${
+          className={`px-3 py-[7px] text-[13px] sm:text-[13px] transition-all ${
             value === o.key
               ? "bg-[var(--accent-blue)] text-white font-medium"
               : "text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.04]"
@@ -95,8 +95,8 @@ function TopListSection({ items, label, color }: {
     <div>
       {label && (
         <div className="flex items-baseline gap-2 mb-3">
-          <h4 className="text-[12px] sm:text-[13px] font-semibold text-white">{label}</h4>
-          <span className="text-[10px] text-[var(--text-muted)]">{items.length}개</span>
+          <h4 className="text-[13px] sm:text-[14px] font-semibold text-white">{label}</h4>
+          <span className="text-[12px] text-[var(--text-muted)]">{items.length}개</span>
         </div>
       )}
       <ul className="space-y-3">
@@ -105,14 +105,14 @@ function TopListSection({ items, label, color }: {
           return (
             <li key={s.name} className="space-y-1.5">
               <div className="flex items-baseline gap-3">
-                <span className="num text-[var(--text-muted)] text-[12px] w-5 shrink-0 text-right">{i + 1}</span>
+                <span className="num text-[var(--text-muted)] text-[13px] w-5 shrink-0 text-right">{i + 1}</span>
                 <Link
                   href={`/sectors/${encodeURIComponent(s.name)}`}
-                  className="text-white text-[13px] sm:text-[14px] font-medium flex-1 truncate hover:text-[var(--accent-blue)] transition"
+                  className="text-white text-[14px] sm:text-[15px] font-medium flex-1 truncate hover:text-[var(--accent-blue)] transition"
                 >
                   {s.name}
                 </Link>
-                <span className="text-[12px] sm:text-[13px] font-medium"><CNum v={s.value} /></span>
+                <span className="text-[13px] sm:text-[14px] font-medium"><CNum v={s.value} /></span>
               </div>
               <div className="ml-8 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
                 <div className={`h-full ${gradient} rounded-full`} style={{ width: `${pct}%` }} />
@@ -158,7 +158,7 @@ function SectorTopList({ sectors, investor, periodLabel, view }: {
   if (positives.length === 0 && (!showNegatives || negatives.length === 0)) {
     return (
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-6 text-center">
-        <p className="text-[12px] text-[var(--text-muted)]">표시할 {groupLabel} 데이터가 없습니다.</p>
+        <p className="text-[13px] text-[var(--text-muted)]">표시할 {groupLabel} 데이터가 없습니다.</p>
       </div>
     );
   }
@@ -166,12 +166,12 @@ function SectorTopList({ sectors, investor, periodLabel, view }: {
   return (
     <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl p-4 sm:p-6">
       <div className="flex items-baseline gap-2 mb-1">
-        <h3 className="text-[13px] sm:text-[14px] font-semibold text-white tracking-tight">
+        <h3 className="text-[14px] sm:text-[15px] font-semibold text-white tracking-tight">
           {showNegatives ? `${groupLabel} 수급 현황` : "순매수 상위"}
         </h3>
-        <span className="text-[10px] text-[var(--text-muted)]">{periodLabel}</span>
+        <span className="text-[12px] text-[var(--text-muted)]">{periodLabel}</span>
       </div>
-      <p className="text-[10px] text-[var(--text-muted)] mb-4">
+      <p className="text-[12px] text-[var(--text-muted)] mb-4">
         {showNegatives ? "매수·매도 우위 섹터 전체" : `${groupLabel} 중 가장 강한 매수 흐름`}
       </p>
 
@@ -320,19 +320,19 @@ function SectorsPageInner() {
       <div className="flex items-end justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">섹터별 수급 현황</h1>
-          {meta && <p className="text-[11px] text-[var(--text-muted)] mt-1">기준일 {meta.business_date} · WICS 산업분류</p>}
+          {meta && <p className="text-[13px] text-[var(--text-muted)] mt-1">기준일 {meta.business_date} · WICS 산업분류</p>}
         </div>
         <div className="text-xs text-[var(--text-muted)] num">{sectors.length}개 업종</div>
       </div>
 
       {/* Sticky 필터 영역 */}
-      <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#06080d]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
+      <div className="sticky top-14 z-30 -mx-5 px-5 py-3 bg-[#17171c]/90 backdrop-blur-xl border-b border-white/[0.06] space-y-3">
       {/* 대분류 / 중분류 / 테마 탭 */}
       <div className="flex items-center gap-3">
         <div className="flex rounded-xl overflow-hidden border border-white/[0.08] bg-[var(--bg-card)]">
           <button
             onClick={() => setView("large")}
-            className={`px-4 py-2 text-[13px] font-medium transition ${
+            className={`px-4 py-2 text-[14px] font-medium transition ${
               view === "large" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
             }`}
           >
@@ -340,7 +340,7 @@ function SectorsPageInner() {
           </button>
           <button
             onClick={() => setView("mid")}
-            className={`px-4 py-2 text-[13px] font-medium transition ${
+            className={`px-4 py-2 text-[14px] font-medium transition ${
               view === "mid" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
             }`}
           >
@@ -348,14 +348,14 @@ function SectorsPageInner() {
           </button>
           <button
             onClick={() => setView("theme")}
-            className={`px-4 py-2 text-[13px] font-medium transition ${
+            className={`px-4 py-2 text-[14px] font-medium transition ${
               view === "theme" ? "bg-white/[0.1] text-white" : "text-[var(--text-secondary)] hover:text-white"
             }`}
           >
             테마
           </button>
         </div>
-        <span className="text-[11px] text-[var(--text-muted)]">
+        <span className="text-[13px] text-[var(--text-muted)]">
           {view === "large" ? `${sectors.length}개 산업 섹터` : view === "mid" ? `${sectors.length}개 세부 업종` : `${sectors.length}개 테마`}
         </span>
       </div>
@@ -365,7 +365,7 @@ function SectorsPageInner() {
         <select
           value={investor}
           onChange={(e) => setInvestor(e.target.value as Investor)}
-          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer"
+          className="bg-[var(--bg-card)] border border-white/[0.06] rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
         >
           {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -375,7 +375,7 @@ function SectorsPageInner() {
         />
         <button
           onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
-          className={`border rounded-xl px-3 py-[7px] text-[11px] sm:text-[12px] transition cursor-pointer ${
+          className={`border rounded-xl px-3 py-[7px] text-[13px] sm:text-[13px] transition cursor-pointer ${
             sortBy === "ratio"
               ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
               : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
@@ -397,7 +397,7 @@ function SectorsPageInner() {
       {/* 테이블 */}
       <div className="bg-[var(--bg-card)] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-        <div className="flex items-center text-[var(--text-muted)] text-[10px] sm:text-[11px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
+        <div className="flex items-center text-[var(--text-muted)] text-[12px] sm:text-[13px] border-b border-white/[0.06] px-3 sm:px-5 py-3">
           <span className="w-8 shrink-0 hidden sm:block">#</span>
           <span className="min-w-[80px] sm:min-w-0 sm:flex-1">업종</span>
           <span className="w-12 text-right hidden sm:block">종목수</span>
@@ -418,16 +418,16 @@ function SectorsPageInner() {
             >
               <span className="w-8 shrink-0 text-[var(--text-muted)] num text-xs hidden sm:block">{i + 1}</span>
               <span className="min-w-[80px] sm:min-w-0 sm:flex-1 flex items-center gap-1">
-                <span className="text-white font-medium text-[11px] sm:text-[13px] truncate">{s.name}</span>
+                <span className="text-white font-medium text-[13px] sm:text-[14px] truncate">{s.name}</span>
                 <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)] shrink-0 hidden sm:block">
                   <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/>
                 </svg>
               </span>
-              <span className="w-12 text-right text-[var(--text-muted)] num text-[10px] hidden sm:block">{s.stockCount}</span>
-              <span className="w-16 text-right text-[var(--text-muted)] num text-[10px] hidden sm:block">{fmtCap(s.totalMarketCap)}</span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.foreign} /></span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px]"><CNum v={s.institution} /></span>
-              <span className="w-16 sm:w-24 text-right shrink-0 text-[11px] sm:text-[13px] font-medium"><CNum v={investor === "pension" ? s.pension : s.combined} /></span>
+              <span className="w-12 text-right text-[var(--text-muted)] num text-[12px] hidden sm:block">{s.stockCount}</span>
+              <span className="w-16 text-right text-[var(--text-muted)] num text-[12px] hidden sm:block">{fmtCap(s.totalMarketCap)}</span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[13px] sm:text-[14px]"><CNum v={s.foreign} /></span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[13px] sm:text-[14px]"><CNum v={s.institution} /></span>
+              <span className="w-16 sm:w-24 text-right shrink-0 text-[13px] sm:text-[14px] font-medium"><CNum v={investor === "pension" ? s.pension : s.combined} /></span>
               <span className="w-16 text-right shrink-0 hidden sm:block">
                 {s.ratio != null ? (
                   <span className={`num text-xs ${s.ratio > 0 ? "positive" : s.ratio < 0 ? "negative" : ""}`}>
