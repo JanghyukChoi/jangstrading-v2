@@ -6,6 +6,8 @@ on:
 jobs:
   fetch-data:
     runs-on: ubuntu-latest
+    # 전 종목 수집이 약 45분. 기본 360분 안에 충분히 들어가지만 명시해 둔다.
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -15,37 +17,17 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
-      - name: Fetch stock data
+
+      # 수급/시세/재무/평균단가/기관세부 + 시장지수 + 스냅샷을 한 번에 수집.
+      # 기존의 fetch_data / add_tickers / add_fundamentals / add_price_changes /
+      # add_avg_cost / add_inst_detail / save_snapshot / augment_snapshots /
+      # fetch_kospi_history 9개 스텝을 대체한다.
+      - name: Fetch all (KIS Open API)
         env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
-        run: python scripts/fetch_data.py
-      - name: Add ticker codes
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_tickers.py
-      - name: Add PER/PBR
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_fundamentals.py
-      - name: Add price changes
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_price_changes.py
-      - name: Add avg cost
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_avg_cost.py
-      - name: Add inst detail
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/add_inst_detail.py
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+        run: python scripts/kis_fetch.py
+
       - name: Add sectors
         run: |
           python scripts/fetch_wics.py
@@ -60,19 +42,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-        run: python scripts/send_telegram.py  
-      - name: Save snapshot
-        run: python scripts/save_snapshot.py
-      - name: Augment snapshot (market_cap + trade_value)
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/augment_snapshots.py --input public/data/snapshots
-      - name: Fetch KOSPI history (regime filter용)
-        env:
-          KRX_ID: ${{ secrets.KRX_ID }}
-          KRX_PW: ${{ secrets.KRX_PW }}
-        run: python scripts/fetch_kospi_history.py
+        run: python scripts/send_telegram.py
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
       - name: Build V3 signals
