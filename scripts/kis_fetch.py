@@ -83,6 +83,15 @@ INST_DETAIL = {
 AVG_COST_LOOKBACK = 120
 
 
+def load_dividends():
+    """kis_dividends.py 가 만든 주당배당금 표. 없으면 빈 dict."""
+    path = DATA_DIR / "dividends.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("data", {})
+    except (OSError, ValueError):
+        return {}
+
+
 def to_int(v):
     """KIS 는 정수 필드도 "6564.00" 처럼 소수 문자열로 주는 경우가 있다."""
     try:
@@ -512,6 +521,11 @@ def main():
     print(f"KIS 전 종목 수집  기준일={date_iso}  depth={args.depth}")
     print("=" * 60)
 
+    dividends = load_dividends()
+    print(f"  배당 데이터: {len(dividends)}종목" + (
+        "" if dividends
+        else "  (없음 — scripts/kis_dividends.py 를 먼저 돌리면 배당수익률이 채워집니다)"))
+
     print("\n[1/4] 종목 유니버스 로드")
     universe = load_universe(args.limit or None)
     print(f"  총 {len(universe)}종목")
@@ -570,8 +584,13 @@ def main():
                 item["bps"] = to_int(f.get("bps")) or None
                 # hts_avls 는 억원 단위 — 기존 스키마와 동일
                 item["market_cap"] = to_float(f.get("hts_avls")) or None
-                # KIS 현재가 시세에는 배당수익률이 없다. 프론트가 null 을 처리한다.
-                item["div_yield"] = None
+                # KIS 현재가 시세에는 배당수익률이 없다.
+                # kis_dividends.py 가 받아둔 주당배당금을 종가로 나눠 계산한다.
+                dps = dividends.get(ticker)
+                close = item["_close"]
+                item["div_yield"] = (
+                    round(dps / close * 100, 2) if dps and close > 0 else None
+                )
             except KisError as e:
                 failed.append((ticker, f"fundamentals: {e}"))
 

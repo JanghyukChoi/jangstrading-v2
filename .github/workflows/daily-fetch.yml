@@ -18,6 +18,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
+      # 배당수익률용 주당배당금. 분기에 한 번 바뀌는 값이라 7일 지난 경우에만
+      # 실제로 조회하고, 그 외에는 즉시 끝난다.
+      - name: Refresh dividends (weekly)
+        env:
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+        run: python scripts/kis_dividends.py
+
       # 수급/시세/재무/평균단가/기관세부 + 시장지수 + 스냅샷을 한 번에 수집.
       # 기존의 fetch_data / add_tickers / add_fundamentals / add_price_changes /
       # add_avg_cost / add_inst_detail / save_snapshot / augment_snapshots /
