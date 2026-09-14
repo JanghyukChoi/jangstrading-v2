@@ -599,8 +599,12 @@ def main():
                 item["market_cap"] = to_float(f.get("hts_avls")) or None
                 # KIS 현재가 시세에는 배당수익률이 없다.
                 # kis_dividends.py 가 받아둔 주당배당금을 종가로 나눠 계산한다.
-                dps = dividends.get(ticker)
+                # dividends.json 은 '액면가 1원당 배당액'이라 현재 액면가를 곱해
+                # 현재 주식 기준 주당배당금으로 되돌린다 (기간 중 액면분할 보정).
+                ratio = dividends.get(ticker)
+                face = to_int(f.get("stck_fcam"))
                 close = item["_close"]
+                dps = ratio * face if ratio and face > 0 else 0
                 item["div_yield"] = (
                     round(dps / close * 100, 2) if dps and close > 0 else None
                 )

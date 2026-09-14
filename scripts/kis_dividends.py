@@ -1,5 +1,5 @@
 """
-종목별 최근 12 개월 주당 현금배당금을 모아 dividends.json 을 만든다.
+종목별 최근 12 개월 배당을 모아 dividends.json 을 만든다.
 
 KIS 현재가 시세에는 배당수익률이 없어서, 예탁원정보(배당일정)에서 주당배당금을
 받아 kis_fetch.py 가 종가로 나눠 배당수익률을 계산한다.
@@ -34,7 +34,15 @@ OUT_PATH = DATA_DIR / "dividends.json"
 
 
 def fetch_dividend(kis, ticker, f_dt, t_dt):
-    """최근 12 개월 주당 현금배당금 합계(원). 없으면 0."""
+    """최근 12 개월 배당을 '액면가 1 원당 배당액'으로 환산해 합산한다.
+
+    주당배당금을 그대로 합치면 안 된다. 기간 중 액면분할이 있었으면 배당 기록은
+    분할 전 주식 기준이라, 분할 후 주가로 나누는 순간 수익률이 분할 배수만큼
+    부풀려진다. (실측: 대한제분 5000->500 분할로 3.45% 가 34.54% 로 나왔다)
+
+    그래서 각 기록을 그 시점 액면가로 나눠 저장하고, 쓰는 쪽에서 현재 액면가를
+    곱해 현재 주식 기준 주당배당금으로 되돌린다.
+    """
     body = kis.get(
         DIVIDEND_URL,
         tr_id=DIVIDEND_TR,
@@ -50,8 +58,15 @@ def fetch_dividend(kis, ticker, f_dt, t_dt):
     rows = body.get("output1") or []
     if isinstance(rows, dict):
         rows = [rows]
+
     # per_sto_divi_amt 가 주당 현금배당금. 주식배당(stk_divi_rate)은 제외한다.
-    return sum(to_float(r.get("per_sto_divi_amt")) for r in rows)
+    total = 0.0
+    for r in rows:
+        amount = to_float(r.get("per_sto_divi_amt"))
+        face = to_float(r.get("face_val"))
+        if amount > 0 and face > 0:
+            total += amount / face
+    return total
 
 
 def main():
@@ -98,7 +113,7 @@ def main():
             failed += 1
             continue
         if amount > 0:
-            dividends[ticker] = round(amount, 2)
+            dividends[ticker] = round(amount, 6)
 
         if n % 300 == 0 or n == len(universe):
             el = time.monotonic() - t0
@@ -112,7 +127,7 @@ def main():
             {
                 "updated_at": datetime.now().isoformat(timespec="seconds"),
                 "period": {"from": f_dt, "to": t_dt},
-                "unit": "원 (주당 현금배당금 12개월 합계)",
+                "unit": "액면가 1원당 배당액 (12개월 합계). 주당배당금 = 이 값 x 현재 액면가",
                 "data": dividends,
             },
             ensure_ascii=False,

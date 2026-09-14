@@ -91,9 +91,9 @@ def build_series(mem, hist, months):
 
 
 def main():
-    hist = json.load(open(HIST))
-    sm = json.load(open(SECTOR_MAP))
-    tm = json.load(open(THEME_MAP))
+    hist = json.load(open(HIST, encoding="utf-8"))
+    sm = json.load(open(SECTOR_MAP, encoding="utf-8"))
+    tm = json.load(open(THEME_MAP, encoding="utf-8"))
     months = sorted(hist["data"])
 
     # 레벨별 멤버 구성
