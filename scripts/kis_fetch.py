@@ -160,6 +160,57 @@ def cost_basis_to_avg_cost(entry, close):
     return out if len(out) > 1 else None
 
 
+OHLC_DIR = DATA_DIR / "ohlc"
+OHLC_KEEP = 250  # 보관 영업일 (약 1년)
+
+
+def append_ohlc(ticker, rows):
+    """일봉 파일에 새 날짜만 덧붙인다. 파일이 없으면 가진 만큼으로 새로 만든다.
+
+    차트용 데이터는 timeseries 와 분리해 둔다. 합치면 종목 상세 페이지가
+    받는 파일이 2~3 배가 되어 차트를 안 여는 사람까지 느려진다.
+    scripts/build_ohlc.py 가 만든 포맷(병렬 배열, 날짜 YYMMDD)을 그대로 쓴다.
+    """
+    path = OHLC_DIR / f"{ticker}.json"
+    try:
+        cur = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cur = {"t": ticker, "d": [], "o": [], "h": [], "l": [], "c": [], "v": []}
+
+    have = set(cur["d"])
+    added = 0
+    for r in rows:
+        ymd = r.get("stck_bsop_date", "")
+        if len(ymd) != 8:
+            continue
+        key = int(ymd[2:])
+        if key in have:
+            continue
+        c = to_int(r.get("stck_clpr"))
+        if c <= 0:
+            continue
+        cur["d"].append(key)
+        cur["o"].append(to_int(r.get("stck_oprc")))
+        cur["h"].append(to_int(r.get("stck_hgpr")))
+        cur["l"].append(to_int(r.get("stck_lwpr")))
+        cur["c"].append(c)
+        cur["v"].append(to_int(r.get("acml_vol")))
+        have.add(key)
+        added += 1
+
+    if not cur["d"]:
+        return 0
+
+    # 날짜 오름차순 정렬 후 보관 기간만 남긴다
+    order = sorted(range(len(cur["d"])), key=lambda i: cur["d"][i])[-OHLC_KEEP:]
+    for k in ("d", "o", "h", "l", "c", "v"):
+        cur[k] = [cur[k][i] for i in order]
+
+    OHLC_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cur, separators=(",", ":")), encoding="utf-8")
+    return added
+
+
 def load_dividends():
     """kis_dividends.py 가 만든 주당배당금 표. 없으면 빈 dict."""
     path = DATA_DIR / "dividends.json"
@@ -627,6 +678,7 @@ def main():
     print(f"\n[3/4] 종목별 수급/시세 수집 (예상 {len(universe) * (args.depth + (0 if args.skip_fundamentals else 1)) / 6 / 60:.0f}분)")
     results = []
     failed = []
+    ohlc_added = 0
     t0 = time.monotonic()
 
     for n, stock in enumerate(universe, 1):
@@ -702,6 +754,8 @@ def main():
             if avg:
                 item["avg_cost"] = avg
 
+        ohlc_added += append_ohlc(ticker, rows)
+
         results.append(item)
 
         if n % 100 == 0 or n == len(universe):
@@ -714,6 +768,7 @@ def main():
     print(f"\n[4/4] 저장")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    print(f"  ohlc/ ({ohlc_added}개 일봉 추가)")
     save_cost_basis(cb_state, date_iso)
     print(f"  cost-basis.json ({len(cb_state)}종목)")
 

@@ -3,12 +3,20 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import nextDynamic from "next/dynamic";
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
   LineChart, Line, CartesianGrid,
 } from "recharts";
 
 export const dynamic = "force-static";
+
+// 차트 라이브러리는 188KB 라 메인 번들에 넣지 않는다. 차트를 보는 사람만 받는다.
+const PriceChart = nextDynamic(() => import("../../components/PriceChart"), {
+  ssr: false,
+  loading: () => <div className="bg-[var(--bg-card)] rounded-2xl h-[420px] animate-pulse" />,
+});
+
 export const dynamicParams = true;
 
 /* ── 타입 ─────────────────────────────────────── */
@@ -489,6 +497,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       )}
 
       {/* 외국인·기관 누적 순매수 라인 차트 */}
+      <PriceChart
+        ticker={stockData.ticker}
+        foreignAvg={stockData.avg_cost?.foreign?.avg_cost}
+        institutionAvg={stockData.avg_cost?.institution?.avg_cost}
+      />
+
       <CumulativeFlowChart ticker={stockData.ticker} />
 
       {/* 기관 세부 */}
