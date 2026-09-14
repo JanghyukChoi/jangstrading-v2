@@ -64,3 +64,6 @@ scripts/__pycache__/
 
 # KIS 원시응답 캐시 (scripts/kis_fetch.py)
 .kis_cache/
+
+# 기준가격 상태 (scripts/build_cost_basis.py) — 완성 후 커밋
+cost-basis.json.tmp
