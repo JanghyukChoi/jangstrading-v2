@@ -49,15 +49,20 @@ jobs:
       - name: Fetch themes
         run: python scripts/fetch_themes.py
         continue-on-error: true
-      - name: Generate AI report
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python scripts/generate_report.py
-      - name: Send Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-        run: python scripts/send_telegram.py
+      # AI 시황 리포트(generate_report.py)와 텔레그램 발송(send_telegram.py)은
+      # 2026-09-14 부터 중단. 리포트는 Anthropic API 비용 때문에 뺐고, 텔레그램은
+      # 리포트를 실어 보내는 용도라 같이 멈춘다.
+      # 스크립트와 시크릿은 그대로 두었으니 되살리려면 이 두 스텝만 복구하면 된다.
+      #
+      # - name: Generate AI report
+      #   env:
+      #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      #   run: python scripts/generate_report.py
+      # - name: Send Telegram
+      #   env:
+      #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      #     TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+      #   run: python scripts/send_telegram.py
       - name: Build stock timeseries
         run: python scripts/build_timeseries.py
       - name: Build V3 signals
