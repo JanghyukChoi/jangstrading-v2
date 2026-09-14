@@ -55,3 +55,6 @@ scripts/ml_artifacts/
 # python
 scripts/__pycache__/
 *.pyc
+
+# KRX 로그인 세션 캐시 (scripts/krx_session.py)
+.krx_session.json

@@ -8,6 +8,8 @@ stock-rankings.json에 주가 수익률 데이터를 추가하는 스크립트
 import json
 from pathlib import Path
 from dotenv import load_dotenv
+# pykrx import 전에 KRX 로그인(재시도 포함)을 먼저 처리한다
+import krx_session  # noqa: F401,E402
 from pykrx import stock
 
 load_dotenv()

@@ -30,6 +30,8 @@ from dotenv import load_dotenv
 # pykrx는 import 시점에 KRX 로그인을 시도하므로 dotenv를 먼저 로드해야 함
 load_dotenv()
 
+# pykrx import 전에 KRX 로그인(재시도 포함)을 먼저 처리한다
+import krx_session  # noqa: F401,E402
 from pykrx import stock  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent.parent
