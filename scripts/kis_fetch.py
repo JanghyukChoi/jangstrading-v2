@@ -227,7 +227,13 @@ def fetch_fundamentals(kis, ticker, end_date, cache=True):
 
 # ─── 집계 ───────────────────────────────────────────────────────────
 def aggregate_flows(rows):
-    """기간별 외국인/기관/합계 순매수 대금(백만원) 과 기관 세부주체."""
+    """기간별 외국인/기관/합계 순매수 대금(백만원) 과 기관 세부주체.
+
+    값은 이미 백만원 단위 정수라 float 로 부풀리지 않는다. 0 인 항목은 아예
+    빼서 파일 크기를 줄인다 (기존 파이프라인도 같은 방식이었고, 프론트는
+    `Object.entries` 순회와 `?? 0` 으로 키 누락을 그대로 견딘다).
+    inst_detail 항목의 58%, pension 의 66% 가 0 이다.
+    """
     foreign, institution, combined = {}, {}, {}
     inst_detail, pension = {}, {}
 
@@ -235,15 +241,19 @@ def aggregate_flows(rows):
         window = rows[-n:] if n <= len(rows) else rows
         f = sum(ntby_pbmn(r, "frgn") for r in window)
         i = sum(ntby_pbmn(r, "orgn") for r in window)
-        foreign[period] = float(f)
-        institution[period] = float(i)
-        combined[period] = float(f + i)
+        foreign[period] = f
+        institution[period] = i
+        combined[period] = f + i
 
         detail = {}
         for label, prefix in INST_DETAIL.items():
-            detail[label] = float(sum(ntby_pbmn(r, prefix) for r in window))
-        inst_detail[period] = detail
-        pension[period] = detail["연기금"]
+            v = sum(ntby_pbmn(r, prefix) for r in window)
+            if v:
+                detail[label] = v
+        if detail:
+            inst_detail[period] = detail
+        if detail.get("연기금"):
+            pension[period] = detail["연기금"]
 
     return foreign, institution, combined, inst_detail, pension
 
@@ -559,9 +569,12 @@ def main():
             "combined": combined,
             "ticker": ticker,
             "price_change": aggregate_price_changes(rows),
-            "inst_detail": inst_detail,
-            "pension": pension,
         }
+        # 전 기간이 0 이면 필드 자체를 넣지 않는다
+        if inst_detail:
+            item["inst_detail"] = inst_detail
+        if pension:
+            item["pension"] = pension
 
         avg = build_avg_cost(rows)
         if avg:
