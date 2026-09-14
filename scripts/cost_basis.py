@@ -239,7 +239,11 @@ def summarize(state, last_close, top_bins=12):
     """상태에서 기준가격 / CGO / 매물대를 뽑는다."""
     if not state or state["d"] <= 0 or last_close <= 0:
         return None
-    ref = state["n"] / state["d"]
+    # 화면에 나가는 기준가는 정수로 반올림된다. CGO 를 반올림 전 값으로 계산하면
+    # 표시되는 두 숫자가 서로 안 맞는다. 동전주에서 특히 커진다 —
+    # 코스나인(현재가 7원)은 기준가 15.65 -> 16 반올림만으로 CGO 가 5%p 어긋났다.
+    # 표시값끼리 일관되도록 반올림한 뒤 계산한다.
+    ref = float(round(state["n"] / state["d"]))
     total = sum(state["b"].values()) or 1.0
     bars = sorted(
         ({"price": round(bin_price(int(k))), "weight": round(v / total * 100, 1)}
