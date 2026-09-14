@@ -45,6 +45,18 @@ INVESTOR_URL = "/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily
 INVESTOR_TR = "FHPTJ04160001"
 PRICE_URL = "/uapi/domestic-stock/v1/quotations/inquire-price"
 PRICE_TR = "FHKST01010100"
+MARKET_URL = "/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market"
+MARKET_TR = "FHPTJ04040000"
+
+# 시장별 투자자매매동향 파라미터. FID_INPUT_ISCD_2 를 비워두면 대금이 전부 0 으로
+# 내려온다(실측). 업종분류코드를 그대로 넣어야 한다.
+MARKETS = {
+    "KOSPI": {"iscd": "0001", "code": "KSP"},
+    "KOSDAQ": {"iscd": "1001", "code": "KSQ"},
+}
+
+# 스냅샷 보관 영업일 수 (save_snapshot.py 와 동일)
+MAX_SNAPSHOTS = 500
 
 MASTER = {
     "KOSPI": ("https://new.real.download.dws.co.kr/common/master/kospi_code.mst.zip", 228),
@@ -290,6 +302,165 @@ def build_avg_cost(rows):
     return out if len(out) > 1 else None
 
 
+# ─── 시장 단위 ──────────────────────────────────────────────────────
+def fetch_market(kis, date_str):
+    """시장별 투자자매매동향(일별). 한 호출에 300 영업일치 + 지수가 같이 온다."""
+    out = {}
+    for market, cfg in MARKETS.items():
+        body = kis.get(
+            MARKET_URL,
+            tr_id=MARKET_TR,
+            params={
+                "FID_COND_MRKT_DIV_CODE": "U",
+                "FID_INPUT_ISCD": cfg["iscd"],
+                "FID_INPUT_DATE_1": date_str,
+                "FID_INPUT_ISCD_1": cfg["code"],
+                "FID_INPUT_DATE_2": date_str,
+                "FID_INPUT_ISCD_2": cfg["iscd"],
+            },
+        )
+        rows = body.get("output") or []
+        if isinstance(rows, dict):
+            rows = [rows]
+        rows = [r for r in rows if str(r.get("bstp_nmix_prpr", "")).strip()]
+        out[market] = sorted(rows, key=lambda r: r["stck_bsop_date"])
+        print(f"  {market}: {len(out[market])}영업일")
+    return out
+
+
+def build_market_overview(market_rows, date_iso, date_str):
+    """market-overview.json — 시장별 지수 + 기간별 투자자 자금흐름(백만원)."""
+    data = {}
+    for market, rows in market_rows.items():
+        rows = [r for r in rows if r["stck_bsop_date"] <= date_str]
+        if not rows:
+            continue
+        last = rows[-1]
+        flow = {}
+        for period, n in PERIODS.items():
+            window = rows[-n:] if n <= len(rows) else rows
+            flow[period] = {
+                "foreign": float(sum(to_int(r.get("frgn_ntby_tr_pbmn")) for r in window)),
+                "institution": float(sum(to_int(r.get("orgn_ntby_tr_pbmn")) for r in window)),
+                "individual": float(sum(to_int(r.get("prsn_ntby_tr_pbmn")) for r in window)),
+            }
+        data[market] = {
+            "index": to_float(last.get("bstp_nmix_prpr")),
+            "change": to_float(last.get("bstp_nmix_prdy_vrss")) or None,
+            "change_pct": to_float(last.get("bstp_nmix_prdy_ctrt")) or None,
+            "flow": flow,
+        }
+
+    path = DATA_DIR / "market-overview.json"
+    path.write_text(
+        json.dumps({"date": date_iso, "unit": "백만원", "data": data}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"  market-overview.json ({len(data)}개 시장)")
+    return data
+
+
+def build_kospi_history(market_rows, date_str):
+    """kospi-history.json — {YYYY-MM-DD: 종가}. 기존 이력은 보존하고 병합한다."""
+    path = DATA_DIR / "kospi-history.json"
+    history = {}
+    if path.exists():
+        try:
+            history = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            history = {}
+
+    added = 0
+    for r in market_rows.get("KOSPI", []):
+        d = r["stck_bsop_date"]
+        if d > date_str:
+            continue
+        iso = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+        val = to_float(r.get("bstp_nmix_prpr"))
+        if val > 0 and iso not in history:
+            added += 1
+        if val > 0:
+            history[iso] = val
+
+    history = {k: history[k] for k in sorted(history)}
+    path.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+    print(f"  kospi-history.json ({len(history)}일, 신규 {added}일)")
+    return history
+
+
+def build_snapshot(results, market_data, date_iso):
+    """snapshots/YYYY-MM-DD.json — save_snapshot.py + augment_snapshots.py 대체.
+
+    시그널은 build_v3_signals.py 가 timeseries 기반으로 따로 계산하므로
+    여기서는 빈 placeholder 만 넣는다(기존과 동일).
+    """
+    prices, foreign_1d, inst_1d, pension_1d = {}, {}, {}, {}
+    market_cap, trade_value = {}, {}
+
+    for s in results:
+        t = s["ticker"]
+        if s.get("_close"):
+            prices[t] = s["_close"]
+        if s.get("_foreign_1d"):
+            foreign_1d[t] = round(s["_foreign_1d"], 1)
+        if s.get("_inst_1d"):
+            inst_1d[t] = round(s["_inst_1d"], 1)
+        if s.get("_pension_1d"):
+            pension_1d[t] = round(s["_pension_1d"], 1)
+        if s.get("_trade_value"):
+            trade_value[t] = s["_trade_value"]
+        if s.get("market_cap"):
+            # 랭킹의 market_cap 은 억원, 스냅샷은 원 단위
+            market_cap[t] = int(s["market_cap"] * 100_000_000)
+
+    breadth = {
+        "foreign_buy": sum(1 for s in results if s["foreign"]["1d"] > 0),
+        "foreign_sell": sum(1 for s in results if s["foreign"]["1d"] < 0),
+        "inst_buy": sum(1 for s in results if s["institution"]["1d"] > 0),
+        "inst_sell": sum(1 for s in results if s["institution"]["1d"] < 0),
+    }
+
+    snapshot = {
+        "date": date_iso,
+        "signals": {"buy_reversal": [], "sell_reversal": [], "leader": [], "accumulation": []},
+        "prices": prices,
+        "foreign_1d": foreign_1d,
+        "inst_1d": inst_1d,
+        "pension_1d": pension_1d,
+        "breadth": breadth,
+        "market": {m.lower(): v["index"] for m, v in market_data.items()},
+        "market_cap": market_cap,
+        "trade_value": trade_value,
+    }
+
+    snap_dir = DATA_DIR / "snapshots"
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    path = snap_dir / f"{date_iso}.json"
+    path.write_text(json.dumps(snapshot, ensure_ascii=False), encoding="utf-8")
+    print(
+        f"  snapshots/{date_iso}.json ({path.stat().st_size/1024:.1f} KB) "
+        f"종가 {len(prices)} / 외국인 {len(foreign_1d)} / 기관 {len(inst_1d)} / 연기금 {len(pension_1d)}"
+    )
+    print(
+        f"    breadth 외국인 +{breadth['foreign_buy']}/-{breadth['foreign_sell']} "
+        f"기관 +{breadth['inst_buy']}/-{breadth['inst_sell']}"
+    )
+
+    # retention
+    import re
+
+    name_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    files = sorted(
+        (f for f in snap_dir.glob("*.json") if name_re.match(f.stem)),
+        key=lambda f: f.stem,
+        reverse=True,
+    )
+    for old in files[MAX_SNAPSHOTS:]:
+        old.unlink()
+    if len(files) > MAX_SNAPSHOTS:
+        print(f"    retention: {len(files) - MAX_SNAPSHOTS}개 삭제")
+
+
 # ─── 메인 ───────────────────────────────────────────────────────────
 def latest_business_day(kis):
     """KOSPI 지수가 조회되는 가장 최근 날짜를 기준일로 삼는다."""
@@ -341,11 +512,14 @@ def main():
     print(f"KIS 전 종목 수집  기준일={date_iso}  depth={args.depth}")
     print("=" * 60)
 
-    print("\n[1/3] 종목 유니버스 로드")
+    print("\n[1/4] 종목 유니버스 로드")
     universe = load_universe(args.limit or None)
     print(f"  총 {len(universe)}종목")
 
-    print(f"\n[2/3] 종목별 수급/시세 수집 (예상 {len(universe) * (args.depth + (0 if args.skip_fundamentals else 1)) / 6 / 60:.0f}분)")
+    print("\n[2/4] 시장 지수/자금흐름 수집")
+    market_rows = fetch_market(kis, date_str)
+
+    print(f"\n[3/4] 종목별 수급/시세 수집 (예상 {len(universe) * (args.depth + (0 if args.skip_fundamentals else 1)) / 6 / 60:.0f}분)")
     results = []
     failed = []
     t0 = time.monotonic()
@@ -410,8 +584,17 @@ def main():
             print(f"  {n}/{len(universe)}  수집 {len(results)}  실패 {len(failed)}  "
                   f"경과 {el/60:.1f}분  남은시간 ~{eta:.0f}분")
 
-    print(f"\n[3/3] 저장")
+    print(f"\n[4/4] 저장")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    market_data = build_market_overview(market_rows, date_iso, date_str)
+    build_kospi_history(market_rows, date_str)
+    build_snapshot(results, market_data, date_iso)
+
+    # 스냅샷 전용 원시값은 프론트로 내보낼 필요가 없어 여기서 떼어낸다
+    for item in results:
+        for k in ("_close", "_trade_value", "_foreign_1d", "_inst_1d", "_pension_1d"):
+            item.pop(k, None)
 
     payload = {
         "date": date_iso,
