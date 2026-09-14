@@ -11,8 +11,9 @@ KRX 스크래핑(pykrx) 대체용. KRX 가 2026-07 부터 자동화 조회를 �
 
 선택 환경변수:
     KIS_TOKEN_CACHE   토큰 캐시 경로 (기본: 리포 루트 /.kis_token.json)
-    KIS_RATE_LIMIT    초당 요청 수 (기본 8. 개인 실전 한도가 초당 10~20건이라
-                      여유를 둔다. 초과하면 EGW00201 이 떨어진다)
+    KIS_RATE_LIMIT    초당 요청 수 (기본 6. 명목 한도는 개인 실전 초당 10~20건
+                      이지만 8 에서도 EGW00201(유량 초과)이 관측돼 여유를 둔다.
+                      재시도로 복구는 되나 그만큼 느려지므로 안 걸리는 게 낫다)
 
 토큰은 발급 후 24 시간 유효하고 재발급은 1 분에 1 회로 제한되므로 반드시 파일에
 캐시해서 재사용한다. GitHub Actions 는 한 job 안에서 워크스페이스가 유지되므로
@@ -103,7 +104,7 @@ class KisClient:
             cache_path or os.getenv("KIS_TOKEN_CACHE") or DEFAULT_CACHE
         )
 
-        rate = float(os.getenv("KIS_RATE_LIMIT", "8"))
+        rate = float(os.getenv("KIS_RATE_LIMIT", "6"))
         self._limiter = _RateLimiter(rate)
         self._session = requests.Session()
         self._token = None

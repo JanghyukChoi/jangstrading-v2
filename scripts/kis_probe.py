@@ -56,11 +56,11 @@ WANTED_INVESTOR_FIELDS = [
     ("fund_ntby_qty", "연기금 순매수"),
 ]
 
+# 기간별시세 output1 에는 BPS 가 없다(확인함). BPS 는 현재가 시세에서 받는다.
 WANTED_FUNDAMENTAL_FIELDS = [
     ("per", "PER"),
     ("pbr", "PBR"),
     ("eps", "EPS"),
-    ("bps", "BPS"),
     ("hts_avls", "시가총액"),
     ("lstn_stcn", "상장주수"),
     ("hts_kor_isnm", "종목명"),
