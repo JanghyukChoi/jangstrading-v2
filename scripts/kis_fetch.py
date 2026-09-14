@@ -35,6 +35,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import cost_basis as cb  # noqa: E402
 from kis_api import KisClient, KisError  # noqa: E402
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,6 +82,82 @@ INST_DETAIL = {
 
 # 평균단가 계산 기간 (영업일)
 AVG_COST_LOOKBACK = 120
+
+
+COST_BASIS_PATH = DATA_DIR / "cost-basis.json"
+
+
+def load_cost_basis():
+    """build_cost_basis.py 가 만든 기준가격 상태. 없으면 빈 상태로 시작한다."""
+    try:
+        raw = json.loads(COST_BASIS_PATH.read_text(encoding="utf-8"))
+        return raw.get("data", {}), raw.get("updated_through", "")
+    except (OSError, ValueError):
+        return {}, ""
+
+
+def save_cost_basis(state, date_iso):
+    try:
+        COST_BASIS_PATH.write_text(
+            json.dumps({"updated_through": date_iso, "data": state}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError as e:
+        print(f"  ⚠️ cost-basis.json 저장 실패(무시): {e}")
+
+
+def update_cost_basis(entry, rows, holdings, shares, since_ymd):
+    """종목의 기준가격 상태를 since_ymd 이후 날짜로 전진시킨다.
+
+    상태가 없으면(신규 상장 등) 가진 이력 전체로 새로 만든다. 이력이 짧으면
+    그만큼 기준가격이 현재가 쪽으로 치우치지만, 시작 보유량을 0 으로 놓던
+    기존 방식보다는 낫다.
+    """
+    # 상태 파일은 날짜를 ISO("2026-09-14")로, KIS row 는 "20260914"로 쓴다.
+    # 그대로 문자열 비교하면 '0' > '-' 라 항상 참이 되어 매일 전체 이력이 다시
+    # 적용된다(기준가격이 오염된다). 형식을 맞춰서 비교한다.
+    cutoff = (since_ymd or "").replace("-", "")
+    new_rows = [r for r in rows if not cutoff or r["stck_bsop_date"] > cutoff]
+    if entry is None:
+        entry = {}
+        new_rows = rows  # 처음 만드는 종목은 전체 이력으로
+
+    if not new_rows:
+        return entry
+
+    for group, key in (("foreign", "f"), ("institution", "i")):
+        prefix = cb.GROUPS[group]
+        series = cb._series(new_rows, prefix)
+        # 외국인 보유량 경로는 '현재 보유량'에서 역산하므로 새 구간에도 그대로 성립
+        holdings_path = (
+            cb._holdings_path(series, holdings)
+            if group == "foreign" and holdings > 0
+            else [0] * len(series)
+        )
+        st = entry.get(key) or cb.new_state()
+        for i, r in enumerate(new_rows):
+            ex = cb.exit_rate_for(group, r, series[i], holdings_path[i], shares)
+            cb.advance(st, ex, series[i]["buy"], series[i]["price"])
+        if st["d"] > 0:
+            entry[key] = st
+    return entry
+
+
+def cost_basis_to_avg_cost(entry, close):
+    """기존 avg_cost 스키마 그대로 내보낸다.
+
+    프론트(app/stocks/[ticker]/page.tsx)가 이 형태를 직접 읽는다. 계산만 바뀌고
+    구조는 그대로여야 화면이 안 깨진다. avg_cost 는 회전율 가중 기준가격,
+    pnl_pct 는 CGO(미실현 손익률).
+    """
+    if not entry or close <= 0:
+        return None
+    out = {"price": close}
+    for key, label in (("f", "foreign"), ("i", "institution")):
+        s = cb.summarize(entry.get(key), close)
+        if s:
+            out[label] = {"avg_cost": s["reference"], "pnl_pct": s["cgo"]}
+    return out if len(out) > 1 else None
 
 
 def load_dividends():
@@ -531,6 +608,10 @@ def main():
     print(f"KIS 전 종목 수집  기준일={date_iso}  depth={args.depth}")
     print("=" * 60)
 
+    cb_state, cb_through = load_cost_basis()
+    print(f"  기준가격 상태: {len(cb_state)}종목"
+          + (f" (…{cb_through} 까지 반영됨)" if cb_through else "  (없음 — scripts/build_cost_basis.py 를 먼저 돌리면 정확해집니다)"))
+
     dividends = load_dividends()
     print(f"  배당 데이터: {len(dividends)}종목" + (
         "" if dividends
@@ -560,6 +641,7 @@ def main():
             # 기준일 데이터가 없으면 거래정지/상장폐지 등. 건너뛴다.
             continue
 
+        holdings_now = shares_now = 0
         foreign, institution, combined, inst_detail, pension = aggregate_flows(rows)
         item = {
             "name": stock["name"],
@@ -576,10 +658,6 @@ def main():
         if pension:
             item["pension"] = pension
 
-        avg = build_avg_cost(rows)
-        if avg:
-            item["avg_cost"] = avg
-
         # 스냅샷용 원시값
         last = rows[-1]
         item["_close"] = to_float(last.get("stck_clpr"))
@@ -591,6 +669,8 @@ def main():
         if not args.skip_fundamentals:
             try:
                 f = fetch_fundamentals(kis, ticker, date_str, cache)
+                holdings_now = to_int(f.get("frgn_hldn_qty"))
+                shares_now = to_int(f.get("lstn_stcn"))
                 item["per"] = to_float(f.get("per")) or None
                 item["pbr"] = to_float(f.get("pbr")) or None
                 item["eps"] = to_int(f.get("eps")) or None
@@ -611,6 +691,17 @@ def main():
             except KisError as e:
                 failed.append((ticker, f"fundamentals: {e}"))
 
+        # 평균단가는 회전율 가중 기준가격으로 계산한다. 외국인 보유량이 필요해서
+        # 재무 조회 뒤에 온다. 출력 스키마는 기존 avg_cost 그대로다.
+        entry = update_cost_basis(
+            cb_state.get(ticker), rows, holdings_now, shares_now, cb_through
+        )
+        if entry:
+            cb_state[ticker] = entry
+            avg = cost_basis_to_avg_cost(entry, item["_close"])
+            if avg:
+                item["avg_cost"] = avg
+
         results.append(item)
 
         if n % 100 == 0 or n == len(universe):
@@ -622,6 +713,9 @@ def main():
 
     print(f"\n[4/4] 저장")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    save_cost_basis(cb_state, date_iso)
+    print(f"  cost-basis.json ({len(cb_state)}종목)")
 
     market_data = build_market_overview(market_rows, date_iso, date_str)
     build_kospi_history(market_rows, date_str)
