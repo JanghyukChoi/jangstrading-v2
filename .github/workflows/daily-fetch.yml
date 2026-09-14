@@ -34,7 +34,9 @@ jobs:
         env:
           KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
           KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
-        run: python scripts/kis_fetch.py
+        # CI 는 매 실행이 새 워크스페이스라 캐시를 읽을 일이 없다. 쓰기만 하면
+        # 원시 응답 700MB 가 그냥 버려지므로 끈다. (로컬 재실행 때만 유용)
+        run: python scripts/kis_fetch.py --no-cache
 
       - name: Add sectors
         run: |
