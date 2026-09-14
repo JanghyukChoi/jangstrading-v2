@@ -3,7 +3,7 @@
 테마명 → 구성종목(티커) 매핑
 
 실행: python scripts/fetch_themes.py
-소요: 약 3분 (312개 테마 × 0.5초)
+소요: 약 2분 (266개 테마 × 0.3초)
 """
 
 import json
@@ -16,36 +16,61 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "public" / "data"
 
+# 네이버 금융이 SPA(Npay 증권)로 개편되면서 finance.naver.com HTML 스크래핑이
+# 죽었다(테마 링크 0개). 모바일 앱이 쓰는 JSON API 로 옮겼다.
+API_BASE = "https://m.stock.naver.com/api"
+API_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    ),
+    "Referer": "https://m.stock.naver.com/",
+    "Accept": "application/json",
+}
+PAGE_SIZE = 100
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
 
 def fetch_theme_list():
-    """전체 테마 목록 수집 (테마번호, 테마명)"""
+    """전체 테마 목록 수집 (테마번호, 테마명)
+
+    네이버 금융이 SPA(Npay 증권)로 개편되면서 finance.naver.com HTML 스크래핑이
+    죽었다. 모바일 앱이 쓰는 JSON API 로 옮겼다.
+    """
     themes = {}  # no -> name (중복 제거)
-    for page in range(1, 15):
+    page = 1
+    while page <= 30:
         try:
             r = requests.get(
-                f"https://finance.naver.com/sise/theme.naver?page={page}",
-                headers=HEADERS,
-                timeout=10,
+                f"{API_BASE}/stocks/theme",
+                params={"page": page, "pageSize": PAGE_SIZE},
+                headers=API_HEADERS,
+                timeout=15,
             )
-            r.encoding = "euc-kr"
-            text = r.content.decode("euc-kr", errors="replace")
-
-            matches = re.findall(r'type=theme&no=(\d+)"[^>]*>\s*([^<]+)', text)
-            if not matches:
-                break
-
-            for no, name in matches:
-                themes[no] = name.strip()
-
-            print(f"  페이지 {page}: {len(matches)}개 테마")
-            time.sleep(0.3)
+            r.raise_for_status()
+            data = r.json()
         except Exception as e:
             print(f"  ❌ 페이지 {page} 실패: {e}")
             break
+
+        groups = data.get("groups") or []
+        if not groups:
+            break
+
+        for g in groups:
+            no, name = g.get("no"), (g.get("name") or "").strip()
+            if no and name:
+                themes[str(no)] = name
+
+        total = data.get("totalCount", 0)
+        print(f"  페이지 {page}: {len(groups)}개 (누적 {len(themes)}/{total})")
+        if len(themes) >= total:
+            break
+        page += 1
+        time.sleep(0.2)
 
     return themes
 
@@ -54,15 +79,14 @@ def fetch_theme_stocks(theme_no):
     """특정 테마의 구성종목 티커 목록을 가져온다"""
     try:
         r = requests.get(
-            f"https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no={theme_no}",
-            headers=HEADERS,
-            timeout=10,
+            f"{API_BASE}/stocks/theme/{theme_no}",
+            params={"page": 1, "pageSize": PAGE_SIZE},
+            headers=API_HEADERS,
+            timeout=15,
         )
-        r.encoding = "euc-kr"
-        text = r.content.decode("euc-kr", errors="replace")
-
-        codes = re.findall(r"main\.naver\?code=(\d{6})", text)
-        return list(set(codes))
+        r.raise_for_status()
+        stocks = r.json().get("stocks") or []
+        return sorted({s["itemCode"] for s in stocks if s.get("itemCode")})
     except Exception:
         return []
 

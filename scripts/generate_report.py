@@ -2,8 +2,8 @@
 매일 수급 데이터 + 뉴스 본문 기반으로 AI 시황 분석 글을 자동 생성하는 스크립트
 
 1. stock-rankings.json에서 핵심 수급 데이터 추출 (토큰 절약)
-2. 네이버 금융 뉴스 최대 20건의 제목 + 본문 크롤링
-   (n.news.naver.com/mnews/... 모바일 URL → #dic_area 셀렉터)
+2. 네이버 증권 메인뉴스 JSON API 로 최대 12건의 제목 + 본문 수집
+   (api.stock.naver.com/news/mainnews → n.news.naver.com 본문 → #dic_area)
 3. Gemini API 호출 → 5섹션 구조 시황 글 생성
    (한 줄 요약 / 핵심 숫자 / 구조적 해석 / 주목할 신호 / 종합 판단)
 4. public/data/reports/YYYY-MM-DD.json 저장
@@ -32,6 +32,16 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 # 붐빌 때 503 이 나므로 위에서부터 차례로 시도한다
 GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash"]
+
+# 네이버 증권 모바일 JSON API (구 HTML 목록은 SPA 개편으로 죽음)
+NEWS_API_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    ),
+    "Referer": "https://m.stock.naver.com/",
+    "Accept": "application/json",
+}
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
@@ -180,66 +190,61 @@ def extract_key_data():
     return date, summary
 
 
-def crawl_news(max_items: int = 20):
+def crawl_news(max_items: int = 12):
     """
-    네이버 금융 뉴스 목록에서 기사 링크를 수집한 뒤,
-    모바일 뉴스(n.news.naver.com)에서 본문까지 추출.
+    네이버 증권 메인뉴스 JSON API 로 기사 목록을 받고, 모바일 뉴스에서 본문 추출.
     반환: [{title, body, url}, ...] (본문 추출 실패 건은 제외)
-    """
-    list_urls = [
-        "https://finance.naver.com/news/mainnews.naver",
-        "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258",
-    ]
-    # 1) 기사 링크 수집
-    articles = []
-    seen = set()
-    for list_url in list_urls:
-        try:
-            r = requests.get(list_url, headers=HEADERS, timeout=10)
-            r.encoding = "euc-kr"
-            soup = BeautifulSoup(r.content.decode("euc-kr", errors="replace"), "html.parser")
-            for a in soup.select("dd.articleSubject a"):
-                title = a.text.strip()
-                href = a.get("href", "")
-                if not title or len(title) <= 5 or not href:
-                    continue
-                if href.startswith("/"):
-                    href = "https://finance.naver.com" + href
-                elif not href.startswith("http"):
-                    continue
-                if href in seen:
-                    continue
-                seen.add(href)
-                articles.append({"title": title, "url": href})
-                if len(articles) >= max_items:
-                    break
-            if len(articles) >= max_items:
-                break
-        except Exception as e:
-            print(f"  ⚠️ 뉴스 목록 크롤링 실패: {e}")
 
-    # 2) 각 기사 본문 추출
+    finance.naver.com/news/* HTML 목록은 SPA(Npay 증권) 개편으로 기사 링크를
+    더 이상 주지 않는다(실측 0건). 모바일 앱이 쓰는 JSON API 로 옮겼다.
+    """
+    try:
+        r = requests.get(
+            "https://api.stock.naver.com/news/mainnews",
+            params={"page": 1, "pageSize": max_items},
+            headers=NEWS_API_HEADERS,
+            timeout=15,
+        )
+        r.raise_for_status()
+        items = r.json()
+    except Exception as e:
+        print(f"  ⚠️ 뉴스 목록 조회 실패: {e}")
+        return []
+
+    if not isinstance(items, list):
+        print(f"  ⚠️ 예상과 다른 뉴스 응답: {str(items)[:150]}")
+        return []
+
     result = []
-    for item in articles:
+    for it in items[:max_items]:
+        oid, aid = it.get("oid"), it.get("aid")
+        title = (it.get("tit") or "").strip()
+        if not (oid and aid and title):
+            continue
+
+        url = f"https://n.news.naver.com/mnews/article/{oid}/{aid}"
         time.sleep(0.3)  # 폴라이트 딜레이
-        mobile_url = to_mobile_news_url(item["url"])
-        if not mobile_url:
-            continue
+        body = None
         try:
-            r = requests.get(mobile_url, headers=HEADERS, timeout=10)
-            if r.encoding == "ISO-8859-1":
-                r.encoding = r.apparent_encoding or "utf-8"
-            body = extract_article_body(r.text)
-            if body:
-                # 본문이 너무 길면 cap (토큰 절약, 핵심은 앞부분)
-                result.append({
-                    "title": item["title"],
-                    "body": body[:1800],
-                    "url": mobile_url,
-                })
+            ar = requests.get(url, headers=HEADERS, timeout=10)
+            if ar.encoding == "ISO-8859-1":
+                ar.encoding = ar.apparent_encoding or "utf-8"
+            body = extract_article_body(ar.text)
         except Exception as e:
-            print(f"  ⚠️ 본문 추출 실패 ({item['title'][:30]}): {e}")
+            print(f"  ⚠️ 본문 추출 실패 ({title[:30]}): {e}")
+
+        # 본문을 못 받으면 API 가 준 요약이라도 쓴다
+        if not body:
+            body = (it.get("subcontent") or "").strip()
+        if not body:
             continue
+
+        result.append({
+            "title": title,
+            # 본문이 너무 길면 cap (토큰 절약, 핵심은 앞부분)
+            "body": body[:1500],
+            "url": url,
+        })
 
     return result
 
@@ -254,9 +259,16 @@ def call_gemini(prompt):
         print("  ❌ GEMINI_API_KEY가 설정되지 않았습니다.")
         return None
 
+    # Gemini 3.x 는 thinking 토큰도 maxOutputTokens 에서 차감한다. 5000 으로 두면
+    # thinking 이 4800 을 먹고 본문이 200 토큰에서 잘린다(실측, finishReason=MAX_TOKENS).
+    # 넉넉히 주고 thinking 은 짧게 제한한다 — 시황 요약은 긴 추론이 필요한 작업이 아니다.
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 5000, "temperature": 1.0},
+        "generationConfig": {
+            "maxOutputTokens": 16000,
+            "temperature": 1.0,
+            "thinkingConfig": {"thinkingBudget": 2048},
+        },
     }
     headers = {"x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json"}
 
@@ -434,7 +446,7 @@ def main():
     print(f"  📊 데이터 요약: {len(data_summary)}자")
 
     # 2. 뉴스 크롤링 (제목 + 본문)
-    news = crawl_news(max_items=20)
+    news = crawl_news(max_items=12)
     if news:
         avg_body = sum(len(n["body"]) for n in news) // len(news)
         print(f"  📰 뉴스 본문 추출: {len(news)}건 (평균 {avg_body:,}자)")
