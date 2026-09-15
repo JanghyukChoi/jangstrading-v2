@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, Suspense } from "react";
+import { perLabel, perValue } from "@/app/format";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -226,7 +227,10 @@ function ScreenerInner() {
       const pm = s.price_change?.[p] ?? 0;
       if (pm < f.minPriceMom) return false;
       // PER
-      if (f.maxPer != null && (s.per == null || s.per > f.maxPer)) return false;
+      if (f.maxPer != null) {
+        const p = perValue(s.per);   // 적자는 "PER 이하" 필터에 걸리면 안 된다
+        if (p == null || p > f.maxPer) return false;
+      }
       return true;
     }).sort((a, b) => {
       const get = (s: StockRanking) => {
@@ -463,7 +467,7 @@ function ScreenerInner() {
                       }`}>{s.market}</span>
                     </td>
                     <td className="px-2 py-2.5 text-right num text-[var(--text-secondary)]">
-                      {s.per != null ? s.per.toFixed(1) : "-"}
+                      {perLabel(s.per)}
                     </td>
                     <td className="px-2 sm:px-3 py-2.5 text-right num text-[var(--text-secondary)]">
                       {s.market_cap != null ? `${s.market_cap.toLocaleString()}억` : "-"}

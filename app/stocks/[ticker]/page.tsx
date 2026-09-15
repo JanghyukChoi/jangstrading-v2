@@ -86,18 +86,21 @@ function NumUnit({ v, cls = "" }: { v: number; cls?: string }) {
 }
 
 /* ── 지표 카드 ────────────────────────────────── */
-function MetricCard({ label, value, unit }: { label: string; value: string | null; unit?: string }) {
-  const m = value?.match(/^(.+?)([가-힣]+)$/);
+/** fallback: 값 자리에 숫자가 아닌 상태를 적을 때(적자 등). 단위는 붙이지 않는다. */
+function MetricCard({ label, value, unit, fallback }:
+    { label: string; value: string | null; unit?: string; fallback?: string }) {
+  const shown = value ?? fallback ?? null;
+  const m = shown?.match(/^(.+?)([가-힣]+)$/);
   return (
     <div className="bg-[var(--bg-card)] rounded-xl p-3 sm:p-4 text-center">
       <div className="text-[12px] sm:text-[13px] text-[var(--text-muted)] mb-1.5">{label}</div>
       <div className="text-sm sm:text-lg font-semibold text-white truncate">
-        {value == null ? (
+        {shown == null ? (
           <span className="text-[var(--text-muted)]">-</span>
         ) : m ? (
           <><span className="num">{m[1]}</span>{m[2]}</>
         ) : (
-          <span className="num">{value}</span>
+          <span className="num">{shown}</span>
         )}
       </div>
       {unit && value && <div className="text-[11px] sm:text-[12px] text-[var(--text-muted)] mt-0.5">{unit}</div>}
@@ -412,7 +415,8 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
       {/* 재무 지표 — 모바일 3열, 데스크톱 6열 */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
         <MetricCard label="시가총액" value={stockData.market_cap != null ? fmtCap(stockData.market_cap) : null} />
-        <MetricCard label="PER" value={stockData.per != null ? stockData.per.toFixed(1) : null} unit="배" />
+        <MetricCard label="PER" value={stockData.per != null && stockData.per > 0 ? stockData.per.toFixed(1) : null}
+                    unit="배" fallback={stockData.per != null ? "적자" : undefined} />
         <MetricCard label="PBR" value={stockData.pbr != null ? stockData.pbr.toFixed(2) : null} unit="배" />
         <MetricCard label="EPS" value={stockData.eps != null ? stockData.eps.toLocaleString() : null} unit="원" />
         <MetricCard label="BPS" value={stockData.bps != null ? stockData.bps.toLocaleString() : null} unit="원" />

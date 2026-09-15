@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
+import { perLabel } from "@/app/format";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -447,7 +448,7 @@ function StocksPageInner() {
                     </td>
                     {hasPer && (
                       <td className="px-2 py-2.5 text-right num text-[var(--text-secondary)] hidden md:table-cell">
-                        {s.per != null ? s.per.toFixed(1) : "-"}
+                        {perLabel(s.per)}
                       </td>
                     )}
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[displayPeriod]} /></td>
