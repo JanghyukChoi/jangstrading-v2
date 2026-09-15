@@ -115,6 +115,8 @@ export default function PriceChart({
   const [showBasis, setShowBasis] = useState(true);
   // 매물대 막대는 차트 좌표계에 얹어야 해서, 가격->y좌표 변환 후 위치를 잡는다.
   const [buckets, setBuckets] = useState<Bucket[]>([]);
+  // 오버레이를 가격 pane 높이로 자른다. 시간축(아래 ~28px)까지 덮으면 안 된다.
+  const [paneH, setPaneH] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -129,6 +131,31 @@ export default function PriceChart({
       .catch(() => alive && setState("empty"));
     return () => { alive = false; };
   }, [ticker]);
+
+  /* 모바일 핀치를 차트에 준다.
+
+     lightweight-charts 는 touch-action 을 아예 건드리지 않는다(번들 확인함).
+     그래서 두 손가락 제스처를 브라우저가 먼저 가져가 페이지 전체가 확대된다.
+
+     touch-pan-y: 세로 한 손가락은 브라우저에 남겨 페이지 스크롤을 살리고,
+     핀치와 가로 드래그만 차트로 넘긴다. 차트에 touch-action:none 을 주면
+     차트 위에서 페이지를 못 내려 갇힌다.
+
+     iOS 사파리는 touchmove 의 preventDefault 로 페이지 확대를 못 막는다.
+     별도의 gesture* 이벤트를 쓰므로 그쪽도 같이 막아야 한다. */
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const stop = (e: Event) => e.preventDefault();
+    for (const t of ["gesturestart", "gesturechange", "gestureend"]) {
+      el.addEventListener(t, stop, { passive: false });
+    }
+    return () => {
+      for (const t of ["gesturestart", "gesturechange", "gestureend"]) {
+        el.removeEventListener(t, stop);
+      }
+    };
+  }, [state]);
 
   useEffect(() => {
     if (state !== "ready" || !raw || !box.current) return;
@@ -157,8 +184,13 @@ export default function PriceChart({
           locale: "ko-KR",
           priceFormatter: (p: number) => Math.round(p).toLocaleString("ko-KR"),
         },
-        height: 340,
         autoSize: true,
+        // 기본값이 이미 true 지만, 모바일 제스처가 이 컴포넌트의 핵심이라
+        // 명시해 둔다. 실제로 핀치를 막고 있던 건 아래 touch-action 쪽이다.
+        handleScale: { pinch: true, mouseWheel: true, axisPressedMouseMove: true,
+                       axisDoubleClickReset: true },
+        handleScroll: { horzTouchDrag: true, vertTouchDrag: true,
+                        mouseWheel: true, pressedMouseMove: true },
       });
 
       const { bars, vols } = aggregate(raw, frame);
@@ -209,18 +241,28 @@ export default function PriceChart({
       const src = raw.fb?.length ? raw.fb : raw.ib;
       const half = src?.length ? binHalf(src) : 0.015;
       let prevKey = "";
+      let prevPane = 0;
       const tick = () => {
         if (disposed) return;
+        // pane 높이(시간축 제외). 확대하면 막대가 화면 몇 배로 커질 수 있어서
+        // 이 값으로 자른다.
+        const ph = chart.paneSize().height || 0;
+        if (ph && Math.abs(ph - prevPane) > 0.5) { prevPane = ph; setPaneH(ph); }
+
         if (src?.length) {
           const next: Bucket[] = [];
           for (const [price, weight] of src) {
             const yTop = candle.priceToCoordinate(price * (1 + half));
             const yBot = candle.priceToCoordinate(price * (1 - half));
             if (yTop == null || yBot == null) continue;
+            const h = Math.abs(yBot - yTop);
+            // 화면 밖 막대는 만들지 않는다. 가격축을 크게 늘리면 한 구간이
+            // 수천 px 가 되는데, 그대로 두면 잘리기 전에 DOM 이 먼저 커진다.
+            if (yTop > ph || yTop + h < 0) continue;
+            const top = Math.max(yTop, -1);
             next.push({
-              price, weight,
-              top: yTop,
-              height: Math.max(2, Math.abs(yBot - yTop) - 1),
+              price, weight, top,
+              height: Math.max(2, Math.min(h - 1, ph - top + 1)),
             });
           }
           const key = next.map((b) => `${b.top.toFixed(1)}:${b.height.toFixed(1)}`).join(",");
@@ -269,12 +311,15 @@ export default function PriceChart({
       </div>
 
       {state === "loading" ? (
-        <div className="h-[340px] rounded-xl bg-white/[0.02] animate-pulse" />
+        <div className="h-[400px] sm:h-[340px] rounded-xl bg-white/[0.02] animate-pulse" />
       ) : (
         <div className="relative">
-          <div ref={box} className="h-[340px] w-full" />
-          {showBasis && buckets.length > 0 && (
-            <div className="pointer-events-none absolute inset-y-0 right-[58px] w-[86px]">
+          <div ref={box} className="h-[400px] sm:h-[340px] w-full touch-pan-y" />
+          {showBasis && buckets.length > 0 && paneH > 0 && (
+            <div
+              className="pointer-events-none absolute top-0 right-[58px] w-[86px] overflow-hidden"
+              style={{ height: `${paneH}px` }}
+            >
               {buckets.map((b) => (
                 <div
                   key={b.price}
