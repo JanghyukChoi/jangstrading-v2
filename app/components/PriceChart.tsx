@@ -29,7 +29,23 @@ interface Raw {
   ib?: [number, number][];
 }
 
-type Bucket = { price: number; weight: number; top: number };
+type Bucket = { price: number; weight: number; top: number; height: number };
+
+/* 매물대 막대의 두께.
+
+   구간 폭은 종목마다 다르다 — cost_basis 가 구간이 많으면 이웃끼리 합치기
+   때문에 3%(기본)일 수도, 6%·9% 일 수도 있다. 서버에서 폭을 따로 안 받고
+   막대 간격에서 되짚는다. 로그 등간격이라 이웃 간 최소 비율이 곧 구간 폭이다.
+   고정 높이로 그리면 분포가 아니라 점선처럼 흩어져 보인다. */
+function binHalf(src: [number, number][]): number {
+  let r = Infinity;
+  for (let i = 1; i < src.length; i++) {
+    const q = src[i][0] / src[i - 1][0];
+    if (q > 1 && q < r) r = q;
+  }
+  if (!isFinite(r)) r = 1.03;
+  return (r - 1) / 2;
+}
 
 const UP = "#f04251";    // 한국 관행: 빨강 상승
 const DOWN = "#3485fa";  // 파랑 하락
@@ -118,6 +134,7 @@ export default function PriceChart({
     if (state !== "ready" || !raw || !box.current) return;
     let disposed = false;
     let chart: any = null;
+    let raf = 0;
 
     (async () => {
       const LWC = await import("lightweight-charts");
@@ -150,6 +167,10 @@ export default function PriceChart({
         upColor: UP, downColor: DOWN,
         borderUpColor: UP, borderDownColor: DOWN,
         wickUpColor: UP, wickDownColor: DOWN,
+        // 현재가 선이 빨강이면 외국인 평균선과 같은 색이라 구분이 안 된다.
+        // 중립 회색으로 빼서 셋이 서로 다르게 보이도록 한다.
+        priceLineColor: "#9e9ea4",
+        priceLineWidth: 1,
       });
       candle.setData(bars);
       candle.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.28 } });
@@ -180,23 +201,39 @@ export default function PriceChart({
 
       // 매물대: 가격을 y좌표로 바꿔 오버레이 막대를 놓는다.
       // lightweight-charts 에 volume-profile 이 없어서 직접 얹는다.
+      //
+      // 가격축을 드래그해 스케일을 바꾸면 timeScale 이벤트가 안 온다. 그래서
+      // 매 프레임 좌표를 다시 재고, 실제로 바뀐 경우에만 상태를 갱신한다
+      // (12~28개 변환이라 비용이 거의 없다). 확대·축소·리사이즈·자동스케일이
+      // 전부 이 한 경로로 잡힌다.
       const src = raw.fb?.length ? raw.fb : raw.ib;
-      const redraw = () => {
-        if (!src?.length) { setBuckets([]); return; }
-        const next: Bucket[] = [];
-        for (const [price, weight] of src) {
-          const y = candle.priceToCoordinate(price);
-          if (y == null) continue;
-          next.push({ price, weight, top: y });
+      const half = src?.length ? binHalf(src) : 0.015;
+      let prevKey = "";
+      const tick = () => {
+        if (disposed) return;
+        if (src?.length) {
+          const next: Bucket[] = [];
+          for (const [price, weight] of src) {
+            const yTop = candle.priceToCoordinate(price * (1 + half));
+            const yBot = candle.priceToCoordinate(price * (1 - half));
+            if (yTop == null || yBot == null) continue;
+            next.push({
+              price, weight,
+              top: yTop,
+              height: Math.max(2, Math.abs(yBot - yTop) - 1),
+            });
+          }
+          const key = next.map((b) => `${b.top.toFixed(1)}:${b.height.toFixed(1)}`).join(",");
+          if (key !== prevKey) { prevKey = key; setBuckets(next); }
         }
-        setBuckets(next);
+        raf = requestAnimationFrame(tick);
       };
-      redraw();
-      chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+      raf = requestAnimationFrame(tick);
     })();
 
     return () => {
       disposed = true;
+      if (raf) cancelAnimationFrame(raf);
       if (chart) chart.remove();
     };
   }, [state, raw, frame, foreignAvg, institutionAvg]);
@@ -243,10 +280,10 @@ export default function PriceChart({
                   key={b.price}
                   className="absolute right-0 rounded-l-[2px]"
                   style={{
-                    top: `${b.top - 3}px`,
-                    height: "6px",
-                    width: `${Math.max(6, (b.weight / maxWeight) * 100)}%`,
-                    background: `${UP}38`,
+                    top: `${b.top}px`,
+                    height: `${b.height}px`,
+                    width: `${Math.max(8, (b.weight / maxWeight) * 100)}%`,
+                    background: `${UP}4d`,
                   }}
                 />
               ))}

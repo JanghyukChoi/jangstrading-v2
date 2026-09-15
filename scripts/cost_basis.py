@@ -61,16 +61,64 @@ GROUPS = {
 }
 
 
+# 투자자별 매수/매도 **수량** 은 그날의 액면 기준으로 내려온다. 반면 가격
+# (stck_clpr)과 전체 거래량(acml_vol)은 수정주가 기준이다. 액면분할·병합이
+# 있었던 종목은 두 축이 서로 다른 좌표계에 있게 된다.
+#
+#   대한제분  1:10 분할  → 투자자수량이 수정기준의 1/10, 단가는 10배로 계산됨
+#   아이에이  1:10, 1:5 병합 2회 → 배수 50 → 5 → 1 로 바뀜 (외국인 매수량이
+#             전체 거래량을 넘는 날이 330일 중 234일)
+#
+# 이걸 안 맞추면 평균단가가 통째로 틀린다. 전 종목의 6.1%(160종목)에서
+# "외국인 93% 수익 중" 같은 숫자가 나오고 있었다.
+#
+# **대금**(_tr_pbmn)은 금액이라 액면과 무관하게 항상 정확하다 — 전 종목 330일을
+# 검사했을 때 투자자 대금이 전체 거래대금을 넘는 날은 한 건도 없었다. 그래서
+# 대금을 기준점으로 삼아 수량을 수정주가 좌표계로 되돌린다.
+SCALE_LO, SCALE_HI = 0.8, 1.25  # 이 밖이면 좌표계가 어긋난 것
+
+
+def _scale(row):
+    """그날 투자자 수량이 수정주가 기준의 몇 배인지. 1.0 이면 정상.
+
+    투자자별 매수량 합 / 전체 거래량. 큰 수끼리의 비율이라 안정적이다
+    (삼성전자 같은 정상 종목은 1.00~1.15, 액면변경 종목은 정확히 10·50·0.1).
+    """
+    total = _i(row.get("acml_vol"))
+    if total <= 0:
+        return 1.0
+    grp = sum(_i(row.get(f"{p}_shnu_vol"))
+              for p in ("frgn", "prsn", "orgn", "etc_corp", "etc_orgt", "etc"))
+    if grp <= 0:
+        return 1.0
+    f = grp / total
+    return f if (f < SCALE_LO or f > SCALE_HI) else 1.0
+
+
 def _series(rows, prefix):
-    """주체의 일별 (매수량, 매수단가, 매도량) 시계열."""
+    """주체의 일별 (매수량, 매수단가, 매도량) 시계열. 수정주가 좌표계로 맞춘다."""
     out = []
     for r in rows:
+        f = _scale(r)
         buy_vol = _i(r.get(f"{prefix}_shnu_vol"))
         # 대금은 백만원 단위
         buy_amt = _i(r.get(f"{prefix}_shnu_tr_pbmn")) * 1_000_000
         sell_vol = _i(r.get(f"{prefix}_seln_vol"))
         net = _i(r.get(f"{prefix}_ntby_qty")) or (buy_vol - sell_vol)
+        if f != 1.0:
+            # 수량만 어긋나 있다. 대금은 그대로 두고 수량을 나눈다 —
+            # 단가(대금/수량)도 같은 비율로 자동 교정된다.
+            buy_vol = round(buy_vol / f)
+            sell_vol = round(sell_vol / f)
+            net = round(net / f)
         price = (buy_amt / buy_vol) if buy_vol > 0 and buy_amt > 0 else 0.0
+        # 대금은 백만원 단위 정수라 매수량이 적은 날은 단가가 크게 튄다
+        # (아이에이는 1백만원/484주 = 2,066원, 그날 실제 범위는 3,045~3,345원).
+        # 체결 단가는 정의상 그날 저가~고가 안이다. 그 밖이면 반올림 오차이므로
+        # 가장 가까운 경계로 되돌린다. 남은 편차 중앙값 4~6% -> 0%.
+        lo, hi = _f(r.get("stck_lwpr")), _f(r.get("stck_hgpr"))
+        if price > 0 and lo > 0 and hi >= lo:
+            price = min(max(price, lo), hi)
         out.append({"buy": buy_vol, "price": price, "sell": sell_vol, "net": net})
     return out
 
@@ -204,6 +252,7 @@ def price_bin(p):
 
 
 def bin_price(k):
+    """빈 번호 -> 대표가격. k 는 실수도 된다(합친 구간의 중앙)."""
     return math.exp((k + 0.5) * math.log(BIN_RATIO))
 
 
@@ -235,7 +284,7 @@ def advance(state, exit_rate, buy_vol, buy_price):
     return state
 
 
-def summarize(state, last_close, top_bins=12):
+def summarize(state, last_close, max_bars=40):
     """상태에서 기준가격 / CGO / 매물대를 뽑는다."""
     if not state or state["d"] <= 0 or last_close <= 0:
         return None
@@ -244,21 +293,43 @@ def summarize(state, last_close, top_bins=12):
     # 코스나인(현재가 7원)은 기준가 15.65 -> 16 반올림만으로 CGO 가 5%p 어긋났다.
     # 표시값끼리 일관되도록 반올림한 뒤 계산한다.
     ref = float(round(state["n"] / state["d"]))
-    total = sum(state["b"].values()) or 1.0
-    bars = sorted(
-        ({"price": round(bin_price(int(k))), "weight": round(v / total * 100, 1)}
-         for k, v in state["b"].items() if v / total * 100 >= 0.5),
-        key=lambda x: x["price"],
-    )
-    if len(bars) > top_bins:
-        # 비중 큰 구간만 남기고 가격순 정렬 유지
-        keep = sorted(bars, key=lambda x: -x["weight"])[:top_bins]
-        bars = sorted(keep, key=lambda x: x["price"])
     return {
         "reference": round(ref),
         "cgo": round((last_close - ref) / last_close * 100, 2),
-        "basis": bars,
+        "basis": _bars(state["b"], max_bars),
     }
+
+
+def _bars(bins, max_bars):
+    """매물대 막대. 구간이 많으면 **이웃끼리 합쳐서** 줄인다.
+
+    이전에는 비중 큰 순으로 상위 N 개만 남겼다. 그러면 히스토그램 중간이
+    통째로 비어 차트에서 막대가 띄엄띄엄 떠 보인다 — SK하이닉스는 원본 73 구간
+    중 28 개만 남아 10% 넘는 구멍이 여러 개 생겼다(전 종목의 31%가 같은 증상).
+    분포를 보여주는 그림에서 가운데를 빼는 건 잘라내기가 아니라 왜곡이다.
+    해상도를 낮추는 쪽(3% -> 6%, 9% ... 구간)이 형태를 보존한다.
+    """
+    if not bins:
+        return []
+    ks = sorted(int(k) for k in bins)
+    span = ks[-1] - ks[0] + 1
+    merge = max(1, -(-span // max_bars))  # 한 막대가 품는 원본 빈 개수
+
+    agg = {}
+    for k, v in bins.items():
+        g = (int(k) - ks[0]) // merge
+        agg[g] = agg.get(g, 0.0) + v
+
+    total = sum(bins.values()) or 1.0
+    out = []
+    for g in sorted(agg):
+        w = agg[g] / total * 100
+        if w < 0.2:  # 0.2% 미만은 1px 도 안 되게 그려진다
+            continue
+        # 합친 구간의 대표가격 = 구간 가운데(로그 중앙)
+        center = ks[0] + g * merge + (merge - 1) / 2
+        out.append({"price": round(bin_price(center)), "weight": round(w, 1)})
+    return out
 
 
 def exit_rate_for(group, row, series_item, holdings_at, shares_outstanding):
