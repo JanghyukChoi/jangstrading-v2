@@ -84,12 +84,18 @@ def kospi_momentum_60d(ctx, date):
 TOP_N = 15
 LONGTERM_TOP_N = 5  # 백테스트 (top-5 overlap)와 정합
 
-SIGNAL_FNS = {
-    "buy_reversal": signal_buy_reversal_v3,
-    "sell_reversal": signal_sell_reversal_v3,
-    "leader": signal_leader_v3,
-    "accumulation": signal_accumulation_v3,
-}
+# 단기 4종(매수전환·매도전환·주도주·단기수급상위)은 내렸다.
+#
+# 10.3년(2016-02~2026-05, 3,234종목, 상장폐지 포함) 재검정에서 같은 날 같은
+# 시총 하한 모집단의 평균을 뺀 초과수익이 사실상 없었고, 기간을 나누면 부호가
+# 뒤집혔다. v1 은 train(~2022)에서만, v3 는 test(2023~)에서만 작동한다 —
+# v1->v2->v3 로 다듬는 과정 자체가 다중검정이었고 각 버전은 자기가 맞춰진
+# 구간에서만 산다. 어느 버전도 두 구간을 모두 통과하지 못했다.
+# 수치는 scripts/backtest_signals.py 참고.
+#
+# 함수 정의는 backtest_signals.py 에 그대로 있다. 재검정하거나 되살릴 때
+# 여기에 다시 등록하면 된다.
+SIGNAL_FNS = {}
 
 # 장기 시그널: factor dict 반환 함수 + cross-section 백분위 composite
 # (백테스트 backtest_longterm.py의 score_strategy_a + composite_a와 정합)

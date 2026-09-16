@@ -78,8 +78,13 @@ def calc_market_trend(snaps, ticker_to_market, target_market):
     }
 
 
-def generate_verdict(kospi, kosdaq, signals, high, low):
-    """KOSPI·KOSDAQ 시장별 trend + 시그널 종합해 한 줄 결론 생성"""
+def generate_verdict(kospi, kosdaq, breadth, high, low):
+    """KOSPI·KOSDAQ 수급 흐름을 한 줄로. 전부 오늘의 사실이고 예측은 없다.
+
+    이전에는 4순위로 V3 시그널 개수를 썼는데(매수전환 N개 -> 반등 후보 모니터링)
+    그 시그널들을 내렸다. 10.3년 재검정에서 시장 대비 초과수익이 없었다.
+    대신 폭(breadth)과 신고가·신저가를 쓴다 — 둘 다 관측치다.
+    """
     kf = kospi["foreign_streak_days"]
     ki = kospi["inst_streak_days"]
     qf = kosdaq["foreign_streak_days"]
@@ -103,12 +108,19 @@ def generate_verdict(kospi, kosdaq, signals, high, low):
         i_dir = "매수" if ki > 0 else "매도"
         return f"KOSPI에서 외인 {abs(kf)}일 {f_dir} vs 기관 {abs(ki)}일 {i_dir}, 의견 분열. 종목 선별 매매 권장."
 
-    # 4) 시그널 기반
-    if signals["buy_reversal"] > signals["sell_reversal"]:
-        return f"매수전환 신호 {signals['buy_reversal']}개 (매도전환 {signals['sell_reversal']}개). 반등 후보 종목 모니터링."
-    if signals["sell_reversal"] > signals["buy_reversal"]:
-        return f"매도전환 신호 {signals['sell_reversal']}개 (매수전환 {signals['buy_reversal']}개). 추세 약화, 관망 권장."
-    return "추세 약함 · 시그널 중립. 종목 선별 매매 권장."
+    # 4) 추세가 뚜렷하지 않을 때 — 폭과 신고가·신저가로 시장 상태만 적는다
+    fb, fs = breadth.get("foreign_buy", 0), breadth.get("foreign_sell", 0)
+    ib, isl = breadth.get("inst_buy", 0), breadth.get("inst_sell", 0)
+    if fb + fs > 0:
+        share = fb / (fb + fs) * 100
+        if share >= 60:
+            return (f"외국인이 {fb}종목 순매수 / {fs}종목 순매도 (매수 비중 {share:.0f}%), "
+                    f"신고가 {high}개 · 신저가 {low}개.")
+        if share <= 40:
+            return (f"외국인이 {fs}종목 순매도 / {fb}종목 순매수 (매도 비중 {100-share:.0f}%), "
+                    f"신저가 {low}개 · 신고가 {high}개.")
+    return (f"뚜렷한 방향 없음. 외국인 매수 {fb} / 매도 {fs}종목, "
+            f"기관 매수 {ib} / 매도 {isl}종목, 신고가 {high} · 신저가 {low}개.")
 
 
 def main():
@@ -159,6 +171,8 @@ def main():
     breadth = latest_snap.get("breadth") or {}
     latest_date = latest_snap.get("date", "")
 
+    # 내려간 시그널 4종의 개수는 더 이상 verdict 에 쓰지 않는다.
+    # signals 필드는 프론트 타입 호환을 위해 그대로 둔다(0 이어도 무해).
     # V3 시그널은 별도 파일 (build_v3_signals.py가 만듦)
     signals_path = DATA_DIR / "signals.json"
     try:
@@ -206,7 +220,7 @@ def main():
     print(f"  활기: 신고가 {high_52w} / 신저가 {low_52w} (검사 종목 {valid_count})")
 
     # 4. Verdict (KOSPI·KOSDAQ 종합)
-    verdict = generate_verdict(kospi_trend, kosdaq_trend, signal_counts, high_52w, low_52w)
+    verdict = generate_verdict(kospi_trend, kosdaq_trend, breadth, high_52w, low_52w)
     print(f"  Verdict: {verdict}")
 
     # 5. 출력

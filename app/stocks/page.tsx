@@ -24,7 +24,7 @@ interface StockRanking {
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-type Signal = "all" | "buy_reversal" | "sell_reversal" | "leaders" | "accumulation" | "ai_screener";
+type Signal = "all" | "ai_screener";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function getInvVal(s: StockRanking, inv: Investor, p: string): number {
@@ -54,21 +54,27 @@ function calcRatio(combined: number, marketCap: number | null | undefined): numb
   if (!marketCap || marketCap <= 0) return null;
   return combined / marketCap;
 }
-/* ── V3 시그널 lookup ─────────────────────────── */
-// signals.json 구조: { date, signals: { buy_reversal: ticker[], sell_reversal: [], leader: [], accumulation: [] } }
+/* ── 시그널 lookup ────────────────────────────────
+
+   매수전환·매도전환·주도주·단기수급상위 4종을 내렸다. 10.3년(2016-02~2026-05,
+   3,234종목, 상장폐지 포함) 재검정 결과 시장 대비 초과수익이 없었다.
+
+     20일 초과(비용 전)   전체    train(~2022)   test(2023~)
+     매수전환            +0.02%   -0.12%        +0.30%
+     매도전환            +0.71%   +0.07%        +1.90%   <- 매도인데 오른다
+     주도주              +0.57%   -0.14%        +1.96%
+     단기수급상위         +0.27%   -0.36%        +1.45%
+
+   v1 은 정반대로 train 에서만 작동했다. v1->v2->v3 로 다듬는 과정이 그 자체로
+   다중검정이었고, 각 버전이 자기가 맞춰진 구간에서만 작동한다. 어느 버전도
+   두 구간을 모두 통과하지 못했다. 자세한 근거는 scripts/backtest_signals.py.
+
+   장기수급상위(ai_screener)는 같은 방식으로 아직 검정하지 않아 남겨 둔다. */
 interface V3Signals {
-  buy_reversal: Set<string>;
-  sell_reversal: Set<string>;
-  leader: Set<string>;
-  accumulation: Set<string>;
   ai_screener: Set<string>;
 }
 
 const SIGNAL_LABEL: Record<Exclude<Signal, "all">, { label: string; color: string }> = {
-  buy_reversal: { label: "매수전환", color: "bg-emerald-500/15 text-emerald-400" },
-  sell_reversal: { label: "매도전환", color: "bg-orange-500/15 text-orange-400" },
-  leaders: { label: "주도주", color: "bg-amber-500/15 text-amber-400" },
-  accumulation: { label: "단기수급상위", color: "bg-rose-500/15 text-rose-400" },
   ai_screener: { label: "장기수급상위", color: "bg-indigo-500/15 text-indigo-400" },
 };
 
@@ -78,12 +84,7 @@ function getSignals(
 ): { key: Signal; label: string; color: string }[] {
   const out: { key: Signal; label: string; color: string }[] = [];
   if (!v3 || !s.ticker) return out;
-  const t = s.ticker;
-  if (v3.buy_reversal.has(t)) out.push({ key: "buy_reversal", ...SIGNAL_LABEL.buy_reversal });
-  if (v3.sell_reversal.has(t)) out.push({ key: "sell_reversal", ...SIGNAL_LABEL.sell_reversal });
-  if (v3.leader.has(t)) out.push({ key: "leaders", ...SIGNAL_LABEL.leaders });
-  if (v3.accumulation.has(t)) out.push({ key: "accumulation", ...SIGNAL_LABEL.accumulation });
-  if (v3.ai_screener.has(t)) out.push({ key: "ai_screener", ...SIGNAL_LABEL.ai_screener });
+  if (v3.ai_screener.has(s.ticker)) out.push({ key: "ai_screener", ...SIGNAL_LABEL.ai_screener });
   return out;
 }
 
@@ -169,13 +170,7 @@ function StocksPageInner() {
         setMeta(m);
         if (sig?.signals) {
           const aiOrdered: string[] = sig.longterm?.ai_screener ?? [];
-          setV3Signals({
-            buy_reversal: new Set(sig.signals.buy_reversal ?? []),
-            sell_reversal: new Set(sig.signals.sell_reversal ?? []),
-            leader: new Set(sig.signals.leader ?? []),
-            accumulation: new Set(sig.signals.accumulation ?? []),
-            ai_screener: new Set(aiOrdered),
-          });
+          setV3Signals({ ai_screener: new Set(aiOrdered) });
           const rankMap = new Map<string, number>();
           aiOrdered.forEach((t, i) => rankMap.set(t, i));
           setAiScreenerRank(rankMap);
@@ -189,31 +184,14 @@ function StocksPageInner() {
     if (marketFilter !== "ALL") r = r.filter((s) => s.market === marketFilter);
 
     // 신호 필터 → 자동 정렬
-    if (signalFilter !== "all") {
-      if (signalFilter === "leaders") {
-        const leaderSet = v3Signals?.leader ?? new Set<string>();
-        r = r.filter((s) => s.ticker && leaderSet.has(s.ticker));
-        return [...r].sort((a, b) => b.combined[period] - a.combined[period]);
-      }
-      if (signalFilter === "ai_screener") {
-        const set = v3Signals?.ai_screener ?? new Set<string>();
-        r = r.filter((s) => s.ticker && set.has(s.ticker));
-        // signals.json 배열 순서 (= 점수 desc) 유지
-        return [...r].sort((a, b) => {
-          const ra = aiScreenerRank.get(a.ticker ?? "") ?? 999;
-          const rb = aiScreenerRank.get(b.ticker ?? "") ?? 999;
-          return ra - rb;
-        });
-      }
-      r = r.filter((s) => getSignals(s, v3Signals).some((sig) => sig.key === signalFilter));
-      // 신호별 최적 정렬
+    if (signalFilter === "ai_screener") {
+      const set = v3Signals?.ai_screener ?? new Set<string>();
+      r = r.filter((s) => s.ticker && set.has(s.ticker));
+      // signals.json 배열 순서 (= 점수 desc) 유지
       return [...r].sort((a, b) => {
-        switch (signalFilter) {
-          case "buy_reversal": return b.combined["1w"] - a.combined["1w"];
-          case "sell_reversal": return a.combined["1w"] - b.combined["1w"];
-          case "accumulation": return b.combined["1m"] - a.combined["1m"];
-          default: return 0;
-        }
+        const ra = aiScreenerRank.get(a.ticker ?? "") ?? 999;
+        const rb = aiScreenerRank.get(b.ticker ?? "") ?? 999;
+        return ra - rb;
       });
     }
 
@@ -235,18 +213,11 @@ function StocksPageInner() {
 
   // 신호별 종목 수 카운트 (V3 결과 그대로)
   const signalCounts = useMemo(() => {
-    return {
-      buy_reversal: v3Signals?.buy_reversal.size ?? 0,
-      sell_reversal: v3Signals?.sell_reversal.size ?? 0,
-      leaders: v3Signals?.leader.size ?? 0,
-      accumulation: v3Signals?.accumulation.size ?? 0,
-      ai_screener: v3Signals?.ai_screener.size ?? 0,
-    };
+    return { ai_screener: v3Signals?.ai_screener.size ?? 0 };
   }, [v3Signals]);
 
   // 신호 활성 시 표시 기간 자동 결정
-  const displayPeriod: Period = signalFilter === "all" || signalFilter === "leaders" ? period :
-    (signalFilter === "buy_reversal" || signalFilter === "sell_reversal") ? "1w" : "1m";
+  const displayPeriod: Period = signalFilter === "all" ? period : "1m";
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -315,10 +286,6 @@ function StocksPageInner() {
       <div className="flex sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar">
         {([
           { key: "all" as Signal, label: "전체", count: null, dot: "" },
-          { key: "buy_reversal" as Signal, label: "매수전환", count: signalCounts.buy_reversal, dot: "bg-emerald-400" },
-          { key: "sell_reversal" as Signal, label: "매도전환", count: signalCounts.sell_reversal, dot: "bg-orange-400" },
-          { key: "leaders" as Signal, label: "주도주", count: signalCounts.leaders, dot: "bg-amber-400" },
-          { key: "accumulation" as Signal, label: "단기수급상위", count: signalCounts.accumulation, dot: "bg-rose-400" },
           { key: "ai_screener" as Signal, label: "장기수급상위", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
         ]).map((s) => (
           <button
@@ -348,14 +315,12 @@ function StocksPageInner() {
               {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
         )}
-        {(signalFilter === "all" || signalFilter === "leaders") && (
+        {signalFilter === "all" && (
           <>
             <FilterGroup
               options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
               value={period} onChange={setPeriod}
             />
-            {signalFilter === "all" && (
-            <>
             <button
               onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
               className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
@@ -372,8 +337,6 @@ function StocksPageInner() {
             >
               {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
             </button>
-            </>
-            )}
           </>
         )}
       </div>
@@ -391,11 +354,7 @@ function StocksPageInner() {
       {/* 신호 설명 (필터 선택 시) */}
       {signalFilter !== "all" && (
         <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
-          {signalFilter === "buy_reversal" && "최근 3개월간 외국인이 꾸준히 팔던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 사기 시작한 반등 후보. 주가는 60일 평균 아래, 거래량도 늘어남."}
-          {signalFilter === "sell_reversal" && "최근 3개월간 외국인이 꾸준히 사들이던 종목 중, 지난 5일 사이 외국인과 기관이 동시에 팔기 시작한 위험 신호. 주가는 60일 평균 위에서 거래량 증가와 함께 매도 전환."}
-          {signalFilter === "leaders" && "외국인과 기관이 60일 동안 함께 매수하며 주가도 강하게 오른 시장 주도 종목. 시가총액 1천억 이상, 거래량 급증 포함."}
-          {signalFilter === "accumulation" && "단기 (5일/20일) 외국인·기관 매수가 가속 중인 종목. 거래량 증가와 모멘텀 가속 동반."}
-          {signalFilter === "ai_screener" && "장기 (60일/12개월) 외국인·기관·연기금 누적 순매수가 상위인 종목. 가격·거래량 지표도 함께 상승."}
+          장기 (60일/12개월) 외국인·기관·연기금 누적 순매수가 상위인 종목. 가격·거래량 지표도 함께 상승.
         </div>
       )}
 
