@@ -76,7 +76,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 생성물은 항상 이번 실행분이 정답이다. rebase 로 병합하려 하면 그
+          # 사이에 사람이 올린 커밋과 같은 파일에서 충돌한다 — 2026-09-16 에
+          # signals.json / market-signals.json 에서 실제로 터져 하루치가 날아갔다.
+          # HEAD 만 최신 main 으로 옮기고(작업트리는 그대로) 방금 만든 파일을
+          # 그 위에 새 커밋으로 얹는다. 충돌이 구조적으로 생길 수 없다.
+          git fetch origin main
+          git reset --mixed origin/main
           git add public/data/
           git diff --staged --quiet || git commit -m "daily data update $(date +'%Y-%m-%d')"
-          git pull --rebase origin main
-          git push
+          git push origin HEAD:main
