@@ -24,6 +24,8 @@ OUT_PATH = BASE_DIR / "public" / "data" / "signals.json"
 # backtest_signals.py에서 V3 시그널 함수 + helper 재사용
 sys.path.insert(0, str(BASE_DIR / "scripts"))
 from backtest_signals import (  # noqa: E402
+    MAX_LOOKBACK,
+    spans_break,
     signal_buy_reversal_v3,
     signal_sell_reversal_v3,
     signal_leader_v3,
@@ -31,6 +33,7 @@ from backtest_signals import (  # noqa: E402
     ai_screener_factors,
     composite_ai_screener_pct,
 )
+from price_adjust import discontinuities  # noqa: E402
 
 
 def build_kospi_context():
@@ -106,9 +109,16 @@ def load_timeseries():
             with open(f, "r", encoding="utf-8") as fp:
                 d = json.load(fp)
             ticker = d.get("ticker") or f.stem
+            # 액면분할은 build_timeseries 가 보정했다. 보정 불가능한 단절
+            # (무상증자 권리락 등)의 위치만 기억해 둔다 — 그 구간을 지나는
+            # 모멘텀은 -62% 같은 값이 나와 시그널이 통째로 틀린다.
+            d["_disc"] = discontinuities(d.get("prices") or [], d.get("market_cap") or [])
             data[ticker] = d
         except Exception:
             continue
+    ndisc = sum(1 for d in data.values() if d["_disc"])
+    if ndisc:
+        print(f"  가격 단절 있는 종목 {ndisc}개 — 해당 구간은 시그널에서 제외")
     return data
 
 
@@ -159,6 +169,8 @@ def main():
                 idx = dates.index(latest_date)
             except ValueError:
                 continue
+            if spans_break(data, idx - MAX_LOOKBACK, idx):
+                continue
             score = fn(data, idx, ctx)
             if score is not None and score > 0:
                 scored.append((ticker, score))
@@ -180,6 +192,8 @@ def main():
             try:
                 idx = dates.index(latest_date)
             except ValueError:
+                continue
+            if spans_break(data, idx - MAX_LOOKBACK, idx):
                 continue
             f = factor_fn(data, idx, ctx)
             if f is not None:

@@ -22,6 +22,8 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+from price_adjust import adjust_in_place
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = BASE_DIR / "public" / "data"
 
@@ -107,6 +109,17 @@ def main():
     print(f"수집된 영업일: {len(dates_processed)}일")
     print(f"  범위: {dates_processed[0] if dates_processed else '없음'} ~ {dates_processed[-1] if dates_processed else '없음'}")
     print(f"종목 수: {len(data)}개")
+
+    # 액면분할 보정. 안 하면 분할일 등락률이 -90% 로 찍혀 모멘텀 계산이 깨진다.
+    # 라이브 329일 구간에서도 201종목(7.0%)이 해당한다. 자세한 근거는
+    # scripts/price_adjust.py 참고.
+    adj_stocks = adj_events = 0
+    for row in data.values():
+        k = adjust_in_place(row)
+        if k:
+            adj_stocks += 1
+            adj_events += k
+    print(f"액면분할 보정: {adj_stocks}종목 {adj_events}건")
 
     # 종목별 파일 저장
     saved_count = 0

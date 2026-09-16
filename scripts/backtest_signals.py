@@ -18,11 +18,28 @@
 import argparse
 import json
 import statistics
+import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR / "scripts"))
+from price_adjust import discontinuities  # noqa: E402
+
 TS_DIR = BASE_DIR / "scripts" / "backtest_data" / "timeseries"
+
+# 시그널이 보는 가장 긴 과거 구간. 이 안에 가격 단절이 있으면 그 종목의
+# 그 시점 점수는 쓰레기다 — 무상증자 권리락 하루가 -62% 수익률로 잡힌다.
+MAX_LOOKBACK = 252
+
+# 각 v3 시그널이 실제로 거는 시총 하한. 벤치마크를 같은 모집단으로 맞추는 데 쓴다.
+SIGNAL_MCAP_FLOOR = {
+    "buy_reversal": 50_000_000_000,
+    "sell_reversal": 50_000_000_000,
+    "leader": 100_000_000_000,
+    "accumulation": 50_000_000_000,
+}
 
 # 백테스트 설정
 TC_ROUNDTRIP = 0.005  # 0.5% (한국 retail: 수수료 + 매도세 + 슬리피지)
@@ -60,11 +77,24 @@ def load_all_timeseries():
             with open(f, "r", encoding="utf-8") as fp:
                 d = json.load(fp)
             ticker = d["ticker"]
+            # 액면분할은 build_timeseries 가 이미 보정했다. 여기서는 보정이
+            # 불가능했던 단절(무상증자 권리락 등)의 위치만 기억해 둔다.
+            d["_disc"] = discontinuities(d.get("prices") or [], d.get("market_cap") or [])
             data[ticker] = d
         except Exception:
             continue
-    print(f"  Loaded {len(data)} tickers in {time.time() - t0:.1f}s")
+    ndisc = sum(1 for d in data.values() if d["_disc"])
+    print(f"  Loaded {len(data)} tickers in {time.time() - t0:.1f}s"
+          f"  (가격 단절 있는 종목 {ndisc}개)")
     return data
+
+
+def spans_break(data, lo, hi):
+    """[lo, hi] 구간에 가격 단절이 걸쳐 있는가."""
+    d = data.get("_disc")
+    if not d:
+        return False
+    return any(lo < i <= hi for i in d)
 
 
 # ───────────────────────────────────────────────────────────
@@ -846,6 +876,9 @@ def run_backtest(timeseries, signal_func, top_n=30, date_filter=None, use_contex
             idx = date_to_idx(data, date)
             if idx is None:
                 continue
+            # 점수 계산이 단절을 건너뛰면 그 값은 의미가 없다
+            if spans_break(data, idx - MAX_LOOKBACK, idx):
+                continue
             if use_context:
                 score = signal_func(data, idx, ctx)
             else:
@@ -872,7 +905,7 @@ def run_backtest(timeseries, signal_func, top_n=30, date_filter=None, use_contex
             row = {"date": date, "ticker": ticker, "score": score}
             for w in FORWARD_WINDOWS:
                 future_idx = idx + w
-                if future_idx < len(prices):
+                if future_idx < len(prices) and not spans_break(data, idx, future_idx):
                     p_future = prices[future_idx]
                     if p_future and p_future > 0:
                         row[f"ret{w}"] = p_future / p_now - 1
@@ -1180,7 +1213,61 @@ def composite_ai_screener_pct(sc, all_scores):
     )
 
 
-def run_one_signal(timeseries, name, candidate, top_n, market_ctx=None):
+# 시그널마다 시총 하한이 다르다. 벤치마크도 같은 모집단이어야 공정하다 —
+# 전 종목 동일가중과 비교하면 소형주 몫이 섞여 비교가 어긋난다.
+BENCH_MCAPS = (50_000_000_000, 100_000_000_000)
+
+
+def universe_forward(timeseries, windows=FORWARD_WINDOWS, mcaps=BENCH_MCAPS):
+    """(시총하한, 기간, 날짜) -> 그 조건을 만족하는 종목들의 평균 forward 수익률.
+
+    이게 없으면 시그널 수익률이 실력인지 그냥 시장이 오른 건지 구분이 안 된다.
+    기존 compute_metrics 는 benchmark_avg 기본값 0 을 그대로 쓰고 있어서
+    지금까지 나온 숫자는 전부 초과수익이 아니라 원수익률이었다.
+
+    시그널과 같은 조건으로 잰다 — 같은 시총 하한, 같은 단절 필터, 같은 시점.
+    """
+    acc = {(mc, w): defaultdict(list) for mc in mcaps for w in windows}
+    for data in timeseries.values():
+        prices = data.get("prices") or []
+        dates = data.get("dates") or []
+        for i, d in enumerate(dates):
+            p0 = prices[i] if i < len(prices) else None
+            if not p0 or p0 <= 0 or i < 60:
+                continue
+            m = _mcap_at(data, i)
+            if m is None:
+                continue
+            for w in windows:
+                j = i + w
+                if j >= len(prices) or spans_break(data, i, j):
+                    continue
+                p1 = prices[j]
+                if not p1 or p1 <= 0:
+                    continue
+                r = p1 / p0 - 1
+                for mc in mcaps:
+                    if m >= mc:
+                        acc[(mc, w)][d].append(r)
+    return {k: {d: sum(v) / len(v) for d, v in a.items() if v} for k, a in acc.items()}
+
+
+def excess_stats(results, bench, window, mcap_floor):
+    """시그널 수익률에서 같은 모집단의 그날 평균을 뺀 값의 평균과 t 통계량."""
+    xs = []
+    for r in results:
+        v = r.get(f"ret{window}")
+        b = bench.get((mcap_floor, window), {}).get(r["date"])
+        if v is not None and b is not None:
+            xs.append(v - b)
+    if len(xs) < 30:
+        return None
+    m = sum(xs) / len(xs)
+    sd = statistics.stdev(xs)
+    return {"n": len(xs), "avg": m, "t": m / (sd / len(xs) ** 0.5) if sd else 0.0}
+
+
+def run_one_signal(timeseries, name, candidate, top_n, market_ctx=None, bench=None):
     """단일 시그널 1개 후보 백테스트 + 출력"""
     entry = SIGNAL_MAP[name]
     signal_func = entry[candidate]
@@ -1210,6 +1297,16 @@ def run_one_signal(timeseries, name, candidate, top_n, market_ctx=None):
     print("\n  --- 전체 10년 (20일 forward) ---")
     m = compute_metrics(results, window=20)
     print_metrics_table("Overall 20d", m)
+
+    if bench:
+        floor = SIGNAL_MCAP_FLOOR.get(name, BENCH_MCAPS[0])
+        print(f"\n  --- 초과수익 (같은 날 시총 {floor/1e8:,.0f}억 이상 종목 평균 대비) ---")
+        for w in FORWARD_WINDOWS:
+            e = excess_stats(results, bench, w, floor)
+            if e:
+                print(f"    {w:>2}일  초과 {e['avg']*100:+.2f}%  t={e['t']:+.2f}  "
+                      f"(N={e['n']:,})   비용차감 {(e['avg']-TC_ROUNDTRIP)*100:+.2f}%")
+
     print(f"\n    ※ 매수 시그널이면 avg_return > 0 + hit_rate > 50% 기대")
     print(f"       매도 시그널이면 avg_return < 0 + hit_rate < 50% 기대")
 
@@ -1250,15 +1347,23 @@ def main():
         market_ctx = build_market_context(timeseries)
         print(f"  market index dates: {len(market_ctx['dates_sorted'])} ({time.time() - t0:.1f}s)")
 
+    print("Building benchmark (universe forward returns)...")
+    t0 = time.time()
+    bench = universe_forward(timeseries)
+    print(f"  benchmark: {len(bench)}개 (모집단,기간) 조합, "
+          f"{len(bench[(BENCH_MCAPS[0], FORWARD_WINDOWS[0])])}일 ({time.time() - t0:.1f}s)")
+
     if args.signal == "all":
         for name in SIGNAL_MAP.keys():
             if args.candidate in SIGNAL_MAP[name]:
-                run_one_signal(timeseries, name, args.candidate, args.top_n, market_ctx)
+                run_one_signal(timeseries, name, args.candidate, args.top_n,
+                               market_ctx, bench)
     else:
         if args.signal not in SIGNAL_MAP or args.candidate not in SIGNAL_MAP[args.signal]:
             print(f"Unknown signal/candidate: {args.signal}/{args.candidate}")
             return
-        run_one_signal(timeseries, args.signal, args.candidate, args.top_n, market_ctx)
+        run_one_signal(timeseries, args.signal, args.candidate, args.top_n,
+                       market_ctx, bench)
 
 
 if __name__ == "__main__":
