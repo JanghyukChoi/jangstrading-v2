@@ -39,6 +39,7 @@ SIGNAL_MCAP_FLOOR = {
     "sell_reversal": 50_000_000_000,
     "leader": 100_000_000_000,
     "accumulation": 50_000_000_000,
+    "momentum_only": 50_000_000_000,
 }
 
 # 백테스트 설정
@@ -222,6 +223,26 @@ def signal_leader_v1(data, idx):
 
     # Composite (가격 + flow + 가속도)
     return price_mom * 0.4 + flow_strength * 0.4 + max(accel, 0) * 0.2
+
+
+def signal_momentum_only(data, idx, ctx=None):
+    """대조군 — 수급을 전혀 안 본다. 60일 가격 모멘텀만.
+
+    v3 시그널 넷은 전부 매수세와 상승을 함께 요구한다. 그래서 성과가 수급
+    신호의 실력인지 단순한 모멘텀 팩터 노출인지 구분이 안 된다. 같은 모집단·
+    같은 벤치마크로 이걸 돌려서, v3 가 이걸 못 이기면 수급 부분은 값을
+    더하지 않은 것이다.
+    """
+    p = data.get("prices", [])
+    if idx < 60 or idx >= len(p):
+        return None
+    mcap = _mcap_at(data, idx)
+    if mcap is None or mcap < 50_000_000_000:
+        return None
+    p_now, p_60 = p[idx], p[idx - 60]
+    if not p_now or not p_60 or p_now <= 0 or p_60 <= 0:
+        return None
+    return p_now / p_60 - 1
 
 
 # ───────────────────────────────────────────────────────────
@@ -1023,6 +1044,9 @@ SIGNAL_MAP = {
     "sell_reversal": {"v1": signal_sell_reversal_v1, "v2": signal_sell_reversal_v2, "v3": signal_sell_reversal_v3, "direction": "short"},
     "leader":        {"v1": signal_leader_v1,        "v2": signal_leader_v2,        "v3": signal_leader_v3,        "direction": "long"},
     "accumulation":  {"v1": signal_accumulation_v1,  "v2": signal_accumulation_v2,  "v3": signal_accumulation_v3,  "direction": "long"},
+    # 대조군 — 수급 없이 모멘텀만. v3 가 이걸 못 이기면 수급은 값을 안 더한 것이다.
+    "momentum_only": {"v3": signal_momentum_only, "direction": "long"},
+
 }
 
 
@@ -1252,10 +1276,19 @@ def universe_forward(timeseries, windows=FORWARD_WINDOWS, mcaps=BENCH_MCAPS):
     return {k: {d: sum(v) / len(v) for d, v in a.items() if v} for k, a in acc.items()}
 
 
-def excess_stats(results, bench, window, mcap_floor):
-    """시그널 수익률에서 같은 모집단의 그날 평균을 뺀 값의 평균과 t 통계량."""
+def excess_stats(results, bench, window, mcap_floor, lo=None, hi=None):
+    """시그널 수익률에서 같은 모집단의 그날 평균을 뺀 값의 평균과 t 통계량.
+
+    lo/hi 로 기간을 자를 수 있다. v3 임계값(시총 하한, 모멘텀 +5% 등)은 이
+    데이터를 보고 정한 것이라 전체 구간은 in-sample 이다. 튜닝에 안 쓰인
+    구간에서도 같은 수가 나오는지 확인해야 한다.
+    """
     xs = []
     for r in results:
+        if lo and r["date"] < lo:
+            continue
+        if hi and r["date"] > hi:
+            continue
         v = r.get(f"ret{window}")
         b = bench.get((mcap_floor, window), {}).get(r["date"])
         if v is not None and b is not None:
@@ -1306,6 +1339,16 @@ def run_one_signal(timeseries, name, candidate, top_n, market_ctx=None, bench=No
             if e:
                 print(f"    {w:>2}일  초과 {e['avg']*100:+.2f}%  t={e['t']:+.2f}  "
                       f"(N={e['n']:,})   비용차감 {(e['avg']-TC_ROUNDTRIP)*100:+.2f}%")
+        print(f"    기간별 20일 초과 (train <= {TRAIN_END_DATE} / test 이후):")
+        for lab, lo, hi in (("train", None, TRAIN_END_DATE),
+                            ("test ", TRAIN_END_DATE, None)):
+            e = excess_stats(results, bench, 20, floor, lo, hi)
+            if e:
+                print(f"      {lab}  {e['avg']*100:+.2f}%  t={e['t']:+.2f}  (N={e['n']:,})")
+        for lab, lo, hi in REGIMES:
+            e = excess_stats(results, bench, 20, floor, lo, hi)
+            if e:
+                print(f"      [{lab:<9}] {e['avg']*100:+.2f}%  t={e['t']:+.2f}  (N={e['n']:,})")
 
     print(f"\n    ※ 매수 시그널이면 avg_return > 0 + hit_rate > 50% 기대")
     print(f"       매도 시그널이면 avg_return < 0 + hit_rate < 50% 기대")
