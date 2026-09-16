@@ -553,6 +553,7 @@ def build_snapshot(results, market_data, date_iso):
     여기서는 빈 placeholder 만 넣는다(기존과 동일).
     """
     prices, foreign_1d, inst_1d, pension_1d = {}, {}, {}, {}
+    indi_1d, corp_1d = {}, {}
     market_cap, trade_value = {}, {}
 
     for s in results:
@@ -565,6 +566,10 @@ def build_snapshot(results, market_data, date_iso):
             inst_1d[t] = round(s["_inst_1d"], 1)
         if s.get("_pension_1d"):
             pension_1d[t] = round(s["_pension_1d"], 1)
+        if s.get("_indi_1d"):
+            indi_1d[t] = round(s["_indi_1d"], 1)
+        if s.get("_corp_1d"):
+            corp_1d[t] = round(s["_corp_1d"], 1)
         if s.get("_trade_value"):
             trade_value[t] = s["_trade_value"]
         if s.get("market_cap"):
@@ -585,6 +590,8 @@ def build_snapshot(results, market_data, date_iso):
         "foreign_1d": foreign_1d,
         "inst_1d": inst_1d,
         "pension_1d": pension_1d,
+        "indi_1d": indi_1d,
+        "corp_1d": corp_1d,
         "breadth": breadth,
         "market": {m.lower(): v["index"] for m, v in market_data.items()},
         "market_cap": market_cap,
@@ -597,7 +604,8 @@ def build_snapshot(results, market_data, date_iso):
     path.write_text(json.dumps(snapshot, ensure_ascii=False), encoding="utf-8")
     print(
         f"  snapshots/{date_iso}.json ({path.stat().st_size/1024:.1f} KB) "
-        f"종가 {len(prices)} / 외국인 {len(foreign_1d)} / 기관 {len(inst_1d)} / 연기금 {len(pension_1d)}"
+        f"종가 {len(prices)} / 외국인 {len(foreign_1d)} / 기관 {len(inst_1d)} / "
+        f"연기금 {len(pension_1d)} / 개인 {len(indi_1d)} / 기타법인 {len(corp_1d)}"
     )
     print(
         f"    breadth 외국인 +{breadth['foreign_buy']}/-{breadth['foreign_sell']} "
@@ -728,6 +736,12 @@ def main():
         item["_foreign_1d"] = float(ntby_pbmn(last, "frgn"))
         item["_inst_1d"] = float(ntby_pbmn(last, "orgn"))
         item["_pension_1d"] = float(ntby_pbmn(last, "fund"))
+        # 개인·기타법인. 같은 응답에 이미 들어있어서 추가 호출이 없다.
+        #   개인    — 체결 타이밍 분해(어제↑오늘↓ 받아내기 등)에 필요
+        #   기타법인 — 자사주 매입·계열사 지분·M&A 축적. 이 데이터에서
+        #             내부자에 가장 가까운 매수 주체다.
+        item["_indi_1d"] = float(ntby_pbmn(last, "prsn"))
+        item["_corp_1d"] = float(ntby_pbmn(last, "etc_corp"))
 
         if not args.skip_fundamentals:
             try:

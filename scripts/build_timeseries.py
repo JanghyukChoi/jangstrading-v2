@@ -58,6 +58,8 @@ def main():
         "foreign": [],
         "inst": [],
         "pension": [],
+        "indi": [],
+        "corp": [],
         "prices": [],
         "market_cap": [],
         "trade_value": [],
@@ -77,6 +79,8 @@ def main():
         foreign_1d = snap.get("foreign_1d", {})
         inst_1d = snap.get("inst_1d", {})
         pension_1d = snap.get("pension_1d", {})
+        indi_1d = snap.get("indi_1d", {})
+        corp_1d = snap.get("corp_1d", {})
         prices = snap.get("prices", {})
         market_cap = snap.get("market_cap", {})
         trade_value = snap.get("trade_value", {})
@@ -102,6 +106,8 @@ def main():
             row["foreign"].append(foreign_1d.get(ticker, 0))
             row["inst"].append(inst_1d.get(ticker, 0))
             row["pension"].append(pension_1d.get(ticker, 0))
+            row["indi"].append(indi_1d.get(ticker, 0))
+            row["corp"].append(corp_1d.get(ticker, 0))
             row["prices"].append(prices.get(ticker, 0))
             row["market_cap"].append(market_cap.get(ticker, 0))
             row["trade_value"].append(trade_value.get(ticker, 0))
