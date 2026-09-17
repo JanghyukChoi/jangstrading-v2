@@ -19,12 +19,18 @@
   2,700종목 x 84 = 약 227,000회, 초당 6건이면 **약 10.5시간**.
   중단되면 --resume 으로 이어서 한다(종목 단위로 완료 표시를 남긴다).
 
-시총 큰 종목부터 처리한다. 중간에 멈춰도 거래대금 대부분이 확보되도록.
+중단 대비 설계
+  1. **시총 큰 종목부터** 처리한다. 중간에 멈춰도 거래대금 대부분이 확보된다.
+     (전체의 절반만 돼도 시장 수급의 대부분을 덮는다)
+  2. `--stop-at HH:MM` 으로 예약 종료. 매일 17:10 에 도는 크론과 KIS 유량을
+     나눠 쓰면 둘 다 느려진다 — 실측으로 크론이 1시간 24분 걸리는데 타임아웃이
+     120분이라 여유가 36분뿐이다. 겹치기 전에 스스로 비킨다.
+  3. 종목 단위 `--resume`. 50종목마다 진행상황을 저장한다.
 
 실행
-  python scripts/backfill_flows.py --start 2016-02-19        # 전체
-  python scripts/backfill_flows.py --limit 20                # 테스트
-  python scripts/backfill_flows.py --resume                  # 이어서
+  python scripts/backfill_flows.py --start 2016-02-19 --stop-at 16:30
+  python scripts/backfill_flows.py --resume --stop-at 16:30   # 이어서
+  python scripts/backfill_flows.py --limit 20                 # 테스트
 """
 
 import argparse
@@ -38,7 +44,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from kis_api import KisClient, KisError  # noqa: E402
 from kis_fetch import (  # noqa: E402
-    BASE_DIR, INVESTOR_TR, INVESTOR_URL, load_universe, ntby_pbmn, to_int,
+    BASE_DIR, DATA_DIR, INVESTOR_TR, INVESTOR_URL, load_universe, ntby_pbmn,
 )
 
 OUT_DIR = BASE_DIR / "scripts" / "backtest_data" / "flows"
@@ -84,6 +90,32 @@ def fetch_flows(kis, ticker, start_ymd, end_ymd):
     return {d: v for d, v in out.items() if d >= start_ymd}
 
 
+def order_by_mcap(universe):
+    """시총 내림차순. 중간에 멈춰도 중요한 종목이 먼저 끝나도록.
+
+    stock-rankings.json 의 market_cap(억원)을 쓴다. 없는 종목은 뒤로 보낸다.
+    """
+    caps = {}
+    try:
+        rk = json.loads((DATA_DIR / "stock-rankings.json").read_text(encoding="utf-8"))
+        caps = {s["ticker"]: (s.get("market_cap") or 0) for s in rk["data"] if s.get("ticker")}
+    except (OSError, ValueError, KeyError):
+        return universe
+    return sorted(universe, key=lambda s: -caps.get(s["ticker"], 0))
+
+
+def parse_stop_at(v):
+    """'16:30' -> 오늘(또는 내일) 그 시각의 epoch. 빈 값이면 None."""
+    if not v:
+        return None
+    hh, mm = (int(x) for x in v.split(":"))
+    now = datetime.now()
+    t = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    if t <= now:
+        t += timedelta(days=1)
+    return t
+
+
 def load_progress():
     try:
         return set(json.loads(STATE_PATH.read_text(encoding="utf-8")))
@@ -98,7 +130,11 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--stop-at", default="", metavar="HH:MM",
+                    help="이 시각이 되면 진행상황을 저장하고 멈춘다 (크론 회피)")
     args = ap.parse_args()
+
+    stop_at = parse_stop_at(args.stop_at)
 
     start_ymd = args.start.replace("-", "")
     end_ymd = args.end.replace("-", "") or (
@@ -107,7 +143,7 @@ def main():
     kis = KisClient()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    universe = load_universe(args.limit or None)
+    universe = order_by_mcap(load_universe(args.limit or None))
     done = load_progress() if args.resume else set()
     todo = [s for s in universe if s["ticker"] not in done]
 
@@ -116,6 +152,10 @@ def main():
     print(f"개인·기타법인 백필  {start_ymd} ~ {end_ymd}")
     print(f"  전체 {len(universe)}종목 / 남은 {len(todo)}종목")
     print(f"  종목당 최대 {calls}회 · 예상 {len(todo)*calls/6/3600:.1f}시간")
+    print("  시총 큰 종목부터 진행 (중단 시 중요 종목이 먼저 확보되도록)")
+    if stop_at:
+        print(f"  예약 종료: {stop_at:%Y-%m-%d %H:%M} "
+              f"({(stop_at - datetime.now()).total_seconds()/3600:.1f}시간 뒤)")
     print("=" * 62)
 
     lock = threading.Lock()
@@ -123,8 +163,15 @@ def main():
     counter = {"n": 0, "ok": 0, "fail": 0, "rows": 0}
     progress = set(done)
 
+    stopped = {"flag": False}
+
     def work(stock):
         tk = stock["ticker"]
+        if stopped["flag"]:
+            return tk, None
+        if stop_at and datetime.now() >= stop_at:
+            stopped["flag"] = True
+            return tk, None
         try:
             flows = fetch_flows(kis, tk, start_ymd, end_ymd)
         except (KisError, Exception):
@@ -138,6 +185,8 @@ def main():
     with cf.ThreadPoolExecutor(max_workers=args.workers) as pool:
         for tk, flows in pool.map(work, todo):
             with lock:
+                if stopped["flag"] and not flows:
+                    continue
                 counter["n"] += 1
                 if flows:
                     (OUT_DIR / f"{tk}.json").write_text(
@@ -157,6 +206,10 @@ def main():
                           f"실패 {counter['fail']}  행 {counter['rows']:,}  "
                           f"경과 {el/3600:.1f}h  남은 ~{eta:.1f}h")
     save_progress()
+
+    if stopped["flag"]:
+        print(f"\n  예약 종료 시각({args.stop_at}) 도달 — 진행상황 저장하고 멈춥니다.")
+        print(f"  이어서: python scripts/backfill_flows.py --resume --start {start_ymd}")
 
     files = list(OUT_DIR.glob("*.json"))
     size = sum(f.stat().st_size for f in files if f.name != "_progress.json")
