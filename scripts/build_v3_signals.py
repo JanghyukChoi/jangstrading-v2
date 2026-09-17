@@ -99,12 +99,29 @@ SIGNAL_FNS = {}
 
 # 장기 시그널: factor dict 반환 함수 + cross-section 백분위 composite
 # (백테스트 backtest_longterm.py의 score_strategy_a + composite_a와 정합)
-LONGTERM_FACTOR_FNS = {
-    "ai_screener": ai_screener_factors,
-}
-LONGTERM_COMPOSITE_FNS = {
-    "ai_screener": composite_ai_screener_pct,
-}
+# 장기수급상위(ai_screener)도 내렸다.
+#
+# 단기 4종과 같은 기계로 재보니(backtest_longterm_check.py) 근거가 없다.
+# 60일 보유 11,000 거래를 독립 관측으로 세면 t=11 이 나오지만, 같은 날 여러
+# 종목을 한 관측으로 묶고 중첩 보유의 자기상관을 Newey-West 로 보정하면:
+#
+#   보유    초과      t(단순)  t(날짜군집+NW)  승률    중앙값
+#    5일   +0.35%     4.12       1.96        46.6%  -0.56%
+#   20일   +1.64%     9.63       2.52        47.5%  -1.02%
+#   60일   +3.64%    11.02       1.77        44.4%  -3.50%
+#
+#   train(~2022) 7년:  5일 t=0.16 / 20일 t=0.65 / 60일 t=0.59
+#
+# train 구간에 신호가 없고, 중앙값이 전부 음수다(60일 보유 시 절반 이상이
+# -3.5% 보다 나쁘다). 평균은 소수의 큰 승자가 끌어올린 것이다.
+#
+# 이 신호는 연기금 60일 순매수 >= 5bp 를 필수 조건으로 걸고 가중치의 30% 를
+# 연기금에 준다. 사내 원장의 152팩터 장기 검정에서 연기금은 예측력이 있으나
+# **방향이 반대**였다(t(h=20) -4.49, 단조성 rho -0.78).
+#
+# 함수 정의는 backtest_signals.py 에 그대로 있다.
+LONGTERM_FACTOR_FNS = {}
+LONGTERM_COMPOSITE_FNS = {}
 
 
 def load_timeseries():

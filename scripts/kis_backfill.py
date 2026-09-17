@@ -117,6 +117,7 @@ def main():
 
     # 날짜별 누적 버킷
     buckets = {iso(d): {"prices": {}, "foreign_1d": {}, "inst_1d": {}, "pension_1d": {},
+                        "indi_1d": {}, "corp_1d": {},
                         "market_cap": {}, "trade_value": {},
                         "fb": 0, "fs": 0, "ib": 0, "is_": 0}
                for d in target_dates}
@@ -159,12 +160,20 @@ def main():
             fv = float(ntby_pbmn(r, "frgn"))
             iv = float(ntby_pbmn(r, "orgn"))
             pv = float(ntby_pbmn(r, "fund"))
+            # 개인·기타법인. 같은 응답에 이미 있어서 추가 호출이 없다.
+            # kis_fetch 와 스냅샷 스키마를 맞춘다.
+            dv = float(ntby_pbmn(r, "prsn"))
+            cv = float(ntby_pbmn(r, "etc_corp"))
             if fv:
                 b["foreign_1d"][ticker] = round(fv, 1)
             if iv:
                 b["inst_1d"][ticker] = round(iv, 1)
             if pv:
                 b["pension_1d"][ticker] = round(pv, 1)
+            if dv:
+                b["indi_1d"][ticker] = round(dv, 1)
+            if cv:
+                b["corp_1d"][ticker] = round(cv, 1)
 
             if fv > 0:
                 b["fb"] += 1
@@ -191,11 +200,13 @@ def main():
             continue
         snapshot = {
             "date": d,
-            "signals": {"buy_reversal": [], "sell_reversal": [], "leader": [], "accumulation": []},
+            "signals": {},   # 시그널은 내려갔다. 스키마 호환을 위해 빈 dict 만 둔다.
             "prices": b["prices"],
             "foreign_1d": b["foreign_1d"],
             "inst_1d": b["inst_1d"],
             "pension_1d": b["pension_1d"],
+            "indi_1d": b["indi_1d"],
+            "corp_1d": b["corp_1d"],
             "breadth": {
                 "foreign_buy": b["fb"], "foreign_sell": b["fs"],
                 "inst_buy": b["ib"], "inst_sell": b["is_"],
@@ -207,7 +218,9 @@ def main():
         path = SNAP_DIR / f"{d}.json"
         path.write_text(json.dumps(snapshot, ensure_ascii=False), encoding="utf-8")
         written += 1
-        print(f"  {d}: {len(b['prices'])}종목 ({path.stat().st_size/1024:.0f} KB)")
+        print(f"  {d}: {len(b['prices'])}종목 "
+              f"(외 {len(b['foreign_1d'])} / 개인 {len(b['indi_1d'])} / "
+              f"기타법인 {len(b['corp_1d'])}) {path.stat().st_size/1024:.0f} KB")
 
     files = sorted(
         (f for f in SNAP_DIR.glob("*.json") if SNAPSHOT_NAME_RE.match(f.stem)),

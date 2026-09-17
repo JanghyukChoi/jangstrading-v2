@@ -24,7 +24,6 @@ interface StockRanking {
 }
 type Investor = "combined" | "foreign" | "institution" | "pension";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
-type Signal = "all" | "ai_screener";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function getInvVal(s: StockRanking, inv: Investor, p: string): number {
@@ -54,39 +53,16 @@ function calcRatio(combined: number, marketCap: number | null | undefined): numb
   if (!marketCap || marketCap <= 0) return null;
   return combined / marketCap;
 }
-/* ── 시그널 lookup ────────────────────────────────
+/* 시그널 5종(매수전환·매도전환·주도주·단기수급상위·장기수급상위)을 전부 내렸다.
 
-   매수전환·매도전환·주도주·단기수급상위 4종을 내렸다. 10.3년(2016-02~2026-05,
-   3,234종목, 상장폐지 포함) 재검정 결과 시장 대비 초과수익이 없었다.
+   10.3년(2016-02~2026-05, 2,520영업일, 3,234종목, 상장폐지 포함) 재검정에서
+   같은 날 같은 시총 하한 모집단 평균 대비 초과수익이 없었다. 단기 4종은
+   기간을 나누면 부호가 뒤집혔고(v1 은 train, v3 는 test 에서만 작동),
+   장기수급상위는 날짜군집 + Newey-West 로 t 를 제대로 재면 train 구간
+   7년에서 t<1 이었다(5일 0.16 / 20일 0.65 / 60일 0.59).
 
-     20일 초과(비용 전)   전체    train(~2022)   test(2023~)
-     매수전환            +0.02%   -0.12%        +0.30%
-     매도전환            +0.71%   +0.07%        +1.90%   <- 매도인데 오른다
-     주도주              +0.57%   -0.14%        +1.96%
-     단기수급상위         +0.27%   -0.36%        +1.45%
-
-   v1 은 정반대로 train 에서만 작동했다. v1->v2->v3 로 다듬는 과정이 그 자체로
-   다중검정이었고, 각 버전이 자기가 맞춰진 구간에서만 작동한다. 어느 버전도
-   두 구간을 모두 통과하지 못했다. 자세한 근거는 scripts/backtest_signals.py.
-
-   장기수급상위(ai_screener)는 같은 방식으로 아직 검정하지 않아 남겨 둔다. */
-interface V3Signals {
-  ai_screener: Set<string>;
-}
-
-const SIGNAL_LABEL: Record<Exclude<Signal, "all">, { label: string; color: string }> = {
-  ai_screener: { label: "장기수급상위", color: "bg-indigo-500/15 text-indigo-400" },
-};
-
-function getSignals(
-  s: StockRanking,
-  v3: V3Signals | null
-): { key: Signal; label: string; color: string }[] {
-  const out: { key: Signal; label: string; color: string }[] = [];
-  if (!v3 || !s.ticker) return out;
-  if (v3.ai_screener.has(s.ticker)) out.push({ key: "ai_screener", ...SIGNAL_LABEL.ai_screener });
-  return out;
-}
+   근거는 scripts/backtest_signals.py 와 scripts/backtest_longterm_check.py.
+   시그널 함수는 지우지 않았으므로 재검정 후 되살릴 수 있다. */
 
 /* ── 필터 버튼 ────────────────────────────────── */
 function FilterGroup<T extends string>({
@@ -122,7 +98,6 @@ function StocksPageInner() {
   const PAGE_SIZE = 50;
 
   // URL에서 초기값 읽기 + 로컬 상태로 관리 (router.replace freeze 방지)
-  const [signalFilter, setSignalFilterState] = useState<Signal>((searchParams.get("signal") as Signal) || "all");
   const [period, setPeriodState] = useState<Period>((searchParams.get("period") as Period) || "1m");
   const [marketFilter, setMarketFilterState] = useState<"ALL" | "KOSPI" | "KOSDAQ">((searchParams.get("market") as any) || "ALL");
   const [investor, setInvestorState] = useState<Investor>((searchParams.get("investor") as Investor) || "combined");
@@ -148,33 +123,20 @@ function StocksPageInner() {
     }
   }
 
-  function setSignalFilter(v: Signal) { setSignalFilterState(v); syncUrl({ signal: v }, true); }
   function setPeriod(v: Period) { setPeriodState(v); syncUrl({ period: v }); }
   function setMarketFilter(v: "ALL" | "KOSPI" | "KOSDAQ") { setMarketFilterState(v); syncUrl({ market: v }); }
   function setInvestor(v: Investor) { setInvestorState(v); syncUrl({ investor: v }); }
   function setSortDir(v: "desc" | "asc") { setSortDirState(v); syncUrl({ dir: v }); }
   function setSortBy(v: "amount" | "ratio") { setSortByState(v); syncUrl({ sort: v }); }
 
-  const [v3Signals, setV3Signals] = useState<V3Signals | null>(null);
-  // ai_screener는 점수 desc 순서 보존 위해 ticker -> rank map도 별도 저장
-  const [aiScreenerRank, setAiScreenerRank] = useState<Map<string, number>>(new Map());
-
   useEffect(() => {
     Promise.all([
       fetch("/data/stock-rankings.json").then((r) => r.json()),
       fetch("/data/meta.json").then((r) => r.json()),
-      fetch("/data/signals.json").then((r) => r.json()).catch(() => null),
     ])
-      .then(([s, m, sig]) => {
+      .then(([s, m]) => {
         setAllStocks(s.data);
         setMeta(m);
-        if (sig?.signals) {
-          const aiOrdered: string[] = sig.longterm?.ai_screener ?? [];
-          setV3Signals({ ai_screener: new Set(aiOrdered) });
-          const rankMap = new Map<string, number>();
-          aiOrdered.forEach((t, i) => rankMap.set(t, i));
-          setAiScreenerRank(rankMap);
-        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -182,18 +144,6 @@ function StocksPageInner() {
   const filtered = useMemo(() => {
     let r = allStocks;
     if (marketFilter !== "ALL") r = r.filter((s) => s.market === marketFilter);
-
-    // 신호 필터 → 자동 정렬
-    if (signalFilter === "ai_screener") {
-      const set = v3Signals?.ai_screener ?? new Set<string>();
-      r = r.filter((s) => s.ticker && set.has(s.ticker));
-      // signals.json 배열 순서 (= 점수 desc) 유지
-      return [...r].sort((a, b) => {
-        const ra = aiScreenerRank.get(a.ticker ?? "") ?? 999;
-        const rb = aiScreenerRank.get(b.ticker ?? "") ?? 999;
-        return ra - rb;
-      });
-    }
 
     // 시총대비 정렬 시: 시총 1000억 이상 + 스팩 제외
     if (sortBy === "ratio") {
@@ -209,22 +159,16 @@ function StocksPageInner() {
       const bv = getInvVal(b, investor, period);
       return sortDir === "desc" ? bv - av : av - bv;
     });
-  }, [allStocks, marketFilter, investor, period, sortDir, sortBy, signalFilter, v3Signals]);
+  }, [allStocks, marketFilter, investor, period, sortDir, sortBy]);
 
-  // 신호별 종목 수 카운트 (V3 결과 그대로)
-  const signalCounts = useMemo(() => {
-    return { ai_screener: v3Signals?.ai_screener.size ?? 0 };
-  }, [v3Signals]);
-
-  // 신호 활성 시 표시 기간 자동 결정
-  const displayPeriod: Period = signalFilter === "all" ? period : "1m";
+  const displayPeriod: Period = period;
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(getInvVal(s, investor, displayPeriod))), 1) : 1;
   const hasPer = allStocks.some((s) => s.per != null);
 
-  useEffect(() => setPage(0), [marketFilter, investor, period, sortDir, sortBy, signalFilter]);
+  useEffect(() => setPage(0), [marketFilter, investor, period, sortDir, sortBy]);
 
   const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
@@ -282,63 +226,35 @@ function StocksPageInner() {
 
       {/* 필터 영역 (sticky 제거 — 스크롤 시 자연스럽게 위로) */}
       <div className="space-y-3">
-      {/* 신호 필터 — 모바일은 가로 스크롤 한 줄, 데스크톱은 wrap */}
-      <div className="flex sm:flex-wrap gap-1.5 sm:gap-2 overflow-x-auto sm:overflow-x-visible no-scrollbar">
-        {([
-          { key: "all" as Signal, label: "전체", count: null, dot: "" },
-          { key: "ai_screener" as Signal, label: "장기수급상위", count: signalCounts.ai_screener, dot: "bg-indigo-400" },
-        ]).map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setSignalFilter(s.key)}
-            className={`shrink-0 px-2.5 py-1 rounded-lg text-[12px] sm:text-[13px] border transition inline-flex items-center gap-1.5 ${
-              signalFilter === s.key
-                ? "bg-white/[0.08] border-white/[0.15] text-white font-medium"
-                : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:border-white/[0.12]"
-            }`}
-          >
-            {s.dot && <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.dot}`} />}
-            {s.label}
-            {s.count != null && <span className="opacity-60">{s.count}</span>}
-          </button>
-        ))}
-      </div>
-
       {/* 필터 바 (투자자/기간/정렬) — 모바일 가로 스크롤, 데스크톱 wrap */}
       <div className="flex sm:flex-wrap gap-1.5 sm:gap-2 items-center overflow-x-auto sm:overflow-x-visible no-scrollbar">
-        {signalFilter === "all" && (
-            <select
-              value={investor}
-              onChange={(e) => setInvestor(e.target.value as Investor)}
-              className="shrink-0 bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
-            >
-              {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-        )}
-        {signalFilter === "all" && (
-          <>
-            <FilterGroup
-              options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
-              value={period} onChange={setPeriod}
-            />
-            <button
-              onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-              className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
-            >
-              {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
-            </button>
-            <button
-              onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
-              className={`shrink-0 whitespace-nowrap border rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] transition cursor-pointer ${
-                sortBy === "ratio"
-                  ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
-                  : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
-              }`}
-            >
-              {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
-            </button>
-          </>
-        )}
+        <select
+          value={investor}
+          onChange={(e) => setInvestor(e.target.value as Investor)}
+          className="shrink-0 bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
+        >
+          {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <FilterGroup
+          options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
+          value={period} onChange={setPeriod}
+        />
+        <button
+          onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
+          className="shrink-0 whitespace-nowrap bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition cursor-pointer"
+        >
+          {sortDir === "desc" ? "↓ 순매수" : "↑ 순매도"}
+        </button>
+        <button
+          onClick={() => setSortBy(sortBy === "amount" ? "ratio" : "amount")}
+          className={`shrink-0 whitespace-nowrap border rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] transition cursor-pointer ${
+            sortBy === "ratio"
+              ? "bg-[var(--accent-amber)] border-[var(--accent-amber)] text-black font-medium"
+              : "bg-[var(--bg-card)] border-white/[0.06] text-[var(--text-secondary)] hover:text-white"
+          }`}
+        >
+          {sortBy === "ratio" ? "★ 시총대비" : "시총대비"}
+        </button>
       </div>
 
       {/* 시장 필터 — 헤더 맨 아래 */}
@@ -351,13 +267,6 @@ function StocksPageInner() {
       </div>
       {/* /필터 영역 */}
 
-      {/* 신호 설명 (필터 선택 시) */}
-      {signalFilter !== "all" && (
-        <div className="text-sm text-[var(--text-secondary)] bg-white/[0.03] rounded-xl px-5 py-4 border border-white/[0.06]">
-          장기 (60일/12개월) 외국인·기관·연기금 누적 순매수가 상위인 종목. 가격·거래량 지표도 함께 상승.
-        </div>
-      )}
-
       {/* 테이블 + 모바일 카드 */}
       <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden">
         {/* 데스크톱 테이블 */}
@@ -369,18 +278,17 @@ function StocksPageInner() {
                 <th className="text-left px-2 sm:px-3 py-4 font-normal">종목</th>
                 <th className="text-left px-2 py-4 font-normal w-14 hidden sm:table-cell">시장</th>
                 {hasPer && <th className="text-right px-2 py-4 font-normal hidden md:table-cell">PER</th>}
-                <th className="text-right px-2 sm:px-3 py-4 font-normal">외국인{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-4 font-normal">기관{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
-                <th className="text-right px-2 sm:px-3 py-4 font-normal">{investor === "pension" ? "연기금" : "합계"}{signalFilter !== "all" && ` (${periodLabels[displayPeriod]})`}</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">외국인</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">기관</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">{investor === "pension" ? "연기금" : "합계"}</th>
                 <th className="text-right px-2 sm:px-3 py-4 font-normal hidden sm:table-cell">시총대비</th>
-                {signalFilter !== "ai_screener" && <th className="text-right px-2 sm:px-3 py-4 font-normal">수익률</th>}
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">수익률</th>
               </tr>
             </thead>
             <tbody>
               {paged.map((s, i) => {
                 const pc = s.price_change?.[displayPeriod];
                 const ratio = calcRatio(getInvVal(s, investor, displayPeriod), s.market_cap);
-                const signals = getSignals(s, v3Signals);
                 return (
                   <tr key={s.name} className="border-t border-white/[0.03] hover:bg-white/[0.02] transition">
                     <td className="px-3 sm:px-5 py-2.5 text-[var(--text-muted)] num text-xs">{page * PAGE_SIZE + i + 1}</td>
@@ -393,11 +301,6 @@ function StocksPageInner() {
                         ) : (
                           <span className="text-white font-medium">{s.name}</span>
                         )}
-                        {signals.map((sig) => (
-                          <span key={sig.key} className={`text-[11px] px-1.5 py-0.5 rounded-md ${sig.color}`}>
-                            {sig.label}
-                          </span>
-                        ))}
                       </div>
                     </td>
                     <td className="px-2 py-2.5 hidden sm:table-cell">
@@ -420,17 +323,15 @@ function StocksPageInner() {
                         </span>
                       ) : <span className="text-[var(--text-muted)]">-</span>}
                     </td>
-                    {signalFilter !== "ai_screener" && (
-                      <td className="px-2 sm:px-3 py-2.5 text-right">
-                        {pc != null ? (
-                          <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
-                            {pc > 0 ? "+" : ""}{pc.toFixed(1)}%
-                          </span>
-                        ) : (
-                          <span className="text-[var(--text-muted)]">-</span>
-                        )}
-                      </td>
-                    )}
+                    <td className="px-2 sm:px-3 py-2.5 text-right">
+                      {pc != null ? (
+                        <span className={`num text-xs ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
+                          {pc > 0 ? "+" : ""}{pc.toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">-</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -443,14 +344,13 @@ function StocksPageInner() {
           {paged.map((s, i) => {
             const pc = s.price_change?.[displayPeriod];
             const ratio = calcRatio(getInvVal(s, investor, displayPeriod), s.market_cap);
-            const signals = getSignals(s, v3Signals);
             const inner = (
               <div className="px-4 py-4.5">
                 {/* 상단: 순위 + 종목명 + 수익률 */}
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[var(--text-muted)] num text-[13px] w-5 shrink-0">{page * PAGE_SIZE + i + 1}</span>
                   <span className="text-white font-medium text-[15px] flex-1 truncate">{s.name}</span>
-                  {pc != null && signalFilter !== "ai_screener" && (
+                  {pc != null && (
                     <span className={`text-[13px] font-medium ${pc > 0 ? "positive" : pc < 0 ? "negative" : ""}`}>
                       <span className="num">{pc > 0 ? "+" : ""}{pc.toFixed(1)}%</span>
                     </span>
@@ -465,9 +365,6 @@ function StocksPageInner() {
                   {hasPer && s.per != null && (
                     <span className="text-[12px] text-[var(--text-muted)]">PER <span className="num">{s.per.toFixed(1)}</span></span>
                   )}
-                  {signals.map((sig) => (
-                    <span key={sig.key} className={`text-[11px] px-1.5 py-0.5 rounded-md ${sig.color}`}>{sig.label}</span>
-                  ))}
                 </div>
 
                 {/* 구분선 */}

@@ -140,15 +140,8 @@ def main():
         except Exception:
             pass
 
-    # 3. 장기수급상위 개수. 매수전환·매도전환·주도주·단기수급상위 4종은
-    #    10.3년 재검정에서 시장 대비 초과수익이 없어 내렸다.
-    signals = {"ai": 0}
-    try:
-        with open(DATA_DIR / "signals.json", "r", encoding="utf-8") as f:
-            v3 = json.load(f)
-        signals["ai"] = len((v3.get("longterm") or {}).get("ai_screener", []))
-    except Exception as e:
-        print(f"  [WARN] signals.json 로드 실패: {e}")
+    # 3. 시그널 5종은 전부 내렸다. 10.3년 재검정에서 시장 대비 초과수익이
+    #    없었다(scripts/backtest_signals.py, backtest_longterm_check.py).
 
     # 4. 섹터별 주도주 (중분류 TOP 3)
     sector_map = {}
@@ -216,8 +209,6 @@ def main():
 
     if idx_line:
         msg += f"{idx_line}\n\n"
-
-    msg += f"🔥 장기수급상위 {signals['ai']}종목\n\n"
 
     msg += "⭐ 섹터별 주도주 (1개월)\n"
     msg += "\n".join(leader_lines)
