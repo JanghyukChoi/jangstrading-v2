@@ -366,7 +366,12 @@ def fetch_fundamentals(kis, ticker, end_date, cache=True):
 
 # ─── 집계 ───────────────────────────────────────────────────────────
 def aggregate_flows(rows):
-    """기간별 외국인/기관/합계 순매수 대금(백만원) 과 기관 세부주체.
+    """기간별 외국인/기관/합계/기타법인 순매수 대금(백만원) 과 기관 세부주체.
+
+    기타법인(etc_corp)은 KRX 분류에서 금융기관이 아닌 일반 법인이다. 자사주
+    매입, 계열사 지분 매입, M&A 지분 축적이 여기 들어간다 — 공개 데이터에서
+    내부자에 가장 가까운 매수 주체인데 어느 사이트도 보여주지 않는다.
+    같은 응답에 이미 있어서 추가 호출이 없다.
 
     값은 이미 백만원 단위 정수라 float 로 부풀리지 않는다. 0 인 항목은 아예
     빼서 파일 크기를 줄인다 (기존 파이프라인도 같은 방식이었고, 프론트는
@@ -374,7 +379,7 @@ def aggregate_flows(rows):
     inst_detail 항목의 58%, pension 의 66% 가 0 이다.
     """
     foreign, institution, combined = {}, {}, {}
-    inst_detail, pension = {}, {}
+    inst_detail, pension, corp = {}, {}, {}
 
     for period, n in PERIODS.items():
         window = rows[-n:] if n <= len(rows) else rows
@@ -383,6 +388,9 @@ def aggregate_flows(rows):
         foreign[period] = f
         institution[period] = i
         combined[period] = f + i
+        c = sum(ntby_pbmn(r, "etc_corp") for r in window)
+        if c:
+            corp[period] = c
 
         detail = {}
         for label, prefix in INST_DETAIL.items():
@@ -394,7 +402,7 @@ def aggregate_flows(rows):
         if detail.get("연기금"):
             pension[period] = detail["연기금"]
 
-    return foreign, institution, combined, inst_detail, pension
+    return foreign, institution, combined, inst_detail, pension, corp
 
 
 def aggregate_price_changes(rows):
@@ -713,7 +721,7 @@ def main():
             continue
 
         holdings_now = shares_now = 0
-        foreign, institution, combined, inst_detail, pension = aggregate_flows(rows)
+        foreign, institution, combined, inst_detail, pension, corp = aggregate_flows(rows)
         item = {
             "name": stock["name"],
             "market": stock["market"],
@@ -728,6 +736,8 @@ def main():
             item["inst_detail"] = inst_detail
         if pension:
             item["pension"] = pension
+        if corp:
+            item["corp"] = corp
 
         # 스냅샷용 원시값
         last = rows[-1]

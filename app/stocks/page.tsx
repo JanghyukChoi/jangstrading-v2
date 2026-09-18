@@ -21,14 +21,23 @@ interface StockRanking {
   institution: Record<string, number>;
   combined: Record<string, number>;
   pension?: Record<string, number>;
+  /** 기타법인 — 자사주 매입·계열사 지분·M&A. 수집 시작일 이전 종목엔 없다. */
+  corp?: Record<string, number>;
 }
-type Investor = "combined" | "foreign" | "institution" | "pension";
+type Investor = "combined" | "foreign" | "institution" | "pension" | "corp";
 type Period = "1d" | "1w" | "1m" | "3m" | "6m";
 
 /* ── 유틸 ─────────────────────────────────────── */
 function getInvVal(s: StockRanking, inv: Investor, p: string): number {
   if (inv === "pension") return s.pension?.[p] ?? 0;
+  if (inv === "corp") return s.corp?.[p] ?? 0;
   return s[inv][p] ?? 0;
+}
+
+/** 합계 열에 무엇을 넣을지. 연기금·기타법인을 고르면 그 주체 값으로 바꾼다. */
+function subjectVal(s: StockRanking, inv: Investor, p: Period): number {
+  if (inv === "pension" || inv === "corp") return getInvVal(s, inv, p);
+  return s.combined[p] ?? 0;
 }
 function fmtUnit(n: number) {
   const won = n * 1_000_000;
@@ -167,10 +176,13 @@ function StocksPageInner() {
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const maxVal = paged.length > 0 ? Math.max(...paged.map((s) => Math.abs(getInvVal(s, investor, displayPeriod))), 1) : 1;
   const hasPer = allStocks.some((s) => s.per != null);
+  // 기타법인은 2026-09-18 부터 수집한다. 첫 수집 전에는 값이 전부 없어서
+  // 선택지 자체를 숨긴다 — 0 만 늘어선 표를 보여주는 것보다 낫다.
+  const hasCorp = allStocks.some((s) => s.corp && Object.keys(s.corp).length > 0);
 
   useEffect(() => setPage(0), [marketFilter, investor, period, sortDir, sortBy]);
 
-  const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금" };
+  const invLabels: Record<Investor, string> = { combined: "외국인+기관", foreign: "외국인", institution: "기관", pension: "연기금", corp: "기타법인" };
   const periodLabels: Record<Period, string> = { "1d": "1일", "1w": "1주", "1m": "1개월", "3m": "3개월", "6m": "6개월" };
 
   if (loading) {
@@ -233,7 +245,9 @@ function StocksPageInner() {
           onChange={(e) => setInvestor(e.target.value as Investor)}
           className="shrink-0 bg-[var(--bg-card)] rounded-lg px-2.5 py-[5px] text-[12px] sm:text-[13px] text-[var(--text-secondary)] outline-none cursor-pointer"
         >
-          {Object.entries(invLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {Object.entries(invLabels)
+            .filter(([k]) => k !== "corp" || hasCorp)
+            .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <FilterGroup
           options={Object.entries(periodLabels).map(([k, v]) => ({ key: k as Period, label: v }))}
@@ -280,7 +294,7 @@ function StocksPageInner() {
                 {hasPer && <th className="text-right px-2 py-4 font-normal hidden md:table-cell">PER</th>}
                 <th className="text-right px-2 sm:px-3 py-4 font-normal">외국인</th>
                 <th className="text-right px-2 sm:px-3 py-4 font-normal">기관</th>
-                <th className="text-right px-2 sm:px-3 py-4 font-normal">{investor === "pension" ? "연기금" : "합계"}</th>
+                <th className="text-right px-2 sm:px-3 py-4 font-normal">{investor === "pension" ? "연기금" : investor === "corp" ? "기타법인" : "합계"}</th>
                 <th className="text-right px-2 sm:px-3 py-4 font-normal hidden sm:table-cell">시총대비</th>
                 <th className="text-right px-2 sm:px-3 py-4 font-normal">수익률</th>
               </tr>
@@ -315,7 +329,7 @@ function StocksPageInner() {
                     )}
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.foreign[displayPeriod]} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right"><CNum v={s.institution[displayPeriod]} /></td>
-                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={investor === "pension" ? (s.pension?.[displayPeriod] ?? 0) : s.combined[displayPeriod]} /></td>
+                    <td className="px-2 sm:px-3 py-2.5 text-right font-medium"><CNum v={subjectVal(s, investor, displayPeriod)} /></td>
                     <td className="px-2 sm:px-3 py-2.5 text-right hidden sm:table-cell">
                       {ratio != null ? (
                         <span className={`num text-xs ${ratio > 0 ? "positive" : ratio < 0 ? "negative" : ""}`}>
@@ -382,7 +396,7 @@ function StocksPageInner() {
                   </div>
                   <div className="flex justify-between gap-2 font-medium">
                     <span className="text-[var(--text-muted)] font-normal shrink-0">합계</span>
-                    <CNum v={investor === "pension" ? (s.pension?.[displayPeriod] ?? 0) : s.combined[displayPeriod]} />
+                    <CNum v={subjectVal(s, investor, displayPeriod)} />
                   </div>
                   {ratio != null && (
                     <div className="flex justify-between gap-2">
