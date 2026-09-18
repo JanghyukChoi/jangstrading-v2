@@ -133,19 +133,26 @@ def extract_key_data():
     sector_top5_buy = sector_sorted[:5]
     sector_top5_sell = sector_sorted[-5:][::-1]
 
-    # 5. 수급 신호 카운트
-    signals = {"buy_reversal": 0, "sell_reversal": 0, "divergence": 0, "accumulation": 0}
+    # 5. 수급 구조 카운트
+    #
+    # 예전에는 이걸 "매수전환 / 매도전환 / 단기수급상위"로 불렀는데, 그 이름은
+    # 이후 주가에 대한 주장을 담는다. 10.3년 재검정에서 같은 개념의 시그널들이
+    # 시장 대비 초과수익이 없었고(scripts/backtest_signals.py) 사이트에서도
+    # 내렸다. 계산식은 그대로 두되 **사실 그대로의 이름**으로 바꾼다 —
+    # "3개월 순매도 뒤 1주 순매수로 돌아선 종목 수"는 관측이고,
+    # "매수전환"은 예측이다.
+    flows = {"turned_buy": 0, "turned_sell": 0, "price_gap": 0, "accel_buy": 0}
     for s in big_stocks:
         c = s["combined"]
         pc = s.get("price_change", {})
         if c.get("3m", 0) < -5000 and c.get("1w", 0) > 500:
-            signals["buy_reversal"] += 1
+            flows["turned_buy"] += 1
         if c.get("3m", 0) > 5000 and c.get("1w", 0) < -500:
-            signals["sell_reversal"] += 1
+            flows["turned_sell"] += 1
         if c.get("1m", 0) > 5000 and (pc.get("1m", 0) or 0) < -5:
-            signals["divergence"] += 1
+            flows["price_gap"] += 1
         if c.get("1d", 0) > 50 and c.get("1w", 0) > 500 and c.get("1m", 0) > 5000:
-            signals["accumulation"] += 1
+            flows["accel_buy"] += 1
 
     # 6. 주요 종목 TOP 10 (합산 순매수 기준)
     top_buy = sorted(stocks, key=lambda x: x["combined"].get("1m", 0), reverse=True)[:10]
@@ -178,8 +185,8 @@ def extract_key_data():
 [섹터 TOP5 순매도 (1개월, 중분류)]
 {chr(10).join(f'  {i+1}. {name}: 합계 {fmt(d["combined"])}' for i, (name, d) in enumerate(sector_top5_sell))}
 
-[수급 신호 (시총 1천억 이상)]
-매수전환: {signals["buy_reversal"]}종목 / 매도전환: {signals["sell_reversal"]}종목 / 수급·주가 괴리: {signals["divergence"]}종목 / 단기수급상위(외인+기관 5d/20d 가속): {signals["accumulation"]}종목
+[수급 구조 (시총 1천억 이상, 관측치 — 예측 아님)]
+3개월 순매도 뒤 1주 순매수: {flows["turned_buy"]}종목 / 3개월 순매수 뒤 1주 순매도: {flows["turned_sell"]}종목 / 1개월 순매수인데 주가 -5% 이하: {flows["price_gap"]}종목 / 1일·1주·1개월 모두 순매수: {flows["accel_buy"]}종목
 
 [TOP 10 순매수 종목 (1개월)]
 {chr(10).join(f'  {i+1}. {s["name"]}: 외국인 {fmt(s["foreign"]["1m"])}, 기관 {fmt(s["institution"]["1m"])}, 합계 {fmt(s["combined"]["1m"])}, 주가변동 {s.get("price_change",{}).get("1m","N/A")}%' for i, s in enumerate(top_buy))}
@@ -360,12 +367,14 @@ def generate_with_claude(date, data_summary, news_items):
 단순 paraphrase 금지. 다음 구조로:
 - 데이터 → 왜 이런 흐름인가 (뉴스 본문에서 배경 추출) → 향후 함의
 - 수급과 뉴스를 연결해 "왜 그 섹터/종목이 매수/매도됐는지" 분석
-- TOP 10 종목만 보지 말고 섹터 TOP 5, 수급 신호, 외인·기관 동조 등 다양한 데이터를 활용
+- TOP 10 종목만 보지 말고 섹터 TOP 5, 수급 구조, 외인·기관 동조 등 다양한 데이터를 활용
 
-## 4. 가장 주목할 신호 1개
-오늘 가장 의미있는 시그널 1개 (수급 전환, 섹터 쏠림, 특정 종목 이벤트 등).
-정량 데이터 + 메커니즘(왜 이게 중요한지).
-신고가/저가 종목, 매수전환·집중매수 발생 종목 등에서도 좋은 후보가 나올 수 있음.
+## 4. 오늘 가장 눈에 띄는 것 1개
+오늘 데이터에서 평소와 가장 다른 것 1개 (수급 방향 변화, 섹터 쏠림, 특정 종목 이벤트).
+정량 데이터 + 그렇게 된 배경.
+**"매수 후보", "반등 기대", "주목할 종목" 같은 표현은 쓰지 말 것.** 오늘 무슨 일이
+있었는지를 적는 것이지 앞으로 어떻게 될지를 말하는 글이 아니다. 수급 데이터로
+미래 수익률을 예측할 수 없다는 것이 이 프로젝트의 검정 결과다.
 
 ## 5. 종합 판단 + 관전 포인트
 오늘 시장을 한 문장으로 정의. 다음 영업일 관전 포인트 1~2개.
@@ -377,7 +386,7 @@ def generate_with_claude(date, data_summary, news_items):
   - 화장품·식품·소비재, 자동차·부품, 2차전지·소재, 바이오·제약, 금융·증권,
     조선·기계, 미디어·엔터·게임, 건설·인프라, 통신·유틸리티, 방산 등
 - 메가캡 반도체는 언급해도 좋지만 글의 1~2개 포인트로 제한
-- 섹터 TOP 5 매수/매도 변화, 시그널 발생 종목, 외인·기관 의견 분열 같은 데이터를 적극 활용
+- 섹터 TOP 5 매수/매도 변화, 수급 구조 카운트, 외인·기관 의견 분열 같은 데이터를 적극 활용
 - 매일 다른 "주인공"이 등장하도록 의식할 것
 
 # 스타일 규칙

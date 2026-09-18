@@ -84,6 +84,10 @@ def generate_verdict(kospi, kosdaq, breadth, high, low):
     이전에는 4순위로 V3 시그널 개수를 썼는데(매수전환 N개 -> 반등 후보 모니터링)
     그 시그널들을 내렸다. 10.3년 재검정에서 시장 대비 초과수익이 없었다.
     대신 폭(breadth)과 신고가·신저가를 쓴다 — 둘 다 관측치다.
+
+    문장 끝에 "추세 추종 유효", "방어적 포지션 권장" 같은 조언을 붙이지 않는다.
+    그건 수급 데이터로 뒷받침되지 않는 주장이고, 같은 이유로 시그널 5종을
+    내렸다. 무슨 일이 있었는지만 적는다.
     """
     kf = kospi["foreign_streak_days"]
     ki = kospi["inst_streak_days"]
@@ -98,15 +102,15 @@ def generate_verdict(kospi, kosdaq, breadth, high, low):
 
     # 2) KOSPI 외인·기관 동시 강세/약세 (시장 방향 명확)
     if kf > 2 and ki > 2:
-        return f"외인·기관 KOSPI 동시 매수 {min(kf, ki)}일, 신고가 {high}개. 추세 추종 매매 유효."
+        return f"외인·기관 KOSPI 동시 매수 {min(kf, ki)}일, 신고가 {high}개 · 신저가 {low}개."
     if kf < -2 and ki < -2:
-        return f"외인·기관 KOSPI 동시 매도 {min(abs(kf), abs(ki))}일, 신저가 {low}개. 방어적 포지션 권장."
+        return f"외인·기관 KOSPI 동시 매도 {min(abs(kf), abs(ki))}일, 신저가 {low}개 · 신고가 {high}개."
 
     # 3) KOSPI 의견 분열
     if kf * ki < 0:
         f_dir = "매수" if kf > 0 else "매도"
         i_dir = "매수" if ki > 0 else "매도"
-        return f"KOSPI에서 외인 {abs(kf)}일 {f_dir} vs 기관 {abs(ki)}일 {i_dir}, 의견 분열. 종목 선별 매매 권장."
+        return f"KOSPI에서 외인 {abs(kf)}일 {f_dir} vs 기관 {abs(ki)}일 {i_dir} — 방향이 엇갈린다."
 
     # 4) 추세가 뚜렷하지 않을 때 — 폭과 신고가·신저가로 시장 상태만 적는다
     fb, fs = breadth.get("foreign_buy", 0), breadth.get("foreign_sell", 0)
@@ -171,29 +175,9 @@ def main():
     breadth = latest_snap.get("breadth") or {}
     latest_date = latest_snap.get("date", "")
 
-    # 내려간 시그널 4종의 개수는 더 이상 verdict 에 쓰지 않는다.
-    # signals 필드는 프론트 타입 호환을 위해 그대로 둔다(0 이어도 무해).
-    # V3 시그널은 별도 파일 (build_v3_signals.py가 만듦)
-    signals_path = DATA_DIR / "signals.json"
-    try:
-        with open(signals_path, "r", encoding="utf-8") as f:
-            v3 = json.load(f)
-        v3_signals = v3.get("signals") or {}
-    except Exception:
-        v3_signals = {}
-
-    signal_counts = {
-        "buy_reversal": len(v3_signals.get("buy_reversal", [])),
-        "sell_reversal": len(v3_signals.get("sell_reversal", [])),
-        "leader": len(v3_signals.get("leader", [])),
-        "accumulation": len(v3_signals.get("accumulation", [])),
-    }
-    print(
-        f"  시그널 (V3): 매수전환 {signal_counts['buy_reversal']} / "
-        f"매도전환 {signal_counts['sell_reversal']} / "
-        f"주도주 {signal_counts['leader']} / "
-        f"집중매수 {signal_counts['accumulation']}"
-    )
+    # 시그널 5종은 전부 내렸다(10.3년 재검정에서 시장 대비 초과수익 없음).
+    # signals 필드는 프론트 타입 호환을 위해 빈 dict 로 남긴다.
+    signal_counts = {}
 
     # 3. 52주 신고가/신저가 계산 (timeseries 기준)
     ts_files = [f for f in TS_DIR.glob("*.json") if f.stem != "_index"]

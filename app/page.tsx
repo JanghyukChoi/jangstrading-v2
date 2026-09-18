@@ -266,12 +266,6 @@ interface MarketSignalsData {
     inst_buy_breadth: number;
     inst_sell_breadth: number;
   };
-  signals: {
-    buy_reversal: number;
-    sell_reversal: number;
-    accumulation: number;
-    divergence: number;
-  };
   verdict: string;
 }
 
