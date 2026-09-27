@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "./components/Header";
 import BottomNav from "./components/BottomNav";
+import { BASE_URL, jsonLdScript } from "./lib/seo";
 import "./globals.css";
 
 // 모바일 주소창/상태바 색을 페이지 배경과 맞춘다.
@@ -43,6 +44,32 @@ export const metadata: Metadata = {
   },
 };
 
+const SITE_JSONLD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "JangsTrading",
+    alternateName: "장스트레이딩",
+    url: BASE_URL,
+    inLanguage: "ko",
+    description:
+      "KOSPI·KOSDAQ 외국인·기관·연기금·기타법인 투자자별 순매수 데이터와 회전율 가중 추정 평균 매입가를 무료로 제공합니다.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: { "@type": "EntryPoint", urlTemplate: `${BASE_URL}/stocks?q={search_term_string}` },
+      "query-input": "required name=search_term_string",
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "JangsTrading",
+    url: BASE_URL,
+    logo: `${BASE_URL}/favicon.svg`,
+    description: "한국거래소 공시 기반 투자자별 수급 데이터 분석 서비스",
+  },
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
@@ -60,6 +87,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        {/* 사이트 전역 구조화데이터.
+
+            WebSite 는 검색엔진에 사이트 이름과 내부 검색을 알려주고,
+            Organization 은 발행 주체를 명시한다. AI 검색이 "이 데이터는
+            누가 만들었나"에 답하려면 이게 있어야 인용 대상이 된다. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(SITE_JSONLD) }}
+        />
         <Header />
         <main className="max-w-7xl mx-auto px-5 py-6 pb-24 sm:pb-6">{children}</main>
         <footer className="max-w-7xl mx-auto px-5 pb-28 sm:pb-10 mt-8">
