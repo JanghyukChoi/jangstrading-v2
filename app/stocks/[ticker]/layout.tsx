@@ -27,6 +27,7 @@ import {
   jsonLdScript,
   loadRankings,
 } from "@/app/lib/seo";
+import TelegramCTA from "@/app/components/TelegramCTA";
 
 type Props = { params: Promise<{ ticker: string }> };
 
@@ -204,6 +205,12 @@ export default async function Layout({
               평균단가란?
             </Link>
           </p>
+
+          {/* 검색 유입의 착지점이 이 2,600 페이지다. 여기에 재방문 경로가
+              없으면 한 번 보고 끝난다. 카드는 조잡해지니 한 줄만 둔다. */}
+          <div className="mt-4 pt-4 border-t border-white/[0.06]">
+            <TelegramCTA variant="line" />
+          </div>
         </div>
       </section>
     </>

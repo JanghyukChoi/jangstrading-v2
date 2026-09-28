@@ -18,6 +18,7 @@
 import Link from "next/link";
 import { loadReport, loadReportIndex } from "@/app/lib/reports";
 import { loadRankings } from "@/app/lib/seo";
+import TelegramCTA from "@/app/components/TelegramCTA";
 
 export const dynamic = "force-static";
 export const dynamicParams = true;
@@ -150,6 +151,10 @@ export default async function ReportDetailPage({
           ) : <div />}
         </nav>
       )}
+
+      {/* 리포트는 커뮤니티·SNS 로 공유할 때 링크로 쓰는 페이지다.
+          구독 경로를 여기에 둔다. */}
+      <TelegramCTA />
     </div>
   );
 }

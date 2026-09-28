@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import HomeClient from "./HomeClient";
+import TelegramCTA from "./components/TelegramCTA";
 import {
   BASE_URL, fmtAmount, fmtDateKo, jsonLdScript, loadRankings,
 } from "./lib/seo";
@@ -72,6 +73,8 @@ export default function Page() {
           그렸다가 같은 10종목이 화면에 두 번 나왔다. 지웠다.
           리포트 목록과 사이트 설명만 남긴다. */}
       <section className="mt-4 space-y-4">
+        <TelegramCTA />
+
         {reports.length > 0 && (
           <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
             <h2 className="text-[15px] sm:text-[17px] font-semibold text-white">최근 시황 리포트</h2>
