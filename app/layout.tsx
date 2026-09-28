@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   keywords: ["외국인 순매수", "기관 순매수", "수급 분석", "KOSPI", "KOSDAQ", "주식 수급", "투자자별 매매동향", "섹터 수급", "테마 수급"],
   alternates: {
     canonical: "https://www.jangstrading.com",
+    // 크롤러가 피드를 스스로 찾게 한다. 네이버에 수동 제출도 하지만
+    // 이 link 태그가 있어야 다른 리더·수집기가 자동으로 붙는다.
+    types: {
+      "application/rss+xml": "https://www.jangstrading.com/rss.xml",
+    },
   },
   openGraph: {
     title: "JangsTrading — 외국인·기관 수급 분석",
