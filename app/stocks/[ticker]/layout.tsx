@@ -26,6 +26,7 @@ import {
   fmtPrice,
   jsonLdScript,
   loadRankings,
+  relatedStocks,
 } from "@/app/lib/seo";
 import TelegramCTA from "@/app/components/TelegramCTA";
 
@@ -102,6 +103,8 @@ export default async function Layout({
   const s = findStock(ticker);
   const { date } = loadRankings();
   if (!s) return <>{children}</>;
+
+  const { siblings, peers, sectorName } = relatedStocks(ticker);
 
   const crumbs = breadcrumb([
     { name: "홈", url: "/" },
@@ -205,6 +208,48 @@ export default async function Layout({
               평균단가란?
             </Link>
           </p>
+
+          {/* 이웃 종목. 종목 페이지끼리 링크가 하나도 없어서 2,600 페이지가
+              전부 고아였다. 칩 한 줄이면 화면을 해치지 않으면서 크롤러에게
+              경로가 생기고, 사람에게도 실제로 쓰는 이동 경로다. */}
+          {(siblings.length > 0 || peers.length > 0) && (
+            <div className="mt-5 pt-4 border-t border-white/[0.06] space-y-3">
+              {siblings.length > 0 && (
+                <div>
+                  <h3 className="text-[12px] text-[var(--text-muted)] mb-2">관련 종목</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {siblings.map((p) => (
+                      <Link
+                        key={p.ticker}
+                        href={`/stocks/${p.ticker}`}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition"
+                      >
+                        {p.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {peers.length > 0 && (
+                <div>
+                  <h3 className="text-[12px] text-[var(--text-muted)] mb-2">
+                    같은 업종{sectorName ? ` · ${sectorName}` : ""}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {peers.map((p) => (
+                      <Link
+                        key={p.ticker}
+                        href={`/stocks/${p.ticker}`}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[12px] sm:text-[13px] text-[var(--text-secondary)] hover:text-white transition"
+                      >
+                        {p.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 검색 유입의 착지점이 이 2,600 페이지다. 여기에 재방문 경로가
               없으면 한 번 보고 끝난다. 카드는 조잡해지니 한 줄만 둔다. */}

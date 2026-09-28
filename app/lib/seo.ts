@@ -93,6 +93,49 @@ export function decodeSegment(raw: string): string {
   return v;
 }
 
+/* 종목 상세에서 이어 줄 이웃 종목.
+
+   왜: 종목 페이지끼리 서로 링크가 하나도 없었다. 섹터 페이지를 고치고 나서도
+   우선주 132개는 sector 가 "기타" 라 어떤 섹터 페이지에도 안 잡혀 고아로
+   남는다. 보통주에서 우선주로 잇는 링크가 그걸 메우고, 동시에 "삼성전자를
+   보다가 삼성전자우로" 라는 실제 이동 경로이기도 하다.
+
+   형제 판정은 종목코드 앞 5자리로 한다. 한국 종목코드는 발행사 단위로
+   배정되어 보통주와 우선주가 앞 5자리를 공유한다.
+     005930 삼성전자 / 005935 삼성전자우
+     005380 현대차   / 005385 현대차우 / 005387 현대차2우B
+     006800 미래에셋증권 / 00680K 미래에셋증권2우B
+   이름 앞글자로 묶으면 "한화" 가 한화오션·한화솔루션을 잘못 끌어온다. */
+export function relatedStocks(ticker: string, limit = 8) {
+  const { data } = loadRankings();
+  const self = data.find((s) => s.ticker === ticker);
+  if (!self) return { siblings: [], peers: [] };
+
+  const stem = ticker.slice(0, 5);
+  const siblings = data.filter(
+    (s) => s.ticker && s.ticker !== ticker && s.ticker.slice(0, 5) === stem
+  );
+
+  const key = self.sector_mid && self.sector_mid !== "기타" ? self.sector_mid : self.sector;
+  const sibSet = new Set(siblings.map((s) => s.ticker));
+  const peers =
+    key && key !== "기타"
+      ? data
+          .filter(
+            (s) =>
+              s.ticker &&
+              s.ticker !== ticker &&
+              !sibSet.has(s.ticker) &&
+              (s.sector_mid === key || s.sector === key)
+          )
+          // 시총 큰 순. 링크 순서도 중요도 신호이고, 사람이 볼 때도 자연스럽다.
+          .sort((a, b) => (b.market_cap ?? 0) - (a.market_cap ?? 0))
+          .slice(0, limit)
+      : [];
+
+  return { siblings, peers, sectorName: key && key !== "기타" ? key : null };
+}
+
 /** 백만원 단위 값을 한국어 표기로. 검색 스니펫에 그대로 들어간다. */
 export function fmtAmount(millionWon: number | null | undefined): string {
   if (millionWon == null || !Number.isFinite(millionWon)) return "-";
