@@ -817,9 +817,13 @@ def main():
     build_kospi_history(market_rows, date_str)
     build_snapshot(results, market_data, date_iso)
 
-    # 스냅샷 전용 원시값은 프론트로 내보낼 필요가 없어 여기서 떼어낸다
+    # 스냅샷 전용 원시값은 프론트로 내보낼 필요가 없어 여기서 떼어낸다.
+    #
+    # 전에는 떼어낼 키를 하나하나 적었는데, 개인(_indi_1d)·기타법인(_corp_1d)을
+    # 추가하면서 목록에 넣는 걸 빠뜨려 92KB 가 공개 파일로 새어 나갔다.
+    # 접두사로 거르면 앞으로 필드를 더해도 같은 실수가 안 난다.
     for item in results:
-        for k in ("_close", "_trade_value", "_foreign_1d", "_inst_1d", "_pension_1d"):
+        for k in [k for k in item if k.startswith("_")]:
             item.pop(k, None)
 
     payload = {

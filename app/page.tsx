@@ -18,41 +18,6 @@ import { loadReportIndex } from "./lib/reports";
 export const dynamic = "force-static";
 
 
-/** 홈 요약의 종목 리스트. HomeClient 의 RankCard 와 같은 시각 규칙을 쓴다. */
-function SummaryList({
-  title, desc, rows,
-}: {
-  title: string;
-  desc: string;
-  rows: { ticker?: string; name: string; combined: Record<string, number> }[];
-}) {
-  return (
-    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
-      <h2 className="text-[15px] sm:text-[17px] font-semibold text-white">{title}</h2>
-      <p className="text-[12px] text-[var(--text-muted)] mb-3">{desc}</p>
-      <div className="space-y-0">
-        {rows.map((s, i) => {
-          const v = s.combined?.["1m"] ?? 0;
-          return (
-            <div key={s.ticker} className="flex items-center gap-2 py-2.5 border-t border-white/[0.03] first:border-0">
-              <span className="text-[var(--text-muted)] num text-xs w-5 shrink-0 text-center">{i + 1}</span>
-              <Link
-                href={`/stocks/${s.ticker}`}
-                className="flex-1 min-w-0 text-white text-[14px] font-medium hover:text-[var(--accent-blue)] transition truncate"
-              >
-                {s.name}
-              </Link>
-              <span className={`shrink-0 num text-[13px] sm:text-[14px] ${v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]"}`}>
-                {fmtAmount(v)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function Page() {
   const { data, date } = loadRankings();
   const reports = loadReportIndex().slice(0, 5);
@@ -101,25 +66,12 @@ export default function Page() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faq) }} />
       <HomeClient />
 
-      {/* 홈 요약 — 크롤러가 읽을 서버 렌더 본문이자 하위 페이지로 가는 링크.
+      {/* 홈에서 서버가 그리는 부분.
 
-          스타일은 위 대시보드의 종목 리스트와 맞춘다(HomeClient 의 RankCard):
-          순위 번호 · 14px 흰색 종목명 · 색상 있는 금액 · 행 구분선.
-          처음엔 데이터만 넣어서 같은 페이지 안에서 혼자 날것으로 보였다. */}
+          종목 순매수/순매도 TOP 10 은 HomeClient 가 이미 그린다 — 여기서 또
+          그렸다가 같은 10종목이 화면에 두 번 나왔다. 지웠다.
+          리포트 목록과 사이트 설명만 남긴다. */}
       <section className="mt-4 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <SummaryList
-            title="1개월 순매수 상위"
-            desc={`${fmtDateKo(date)} 기준 · 외국인+기관 합산`}
-            rows={topBuy}
-          />
-          <SummaryList
-            title="1개월 순매도 상위"
-            desc={`${fmtDateKo(date)} 기준 · 외국인+기관 합산`}
-            rows={topSell}
-          />
-        </div>
-
         {reports.length > 0 && (
           <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
             <h2 className="text-[15px] sm:text-[17px] font-semibold text-white">최근 시황 리포트</h2>

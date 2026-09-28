@@ -202,49 +202,23 @@ function TodayHighlight({ stocks }: { stocks: StockRanking[] }) {
       {data.sectorLeaders.length > 0 && (
         <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
           <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[15px] sm:text-[17px] font-semibold text-white">주도 섹터 & 주도주</h4>
+            <h4 className="text-[15px] sm:text-[17px] font-semibold text-white">주도 섹터</h4>
             <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.sectorPeriod)} 기준</span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-0">
             {data.sectorLeaders.map((s) => (
-              <div key={s.name}>
-                <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 mb-1.5 group">
+              <div key={s.name} className="border-t border-white/[0.03] first:border-0">
+                <Link href={`/sectors/${encodeURIComponent(s.name)}`} className="flex items-center gap-2 py-2.5 group">
                   <span className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] font-medium group-hover:text-[var(--accent-blue)] transition">{s.name}</span>
                   <NumUnit v={s.total} cls="text-[13px] positive" />
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--text-muted)]"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
                 </Link>
-                <div className="flex flex-wrap gap-1.5">
-                  {s.leaders.map((st) => (
-                    <Link key={st.name} href={st.ticker ? `/stocks/${st.ticker}` : "#"}
-                      className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[13px] sm:text-[13px]">
-                      <span className="text-white font-medium">{st.name}</span>
-                    </Link>
-                  ))}
-                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 연기금 집중 */}
-      {data.pensionTop.length > 0 && (
-        <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
-          <div className="flex items-baseline gap-2 mb-3">
-            <h4 className="text-[15px] sm:text-[17px] font-semibold text-white">연기금 집중</h4>
-            <span className="text-[12px] text-[var(--text-muted)]">{periodLabel(data.pensionPeriod)} 순매수</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {data.pensionTop.map((s) => (
-              <Link key={s.name} href={s.ticker ? `/stocks/${s.ticker}` : "#"}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] transition text-[13px] sm:text-[13px]">
-                <span className="text-white font-medium">{s.name}</span>
-                <NumUnit v={s.pension?.[data.pensionPeriod] ?? 0} cls="text-[12px] positive" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -521,7 +495,7 @@ export default function HomeClient() {
 
       {/* Section 4: 오늘의 주목 */}
       <section>
-        <SectionHeader title="오늘의 주목" desc="주도 섹터·종목 분석" />
+        <SectionHeader title="오늘의 주목" desc="자금이 몰린 섹터" />
         <div className="space-y-4">
           <TodayHighlight stocks={stocks} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
