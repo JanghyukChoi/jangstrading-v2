@@ -17,6 +17,42 @@ import { loadReportIndex } from "./lib/reports";
 
 export const dynamic = "force-static";
 
+
+/** 홈 요약의 종목 리스트. HomeClient 의 RankCard 와 같은 시각 규칙을 쓴다. */
+function SummaryList({
+  title, desc, rows,
+}: {
+  title: string;
+  desc: string;
+  rows: { ticker?: string; name: string; combined: Record<string, number> }[];
+}) {
+  return (
+    <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
+      <h2 className="text-[15px] sm:text-[17px] font-semibold text-white">{title}</h2>
+      <p className="text-[12px] text-[var(--text-muted)] mb-3">{desc}</p>
+      <div className="space-y-0">
+        {rows.map((s, i) => {
+          const v = s.combined?.["1m"] ?? 0;
+          return (
+            <div key={s.ticker} className="flex items-center gap-2 py-2.5 border-t border-white/[0.03] first:border-0">
+              <span className="text-[var(--text-muted)] num text-xs w-5 shrink-0 text-center">{i + 1}</span>
+              <Link
+                href={`/stocks/${s.ticker}`}
+                className="flex-1 min-w-0 text-white text-[14px] font-medium hover:text-[var(--accent-blue)] transition truncate"
+              >
+                {s.name}
+              </Link>
+              <span className={`shrink-0 num text-[13px] sm:text-[14px] ${v > 0 ? "positive" : v < 0 ? "negative" : "text-[var(--text-secondary)]"}`}>
+                {fmtAmount(v)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Page() {
   const { data, date } = loadRankings();
   const reports = loadReportIndex().slice(0, 5);
@@ -65,65 +101,56 @@ export default function Page() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faq) }} />
       <HomeClient />
 
-      <section className="mt-4">
-        <div className="bg-[var(--bg-card)] rounded-2xl p-5 sm:p-6">
-          <h2 className="text-[15px] sm:text-[17px] font-semibold text-white mb-1">
-            오늘의 수급 한눈에
-          </h2>
-          <p className="text-[12px] text-[var(--text-muted)] mb-4">
-            {fmtDateKo(date)} 기준 · 외국인+기관 합산 1개월 순매수
-          </p>
+      {/* 홈 요약 — 크롤러가 읽을 서버 렌더 본문이자 하위 페이지로 가는 링크.
 
-          <div className="grid sm:grid-cols-2 gap-5">
-            <div>
-              <h3 className="text-[13px] font-semibold text-white mb-2">순매수 상위</h3>
-              <ul className="space-y-1">
-                {topBuy.map((s) => (
-                  <li key={s.ticker} className="text-[13px] flex justify-between gap-3">
-                    <Link href={`/stocks/${s.ticker}`} className="text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition truncate">
-                      {s.name}
-                    </Link>
-                    <span className="num text-[var(--text-muted)] shrink-0">{fmtAmount(s.combined?.["1m"])}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-[13px] font-semibold text-white mb-2">순매도 상위</h3>
-              <ul className="space-y-1">
-                {topSell.map((s) => (
-                  <li key={s.ticker} className="text-[13px] flex justify-between gap-3">
-                    <Link href={`/stocks/${s.ticker}`} className="text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition truncate">
-                      {s.name}
-                    </Link>
-                    <span className="num text-[var(--text-muted)] shrink-0">{fmtAmount(s.combined?.["1m"])}</span>
-                  </li>
-                ))}
-              </ul>
+          스타일은 위 대시보드의 종목 리스트와 맞춘다(HomeClient 의 RankCard):
+          순위 번호 · 14px 흰색 종목명 · 색상 있는 금액 · 행 구분선.
+          처음엔 데이터만 넣어서 같은 페이지 안에서 혼자 날것으로 보였다. */}
+      <section className="mt-4 space-y-4">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <SummaryList
+            title="1개월 순매수 상위"
+            desc={`${fmtDateKo(date)} 기준 · 외국인+기관 합산`}
+            rows={topBuy}
+          />
+          <SummaryList
+            title="1개월 순매도 상위"
+            desc={`${fmtDateKo(date)} 기준 · 외국인+기관 합산`}
+            rows={topSell}
+          />
+        </div>
+
+        {reports.length > 0 && (
+          <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
+            <h2 className="text-[15px] sm:text-[17px] font-semibold text-white">최근 시황 리포트</h2>
+            <p className="text-[12px] text-[var(--text-muted)] mb-3">매 영업일 자동 생성</p>
+            <div className="space-y-0">
+              {reports.map((r) => (
+                <Link
+                  key={r.date}
+                  href={`/reports/${r.date}`}
+                  className="flex items-baseline gap-3 py-2.5 border-t border-white/[0.03] first:border-0 group"
+                >
+                  <time dateTime={r.date} className="num text-xs text-[var(--text-muted)] shrink-0 w-[68px]">
+                    {r.date.slice(2)}
+                  </time>
+                  <span className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] group-hover:text-[var(--accent-blue)] transition line-clamp-1">
+                    {r.title}
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
+        )}
 
-          {reports.length > 0 && (
-            <>
-              <h3 className="text-[13px] font-semibold text-white mt-5 mb-2">최근 시황 리포트</h3>
-              <ul className="space-y-1.5">
-                {reports.map((r) => (
-                  <li key={r.date} className="text-[13px]">
-                    <Link href={`/reports/${r.date}`} className="text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition">
-                      <time dateTime={r.date} className="num text-[var(--text-muted)] mr-2">{r.date}</time>
-                      {r.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          <p className="text-[11px] sm:text-[12px] text-[var(--text-muted)] mt-5 leading-relaxed">
+        <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
+          <p className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] leading-[1.8]">
             JangsTrading은 한국거래소(KRX) 공시 기반 투자자별 매매동향을 매 영업일 정리합니다.
-            외국인·기관·연기금·기타법인의 종목별 순매수 금액, 시가총액 대비 비중, 회전율 가중
-            추정 평균 매입가, 섹터·테마별 자금 흐름을 무료로 제공합니다. 종목 추천이나 매매
-            신호가 아닌 사실 데이터입니다.
+            외국인·기관·연기금·기타법인의 종목별 순매수 금액, 시가총액 대비 비중,{" "}
+            <Link href="/guide/평균단가" className="text-[var(--accent-blue)] hover:underline">
+              회전율 가중 추정 평균 매입가
+            </Link>
+            , 섹터·테마별 자금 흐름을 무료로 제공합니다.
           </p>
         </div>
       </section>

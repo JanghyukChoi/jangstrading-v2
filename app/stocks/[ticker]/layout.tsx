@@ -200,7 +200,7 @@ export default async function Layout({
           <p className="text-[11px] sm:text-[12px] text-[var(--text-muted)] mt-4 leading-relaxed">
             평균 매입가는 Grinblatt &amp; Han(2005)의 회전율 가중 기준가격을 투자자별로
             적용한 추정치입니다. 실제 매입 단가와 다를 수 있습니다.{" "}
-            <Link href="/guide/외국인-평균단가" className="text-[var(--accent-blue)] hover:underline">
+            <Link href="/guide/평균단가" className="text-[var(--accent-blue)] hover:underline">
               평균단가란?
             </Link>
           </p>

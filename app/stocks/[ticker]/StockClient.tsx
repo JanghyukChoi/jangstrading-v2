@@ -410,7 +410,17 @@ export default function StockClient({
       {/* 추정 평균단가 */}
       {stockData.avg_cost && (stockData.avg_cost.foreign || stockData.avg_cost.institution) && (
         <div className="bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
-          <h3 className="text-[15px] sm:text-[17px] font-semibold text-white mb-1">사 모은 평균 가격대</h3>
+          <div className="flex items-baseline justify-between gap-3 mb-1">
+            <h3 className="text-[15px] sm:text-[17px] font-semibold text-white">사 모은 평균 가격대</h3>
+            {/* 이 숫자를 처음 본 자리에 설명을 둔다. 전에는 카드 맨 아래
+                작은 면책 문구에만 있어서 사실상 아무도 못 찾았다. */}
+            <Link
+              href="/guide/평균단가"
+              className="shrink-0 text-[12px] sm:text-[13px] text-[var(--accent-blue)] hover:underline"
+            >
+              어떻게 계산하나요?
+            </Link>
+          </div>
           <p className="text-[12px] sm:text-[13px] text-[var(--text-muted)] mb-4">
             최근 1년 매매를 회전율로 가중한 추정치 · 현재가 <span className="num">{stockData.avg_cost.price.toLocaleString()}</span>원
           </p>

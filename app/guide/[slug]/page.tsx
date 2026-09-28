@@ -22,9 +22,9 @@ import {
 export const dynamic = "force-static";
 export const dynamicParams = false;   // 정의한 글 외에는 404
 
-const SLUG = "외국인-평균단가";
+const SLUG = "평균단가";
 const PATH = `/guide/${SLUG}`;
-const TITLE = "외국인 평균단가란? — 계산 방법과 보는 법";
+const TITLE = "외국인·기관 평균단가란? — 계산 방법과 보는 법";
 const DESC =
   "외국인·기관 투자자가 보유 주식을 평균 얼마에 샀는지 추정하는 방법. " +
   "회전율 가중 기준가격(Grinblatt & Han, 2005) 계산 방식과 실제 종목 예시로 설명합니다.";
@@ -34,6 +34,7 @@ export const metadata: Metadata = {
   description: DESC,
   keywords: [
     "외국인 평균단가", "기관 평균단가", "평균 매입가", "외국인 매수 단가",
+    "기관 매수 단가", "평균단가",
     "회전율 가중 기준가격", "수급 분석", "투자자별 매매동향",
   ],
   alternates: { canonical: `${BASE_URL}${PATH}` },
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
 
 const FAQ = [
   {
-    q: "외국인 평균단가는 공시되는 값인가요?",
+    q: "평균단가는 공시되는 값인가요?",
     a: "아닙니다. 한국거래소는 투자자별 일일 매수·매도 금액과 수량을 공시하지만 평균 매입 단가는 공시하지 않습니다. 이 사이트의 평균단가는 공시된 일별 매매 기록을 누적해 계산한 추정치입니다.",
   },
   {
@@ -73,7 +74,7 @@ export default function Page() {
 
   const crumbs = breadcrumb([
     { name: "홈", url: "/" },
-    { name: "외국인 평균단가", url: PATH },
+    { name: "평균단가", url: PATH },
   ]);
 
   const article = {
@@ -113,45 +114,44 @@ export default function Page() {
 
         <article className="bg-[var(--bg-card)] rounded-2xl p-5 sm:p-8">
           <h1 className="text-xl sm:text-2xl font-bold text-white leading-snug">
-            외국인 평균단가란?
+            외국인·기관 평균단가란?
           </h1>
 
           {/* 한 줄 답. 스캔하는 사람이 여기서 끝낼 수 있어야 한다. */}
           <p className="mt-4 text-[15px] sm:text-[16px] text-[var(--text-secondary)] leading-[1.85]">
-            외국인 투자자가 지금 들고 있는 주식을 <strong className="text-white">평균 얼마에 샀는지</strong>{" "}
-            추정한 값입니다. 현재가가 이보다 높으면 외국인은 평가이익 구간에, 낮으면 평가손실 구간에 있습니다.
+            외국인과 기관이 지금 들고 있는 주식을 <strong className="text-white">평균 얼마에 샀는지</strong>{" "}
+            추정한 값입니다. 현재가가 이보다 높으면 그 투자자는 평가이익 구간에, 낮으면 평가손실 구간에 있습니다.
           </p>
 
           {ac?.foreign && samsung && (
             <div className="mt-5 rounded-xl bg-white/[0.03] px-5 py-4">
               <p className="text-[12px] text-[var(--text-muted)] mb-3">
-                예시 · {samsung.name} · {fmtDateKo(date)} 기준
+                예시 · {samsung.name} · {fmtDateKo(date)} 기준 · 현재가{" "}
+                <span className="num text-[var(--text-secondary)]">{fmtPrice(ac.price)}</span>
               </p>
-              <dl className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <dt className="text-[12px] text-[var(--text-muted)]">현재가</dt>
-                  <dd className="text-[15px] sm:text-[17px] font-semibold text-white num mt-1">
-                    {fmtPrice(ac.price)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[12px] text-[var(--text-muted)]">외국인 평균단가</dt>
-                  <dd className="text-[15px] sm:text-[17px] font-semibold text-white num mt-1">
-                    {fmtPrice(ac.foreign.avg_cost)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[12px] text-[var(--text-muted)]">차이</dt>
-                  <dd
-                    className={`text-[15px] sm:text-[17px] font-semibold num mt-1 ${
-                      ac.foreign.pnl_pct >= 0 ? "positive" : "negative"
-                    }`}
-                  >
-                    {ac.foreign.pnl_pct > 0 ? "+" : ""}
-                    {ac.foreign.pnl_pct.toFixed(1)}%
-                  </dd>
-                </div>
-              </dl>
+              <div className="space-y-0">
+                {([
+                  ["외국인", ac.foreign],
+                  ["기관", ac.institution],
+                ] as const).map(([label, v]) =>
+                  v ? (
+                    <div key={label} className="flex items-center gap-3 py-2.5 border-t border-white/[0.04] first:border-0">
+                      <span className="text-[13px] sm:text-[14px] text-[var(--text-secondary)] w-14 shrink-0">
+                        {label}
+                      </span>
+                      <span className="flex-1 text-[15px] sm:text-[17px] font-semibold text-white num">
+                        {fmtPrice(v.avg_cost)}
+                      </span>
+                      <span className={`shrink-0 text-[13px] sm:text-[14px] num ${v.pnl_pct >= 0 ? "positive" : "negative"}`}>
+                        {v.pnl_pct > 0 ? "+" : ""}{v.pnl_pct.toFixed(1)}%
+                      </span>
+                    </div>
+                  ) : null
+                )}
+              </div>
+              <p className="text-[12px] text-[var(--text-muted)] mt-3 leading-relaxed">
+                두 주체의 평균단가가 다른 것은 서로 다른 구간에서 매수했기 때문입니다.
+              </p>
             </div>
           )}
 
