@@ -5,7 +5,9 @@ import {
 } from "@/app/lib/seo";
 
 export const metadata: Metadata = {
-  title: "종목별 순매수 랭킹",
+  // 실측 검색어가 "투자자 별 순매수 상위 종목", "외국인/기관 연속 순매수 상위 20 종목"
+  // 형태였다. 제목을 그 표현에 맞춘다(2026-09-28 Search Console 기준).
+  title: "외국인·기관 순매수 상위 종목 — 투자자별 매매동향",
   description:
     "외국인·기관·연기금·기타법인 순매수 종목 랭킹. 기간별 순매수 금액과 시총 대비 비중, 외국인·기관 추정 평균 매입가를 한눈에 확인하세요.",
   alternates: { canonical: `${BASE_URL}/stocks` },

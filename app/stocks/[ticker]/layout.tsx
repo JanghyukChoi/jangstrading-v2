@@ -61,13 +61,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
+    // 종목코드로 직접 찾는 검색이 실제로 들어온다 — Search Console 에
+    // "krx005930", "kosdaq: 126880" 형태가 잡혔다. 시장 접두어를 붙인 변형을
+    // 같이 넣는다.
     keywords: [
       `${s.name} 수급`,
       `${s.name} 외국인 순매수`,
       `${s.name} 기관 순매수`,
       `${s.name} 평균단가`,
-      `${ticker}`,
+      `${s.name} 주가`,
+      ticker,
+      `${s.market.toLowerCase()} ${ticker}`,
+      `krx${ticker}`,
       s.sector_mid ?? "",
+      "투자자별 순매수",
       "외국인 매매동향",
     ].filter(Boolean),
     alternates: { canonical: `${BASE_URL}/stocks/${ticker}` },

@@ -4,7 +4,8 @@ import { BASE_URL, breadcrumb, fmtDateKo, jsonLdScript } from "@/app/lib/seo";
 import { loadReportIndex } from "@/app/lib/reports";
 
 export const metadata: Metadata = {
-  title: "AI 시황 분석",
+  // "시황분석" 으로 유입된 기록이 있다.
+  title: "오늘의 증시 시황 분석 — 외국인·기관 수급 리포트",
   description:
     "매일 수급 데이터와 뉴스를 기반으로 자동 생성되는 AI 시황 리포트. 외국인·기관 자금 흐름과 섹터별 변화를 정리합니다.",
   alternates: { canonical: `${BASE_URL}/reports` },
