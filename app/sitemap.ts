@@ -46,6 +46,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/sectors`, lastModified: dataDate, changeFrequency: "daily", priority: 0.9 },
     { url: `${BASE}/screener`, lastModified: dataDate, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/reports`, lastModified: dataDate, changeFrequency: "daily", priority: 0.8 },
+    // 설명 페이지. 내용이 거의 안 바뀌지만 예시 수치가 매일 갱신된다.
+    {
+      url: `${BASE}/guide/${encodeURIComponent("외국인-평균단가")}`,
+      lastModified: dataDate,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
   ];
 
   // 종목 상세 — 매 영업일 수급이 갱신되므로 daily 가 사실이다.

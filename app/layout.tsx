@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "./components/Header";
@@ -103,6 +104,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <p className="font-medium text-[var(--text-secondary)]">투자 유의사항</p>
             <p>본 서비스는 투자 자문이 아닙니다. 표시된 정보는 한국거래소(KRX) 공시 데이터를 기반으로 한 사실 정보이며, 종목 추천이 아닌 분석 도구입니다.</p>
             <p>투자 판단과 그에 따른 손익의 책임은 사용자 본인에게 있습니다. 과거 데이터 및 백테스트 결과는 미래 수익을 보장하지 않습니다.</p>
+            <p className="pt-3">
+              <Link href="/guide/외국인-평균단가" className="text-[var(--text-secondary)] hover:text-white transition">
+                외국인 평균단가란?
+              </Link>
+            </p>
             <p className="pt-2 text-[var(--text-muted)] opacity-70">© JangsTrading. 모든 데이터는 한국거래소(KRX) 공시 자료를 기반으로 합니다.</p>
           </div>
         </footer>
