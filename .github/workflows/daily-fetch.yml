@@ -86,3 +86,10 @@ jobs:
           git add public/data/
           git diff --staged --quiet || git commit -m "daily data update $(date +'%Y-%m-%d')"
           git push origin HEAD:main
+
+      # 갱신된 URL 을 네이버·Bing 에 직접 밀어 넣는다. 사이트맵은 크롤러가
+      # 올 때까지 기다리는 수동 방식이라 네이버는 4개월간 거의 안 가져갔다.
+      # 색인 요청이 실패해도 데이터는 이미 커밋됐으므로 파이프라인은 통과시킨다.
+      - name: Ping IndexNow (Naver / Bing)
+        run: python scripts/indexnow.py
+        continue-on-error: true
