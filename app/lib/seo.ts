@@ -62,6 +62,37 @@ export function findStock(ticker: string): StockRow | null {
   return loadRankings().data.find((s) => s.ticker === ticker) ?? null;
 }
 
+/* URL 세그먼트를 원래 이름으로 되돌린다.
+
+   왜 한 번 디코딩으로 안 되는가: generateStaticParams 가 encodeURIComponent
+   한 값을 돌려주는데 Next 가 라우트를 만들 때 **한 번 더** 인코딩한다.
+   그래서 컴포넌트가 받는 params 는 이중 인코딩이다.
+
+     실제 이름            건강관리
+     params.name         %25EA%25B1%25B4%25EA%25B0%2595...
+     decodeURIComponent  %EA%B1%B4%EA%B0%95...      <- 여기서 멈췄다
+
+   그 결과 /sectors 상세 295 페이지가 h1 에 퍼센트 문자열을 찍고 소속 종목을
+   0개로 계산했다. generateMetadata 는 받는 값이 달라서 제목만 멀쩡했다.
+
+   요청 시점(dynamicParams) 방문은 단일 인코딩으로 들어오므로, 횟수를 가정하지
+   않고 **변하지 않을 때까지** 푼다. 잘못된 퍼센트 시퀀스면 그대로 돌려준다.
+   테마명에 '/' 가 든 것("전후 재건(우크라/중동 전쟁 등)")도 이 경로로 복원된다. */
+export function decodeSegment(raw: string): string {
+  let v = raw;
+  for (let i = 0; i < 4; i++) {
+    let next: string;
+    try {
+      next = decodeURIComponent(v);
+    } catch {
+      return v;           // 이름에 들어간 진짜 '%' — 더 풀면 안 된다
+    }
+    if (next === v) return v;
+    v = next;
+  }
+  return v;
+}
+
 /** 백만원 단위 값을 한국어 표기로. 검색 스니펫에 그대로 들어간다. */
 export function fmtAmount(millionWon: number | null | undefined): string {
   if (millionWon == null || !Number.isFinite(millionWon)) return "-";

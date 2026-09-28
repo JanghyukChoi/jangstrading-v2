@@ -9,7 +9,7 @@
 
 import fs from "fs";
 import path from "path";
-import { loadRankings, type StockRow } from "@/app/lib/seo";
+import { decodeSegment, loadRankings, type StockRow } from "@/app/lib/seo";
 import SectorClient from "./SectorClient";
 
 export const dynamic = "force-static";
@@ -53,6 +53,6 @@ function membersOf(sectorName: string): StockRow[] {
 }
 
 export default async function Page({ params }: { params: Promise<{ name: string }> }) {
-  const sectorName = decodeURIComponent((await params).name);
+  const sectorName = decodeSegment((await params).name);
   return <SectorClient sectorName={sectorName} members={membersOf(sectorName) as any} />;
 }

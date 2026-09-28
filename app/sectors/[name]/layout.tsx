@@ -8,7 +8,7 @@
 
 import type { Metadata } from "next";
 import {
-  BASE_URL, breadcrumb, fmtAmount, fmtDateKo, jsonLdScript, loadRankings,
+  BASE_URL, breadcrumb, decodeSegment, fmtAmount, fmtDateKo, jsonLdScript, loadRankings,
 } from "@/app/lib/seo";
 
 type Props = { params: Promise<{ name: string }> };
@@ -26,7 +26,7 @@ function sectorStats(name: string) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const name = decodeURIComponent((await params).name);
+  const name = decodeSegment((await params).name);
   const { members, foreign, inst, date } = sectorStats(name);
 
   if (members.length === 0) {
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Layout({
   children, params,
 }: { children: React.ReactNode; params: Promise<{ name: string }> }) {
-  const name = decodeURIComponent((await params).name);
+  const name = decodeSegment((await params).name);
   const { members, foreign, inst, top, date } = sectorStats(name);
 
   const crumbs = breadcrumb([
