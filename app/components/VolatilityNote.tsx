@@ -7,8 +7,10 @@
 
    문구 원칙
      통계 용어를 쓰지 않는다. "4번 중 3번" 으로 쓴다.
-     그리고 반대 경우를 같은 문장 안에 적는다 — 4번 중 1번은 시장을 이겼다.
-     겁주는 문구가 아니라 분류와 과거 기록이다.
+     그리고 반대 경우를 같은 문단에 적는다 — 4번 중 1번은 시장을 이겼다.
+     그 한 문장이 면책 역할까지 한다. 별도의 "예측이 아닙니다" 문구는
+     사용자 요청으로 뺐다(2026-09-29). 사이트 전역 면책은 푸터에 있고,
+     한계 전체는 /guide/변동성 에 있다.
 */
 
 import Link from "next/link";
@@ -51,7 +53,6 @@ export default function VolatilityNote({ v }: { v: Vol | null }) {
               나머지 1번은 시장을 이겼습니다.
             </p>
             <p className="mt-3 text-[12px] sm:text-[13px] text-[var(--text-muted)] leading-relaxed">
-              이 종목이 떨어진다는 뜻이 아니라, 이런 유형이 과거에 어땠는지를 보여주는 기록입니다.{" "}
               <Link href="/guide/변동성" className="text-[var(--accent-blue)] hover:underline">
                 왜 그런가요?
               </Link>
