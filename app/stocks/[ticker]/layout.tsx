@@ -24,11 +24,13 @@ import {
   fmtDateKo,
   fmtPct,
   fmtPrice,
+  findVolatility,
   jsonLdScript,
   loadRankings,
   relatedStocks,
 } from "@/app/lib/seo";
 import TelegramCTA from "@/app/components/TelegramCTA";
+import VolatilityNote from "@/app/components/VolatilityNote";
 
 type Props = { params: Promise<{ ticker: string }> };
 
@@ -105,6 +107,7 @@ export default async function Layout({
   if (!s) return <>{children}</>;
 
   const { siblings, peers, sectorName } = relatedStocks(ticker);
+  const vol = findVolatility(ticker);
 
   const crumbs = breadcrumb([
     { name: "홈", url: "/" },
@@ -143,6 +146,8 @@ export default async function Layout({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(crumbs) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(dataset) }} />
       {children}
+
+      <VolatilityNote v={vol} />
 
       {/* 크롤러가 읽을 수 있는 텍스트 요약. 위 차트·표와 같은 숫자를 문장으로
           한 번 더 쓴다 — 스크린리더에도 도움이 된다. */}

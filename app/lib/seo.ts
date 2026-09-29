@@ -58,6 +58,27 @@ export function loadRankings(): Rankings {
   return cache;
 }
 
+/* 변동성. scripts/build_volatility.py 가 매일 만든다.
+   랭킹과 같은 방식으로 모듈 스코프에 캐시한다 — 2,600 페이지를 렌더하면서
+   156KB 파일을 매번 파싱할 이유가 없다. */
+interface VolRow { vol: number; daily: number; pct: number | null; top: boolean }
+let volCache: Record<string, VolRow> | null = null;
+
+export function loadVolatility(): Record<string, VolRow> {
+  if (volCache) return volCache;
+  try {
+    const p = path.join(process.cwd(), "public", "data", "volatility.json");
+    volCache = (JSON.parse(fs.readFileSync(p, "utf-8")).data ?? {}) as Record<string, VolRow>;
+  } catch {
+    volCache = {};
+  }
+  return volCache;
+}
+
+export function findVolatility(ticker: string): VolRow | null {
+  return loadVolatility()[ticker] ?? null;
+}
+
 export function findStock(ticker: string): StockRow | null {
   return loadRankings().data.find((s) => s.ticker === ticker) ?? null;
 }

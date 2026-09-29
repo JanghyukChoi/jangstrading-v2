@@ -72,6 +72,10 @@ jobs:
         run: python scripts/build_v3_signals.py
       - name: Build market signals
         run: python scripts/build_market_signals.py
+      # 종목별 252일 변동성과 분위. backtest_lowrisk.py 가 검정한 정의와
+      # 같아야 하므로 스크립트 안에 기준을 고정해 뒀다.
+      - name: Build volatility
+        run: python scripts/build_volatility.py
       # 커뮤니티 배포용 글. 스크립트가 스스로 월요일인지 보고 아니면 즉시
       # 끝난다 — 커뮤니티는 주 1회가 상한이라 매일 만들면 쓸 데가 없다.
       - name: Draft community post (Mondays)
