@@ -35,6 +35,7 @@ interface Filters {
   minPriceMom: number;        // % (해당 기간)
   maxPer: number | null;      // null = 제한 없음
   excludeSpac: boolean;
+  excludeHighVol: boolean;    // 변동성 상위 10% 제외
   sortBy: "combined" | "foreign" | "inst" | "pension" | "market_cap" | "price_mom";
   sortDir: "desc" | "asc";
 }
@@ -49,6 +50,7 @@ const DEFAULT_FILTERS: Filters = {
   minPriceMom: -100,
   maxPer: null,
   excludeSpac: true,
+  excludeHighVol: false,
   sortBy: "combined",
   sortDir: "desc",
 };
@@ -92,6 +94,7 @@ function ScreenerInner() {
   const router = useRouter();
   const [allStocks, setAllStocks] = useState<StockRanking[]>([]);
   const [meta, setMeta] = useState<{ date?: string } | null>(null);
+  const [highVol, setHighVol] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   // URL에서 필터 초기값 읽기
@@ -111,6 +114,8 @@ function ScreenerInner() {
     if (n("ps") != null) f.minPension = n("ps")!;
     if (n("pm") != null) f.minPriceMom = n("pm")!;
     if (n("per") != null) f.maxPer = n("per");
+    if (searchParams.get("hv") === "1") f.excludeHighVol = true;
+    if (searchParams.get("sp") === "0") f.excludeSpac = false;
     const sb = searchParams.get("sb");
     if (sb === "combined" || sb === "foreign" || sb === "inst" || sb === "pension" || sb === "market_cap" || sb === "price_mom") f.sortBy = sb;
     const sd = searchParams.get("sd");
@@ -122,10 +127,19 @@ function ScreenerInner() {
     Promise.all([
       fetch("/data/stock-rankings.json").then((r) => r.json()),
       fetch("/data/meta.json").then((r) => r.json()).catch(() => null),
+      // 변동성은 제외 필터에만 쓰므로 실패해도 화면은 돌아가야 한다.
+      fetch("/data/volatility.json").then((r) => r.json()).catch(() => null),
     ])
-      .then(([s, m]) => {
+      .then(([s, m, v]) => {
         setAllStocks(s.data);
         setMeta(m);
+        if (v?.data) {
+          setHighVol(new Set(
+            Object.entries(v.data as Record<string, { top?: boolean }>)
+              .filter(([, x]) => x.top)
+              .map(([t]) => t)
+          ));
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -147,6 +161,8 @@ function ScreenerInner() {
     if (f.minPension !== DEFAULT_FILTERS.minPension) params.set("ps", String(f.minPension));
     if (f.minPriceMom !== DEFAULT_FILTERS.minPriceMom) params.set("pm", String(f.minPriceMom));
     if (f.maxPer != null) params.set("per", String(f.maxPer));
+    if (f.excludeHighVol) params.set("hv", "1");
+    if (!f.excludeSpac) params.set("sp", "0");
     if (f.sortBy !== DEFAULT_FILTERS.sortBy) params.set("sb", f.sortBy);
     if (f.sortDir !== DEFAULT_FILTERS.sortDir) params.set("sd", f.sortDir);
     const qs = params.toString();
@@ -212,6 +228,8 @@ function ScreenerInner() {
       if (f.market !== "ALL" && s.market !== f.market) return false;
       // 스팩 제외
       if (f.excludeSpac && (s.name.includes("스팩") || s.name.includes("SPAC"))) return false;
+      // 변동성 상위 10%. 데이터를 못 받았으면(빈 집합) 아무것도 거르지 않는다.
+      if (f.excludeHighVol && s.ticker && highVol.has(s.ticker)) return false;
       // 시총 (단위: 억원, market_cap도 동일 단위)
       if (f.minMarketCap > 0 && (s.market_cap ?? 0) < f.minMarketCap) return false;
       // 외국인 (combined 단위는 백만원, 사용자 입력은 억원 → 100배 변환)
@@ -246,7 +264,7 @@ function ScreenerInner() {
       const av = get(a), bv = get(b);
       return f.sortDir === "desc" ? bv - av : av - bv;
     });
-  }, [allStocks, filters]);
+  }, [allStocks, filters, highVol]);
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(0);
@@ -384,6 +402,37 @@ function ScreenerInner() {
             onChange={(v) => updateFilter("maxPer", v === ("" as unknown as number) || isNaN(v as number) ? null : v)}
             placeholder="예: 15 (저PER만)"
           />
+        </div>
+
+        {/* 5행: 제외 옵션.
+
+            스팩 제외는 원래 로직에만 있고 화면에 없었다 — 기본값으로 켜져
+            있는데 끌 방법이 없었다. 변동성 제외를 넣는 김에 같이 꺼낸다.
+            둘 다 "빼는" 동작이라 한 줄에 묶는 게 자연스럽다. */}
+        <div className="pt-1">
+          <label className="block text-[12px] text-[var(--text-muted)] mb-1.5">제외</label>
+          <div className="flex flex-wrap gap-1.5">
+            <Toggle
+              on={filters.excludeSpac}
+              onClick={() => updateFilter("excludeSpac", !filters.excludeSpac)}
+              label="스팩"
+            />
+            <Toggle
+              on={filters.excludeHighVol}
+              onClick={() => updateFilter("excludeHighVol", !filters.excludeHighVol)}
+              label="변동성 상위 10%"
+              count={highVol.size}
+            />
+          </div>
+          {filters.excludeHighVol && (
+            <p className="mt-2 text-[11px] sm:text-[12px] text-[var(--text-muted)] leading-relaxed">
+              하루 변동폭이 가장 큰 10% 종목을 뺍니다. 이 구간은 지난 10년간 3개월 뒤
+              시장보다 평균 4.0% 낮았습니다.{" "}
+              <Link href="/guide/변동성" className="text-[var(--accent-blue)] hover:underline">
+                자세히
+              </Link>
+            </p>
+          )}
         </div>
 
         {/* 정렬 옵션 */}
@@ -581,6 +630,48 @@ function ScreenerInner() {
 }
 
 /* ── 숫자 입력 컴포넌트 ─────────────────────────── */
+/* 제외 토글.
+
+   체크박스 기본 스타일은 다크 테마에서 흰 사각형으로 튄다. 눌린 상태가
+   색으로 보이는 알약 버튼이 이 화면의 다른 컨트롤과 결이 맞는다.
+   aria-pressed 를 줘서 스크린리더에는 토글로 읽히게 한다. */
+function Toggle({ on, onClick, label, count }: {
+  on: boolean;
+  onClick: () => void;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] sm:text-[13px] transition ${
+        on
+          ? "bg-[var(--accent-blue)]/15 text-[var(--accent-blue)]"
+          : "bg-white/[0.04] text-[var(--text-muted)] hover:bg-white/[0.08]"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`w-3.5 h-3.5 rounded-[4px] flex items-center justify-center shrink-0 ${
+          on ? "bg-[var(--accent-blue)]" : "border border-white/20"
+        }`}
+      >
+        {on && (
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 6.5L4.5 9L10 3" />
+          </svg>
+        )}
+      </span>
+      {label}
+      {count != null && count > 0 && (
+        <span className="num opacity-60">{count}</span>
+      )}
+    </button>
+  );
+}
+
 function NumInput({ label, value, onChange, placeholder, allowNegative = false }: {
   label: string;
   value: number;
